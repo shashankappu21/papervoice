@@ -13,8 +13,8 @@ const fixture = JSON.parse(
   readFileSync(new URL('../fixtures/constitution.items.json', import.meta.url), 'utf8'),
 ) as { items: TextItem[]; pageHeight: number; pageCount: number };
 
-/** Baseline recorded 2026-09-03. */
-const BASELINE = 212;
+/** Baseline recorded 2026-09-04, after the line/block pipeline landed. */
+const BASELINE = 279;
 
 describe('extraction over a real document', () => {
   const sentences = buildSentences(fixture.items, fixture.pageHeight);
@@ -37,8 +37,11 @@ describe('extraction over a real document', () => {
   });
 
   it('reads a body sentence as one uninterrupted unit', () => {
-    // The preamble is set in small caps, so pdf.js reports it upper-cased.
+    // The preamble is set in small caps, so pdf.js reports it upper-cased. It is
+    // also set smaller than the body, and must still be read as prose rather
+    // than written off as a footnote.
     const preamble = sentences.find((s) => s.text.includes('WE THE PEOPLE'));
+    expect(preamble?.kind).toBe('body');
     expect(preamble?.text).toContain(
       'WE THE PEOPLE of the United States, in Order to form a more perfect Union, ' +
         'establish Justice, insure domestic Tranquility, provide for the common defence, ' +
@@ -64,6 +67,23 @@ describe('extraction over a real document', () => {
         expect(box.page).toBeGreaterThanOrEqual(1);
         expect(box.page).toBeLessThanOrEqual(fixture.pageCount);
       }
+    }
+  });
+
+  it('keeps headings out of the prose around them', () => {
+    const headings = sentences.filter((s) => s.kind === 'heading');
+    expect(headings.length).toBeGreaterThan(0);
+    // A heading is its own utterance, so none of them should carry a sentence
+    // of body prose along with it.
+    for (const heading of headings) {
+      expect(heading.text).not.toMatch(/[a-z]{3,}\.\s+[A-Z]/);
+    }
+  });
+
+  it('never runs a marginal line number into the text', () => {
+    // This edition numbers every line down the margin in small type.
+    for (const sentence of sentences) {
+      expect(sentence.text).not.toMatch(/^\d{1,2} [A-Z]/);
     }
   });
 });

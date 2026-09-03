@@ -4,6 +4,7 @@ import type { Sentence } from '../src/extraction/types';
 
 const sentences: Sentence[] = Array.from({ length: 50 }, (_, i) => ({
   index: i,
+  kind: 'body',
   text: `Sentence number ${i}.`,
   boxes: [],
 }));

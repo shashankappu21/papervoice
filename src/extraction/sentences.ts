@@ -1,4 +1,6 @@
-import type { TextItem, Sentence, BBox } from './types';
+import { buildBlocks } from './blocks';
+import { buildLines } from './lines';
+import type { BBox, Block, Line, Sentence, TextItem } from './types';
 
 /** Words ending in '.' that do not end a sentence. */
 const ABBREVIATIONS = new Set([
@@ -8,75 +10,8 @@ const ABBREVIATIONS = new Set([
   'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
 ]);
 
-const PAGE_NUMBER_PATTERNS = [
-  /^\d{1,4}$/,
-  /^[ivxlcdm]{1,7}$/i,
-  /^\d+\s*of\s*\d+$/i,
-  /^page\s+\d+$/i,
-];
-
 /** Closing punctuation that may follow a terminator: `he said."` */
 const CLOSERS = /["'’”)\]]/;
-
-/**
- * Page furniture is only stripped near the top or bottom edge, so a number in
- * the body ("He counted them all. 42") survives.
- */
-function isNearEdge(item: TextItem, pageHeight: number): boolean {
-  return item.y < pageHeight * 0.08 || item.y > pageHeight * 0.92;
-}
-
-/**
- * Identifies an edge item by where it sits and what it says, with digits
- * flattened so a footer only differing by its page number ("Chapter 2 * 14")
- * still counts as the same footer.
- */
-function furnitureKey(item: TextItem): string {
-  const band = Math.round(item.y / 6);
-  return `${band}|${item.text.trim().replace(/\d+/g, '#')}`;
-}
-
-/**
- * Running heads and feet repeat in the same place page after page. They are
- * found by that repetition rather than by pattern, because the text varies by
- * book — a title, a chapter name, a printer's watermark. They have to go: left
- * in, they are spliced into the middle of a body sentence and read aloud.
- */
-function findRunningFurniture(items: TextItem[], pageHeight: number): Set<string> {
-  const pagesByKey = new Map<string, Set<number>>();
-  const pages = new Set<number>();
-
-  for (const item of items) {
-    pages.add(item.page);
-    if (!isNearEdge(item, pageHeight)) continue;
-    if (item.text.trim().length === 0) continue;
-    const key = furnitureKey(item);
-    let seen = pagesByKey.get(key);
-    if (!seen) pagesByKey.set(key, (seen = new Set()));
-    seen.add(item.page);
-  }
-
-  // Three pages is the floor: two repetitions could be a dedication or an
-  // epigraph, and a short document has no running furniture worth guessing at.
-  const threshold = Math.max(3, pages.size * 0.5);
-  const running = new Set<string>();
-  for (const [key, seen] of pagesByKey) {
-    if (seen.size >= threshold) running.add(key);
-  }
-  return running;
-}
-
-function isPageFurniture(
-  item: TextItem,
-  pageHeight: number,
-  running: Set<string>,
-): boolean {
-  const text = item.text.trim();
-  if (text.length === 0) return true;
-  if (!isNearEdge(item, pageHeight)) return false;
-  if (running.has(furnitureKey(item))) return true;
-  return PAGE_NUMBER_PATTERNS.some((re) => re.test(text));
-}
 
 /** True if `text` genuinely ends a sentence rather than an abbreviation or initial. */
 function isSentenceEnd(text: string): boolean {
@@ -103,97 +38,77 @@ function isSentenceEnd(text: string): boolean {
   return true;
 }
 
-function toBox(item: TextItem): BBox {
-  return { page: item.page, x: item.x, y: item.y, width: item.width, height: item.height };
-}
+/** Cuts one block's text at real sentence boundaries. */
+function splitSpans(text: string): Array<[number, number]> {
+  const spans: Array<[number, number]> = [];
+  let start = 0;
 
-/** Merge boxes lying on the same line of the same page into one run. */
-function mergeBoxes(boxes: BBox[]): BBox[] {
-  const out: BBox[] = [];
-  for (const box of boxes) {
-    const prev = out[out.length - 1];
-    if (prev && prev.page === box.page && Math.abs(prev.y - box.y) <= 2) {
-      const right = Math.max(prev.x + prev.width, box.x + box.width);
-      prev.x = Math.min(prev.x, box.x);
-      prev.width = right - prev.x;
-      prev.height = Math.max(prev.height, box.height);
-    } else {
-      out.push({ ...box });
-    }
+  for (let i = 0; i < text.length; i++) {
+    if (!/[.!?]/.test(text[i])) continue;
+
+    let j = i + 1;
+    while (j < text.length && CLOSERS.test(text[j])) j++;
+    // A terminator must be followed by whitespace or the end of the block, so
+    // decimals ("3.5") and URLs do not split.
+    if (j < text.length && !/\s/.test(text[j])) continue;
+    if (!isSentenceEnd(text.slice(start, j))) continue;
+
+    spans.push([start, j]);
+    start = j;
+    i = j - 1;
   }
-  return out;
+  if (start < text.length) spans.push([start, text.length]);
+  return spans;
 }
 
-interface Piece {
-  start: number;
-  end: number;
-  item: TextItem;
+function toBox(line: Line): BBox {
+  return { page: line.page, x: line.x, y: line.y, width: line.width, height: line.height };
+}
+
+/** Every line of the block that overlaps the character range [start, end). */
+function boxesFor(block: Block, start: number, end: number): BBox[] {
+  const boxes: BBox[] = [];
+  block.lines.forEach((line, i) => {
+    const lineStart = block.lineOffsets[i];
+    const lineEnd = lineStart + line.text.length;
+    if (lineStart < end && lineEnd > start) boxes.push(toBox(line));
+  });
+  return boxes;
 }
 
 /**
- * Groups pdf.js text items into sentences, preserving for each sentence every
- * bounding box that contributed to it (so a sentence may span lines and pages).
+ * Turns raw pdf.js text items into speakable sentences.
+ *
+ * The work happens in three stages -- items become lines, lines become
+ * classified blocks, and only then is text cut into sentences. Sentences never
+ * cross a block boundary, which is what stops a heading from being welded onto
+ * the paragraph beneath it and a footnote from landing in the middle of a
+ * clause.
  */
 export function buildSentences(items: TextItem[], pageHeight: number): Sentence[] {
-  // Phase 1 — concatenate the document into one string, remembering which item
-  // produced each character range.
-  const pieces: Piece[] = [];
-  let full = '';
-  const running = findRunningFurniture(items, pageHeight);
-
-  for (const item of items) {
-    if (isPageFurniture(item, pageHeight, running)) continue;
-
-    if (full.length > 0) {
-      if (/-$/.test(full)) {
-        // A word hyphenated across a line break: drop the hyphen and join.
-        full = full.slice(0, -1);
-        const prev = pieces[pieces.length - 1];
-        if (prev) prev.end = Math.min(prev.end, full.length);
-      } else if (!/\s$/.test(full) && !/^\s/.test(item.text)) {
-        full += ' ';
-      }
-    }
-
-    const start = full.length;
-    full += item.text;
-    pieces.push({ start, end: full.length, item });
-  }
-
-  // Phase 2 — cut the string at real sentence boundaries.
-  const spans: Array<[number, number]> = [];
-  let spanStart = 0;
-
-  for (let i = 0; i < full.length; i++) {
-    if (!/[.!?]/.test(full[i])) continue;
-
-    let j = i + 1;
-    while (j < full.length && CLOSERS.test(full[j])) j++;
-    // A terminator must be followed by whitespace or end of document, so
-    // decimals ("3.5") and URLs do not split.
-    if (j < full.length && !/\s/.test(full[j])) continue;
-    if (!isSentenceEnd(full.slice(spanStart, j))) continue;
-
-    spans.push([spanStart, j]);
-    spanStart = j;
-    i = j - 1;
-  }
-  if (spanStart < full.length) spans.push([spanStart, full.length]);
-
-  // Phase 3 — emit sentences, attaching every box that overlaps the span.
+  const blocks = buildBlocks(buildLines(items), pageHeight);
   const sentences: Sentence[] = [];
-  for (const [start, end] of spans) {
-    const text = full.slice(start, end).replace(/\s+/g, ' ').trim();
-    // Nothing to say: an empty span, or punctuation on its own. Dot leaders in
-    // a table of contents produce runs of these, and every one would cost a
-    // synthesis slot and a silent gap in playback.
-    if (!/[\p{L}\p{N}]/u.test(text)) continue;
 
-    const boxes = pieces
-      .filter((p) => p.start < end && p.end > start)
-      .map((p) => toBox(p.item));
+  for (const block of blocks) {
+    if (block.kind === 'furniture') continue;
 
-    sentences.push({ index: sentences.length, text, boxes: mergeBoxes(boxes) });
+    // A heading has no terminal punctuation to split on and is read as one
+    // utterance, so it is taken whole.
+    const spans = block.kind === 'heading' ? [[0, block.text.length] as [number, number]] : splitSpans(block.text);
+
+    for (const [start, end] of spans) {
+      const text = block.text.slice(start, end).replace(/\s+/g, ' ').trim();
+      // Nothing to say: punctuation on its own, such as the dot leaders in a
+      // table of contents. Each one would cost a synthesis slot and a silence.
+      if (!/[\p{L}\p{N}]/u.test(text)) continue;
+
+      sentences.push({
+        index: sentences.length,
+        kind: block.kind,
+        text,
+        boxes: boxesFor(block, start, end),
+      });
+    }
   }
 
   return sentences;

@@ -21,6 +21,12 @@ export interface BBox {
 export interface Sentence {
   /** Index within the document, 0-based. Stable: this is the position key. */
   index: number;
+  /**
+   * What this sentence is. A heading is read as its own utterance; a note is
+   * read only if the listener asks for footnotes. Page furniture never becomes
+   * a sentence at all.
+   */
+  kind: 'heading' | 'body' | 'note';
   /** Normalized text handed to the TTS engine. */
   text: string;
   /**
@@ -35,3 +41,43 @@ export interface ExtractedDoc {
   sentences: Sentence[];
   pageCount: number;
 }
+
+/**
+ * One visual line of text: every item sharing a baseline on a page, in reading
+ * order. Lines are the unit layout decisions are made on, because font size and
+ * vertical spacing only mean anything once items are grouped this way.
+ */
+export interface Line {
+  page: number;
+  /** Baseline, in PDF user space: measured from the BOTTOM of the page. */
+  y: number;
+  x: number;
+  width: number;
+  height: number;
+  /** The size most of the line's characters are set in. */
+  fontSize: number;
+  text: string;
+  items: TextItem[];
+}
+
+/**
+ * What a run of lines is for. Playback treats these differently: body is read,
+ * a heading is read as its own utterance, a note can be skipped, and furniture
+ * is never read at all.
+ */
+export type BlockKind = 'heading' | 'body' | 'note' | 'furniture';
+
+/** A run of lines that belong together and share one purpose. */
+export interface Block {
+  kind: BlockKind;
+  /** Page the block starts on. A body block may continue onto the next. */
+  page: number;
+  text: string;
+  lines: Line[];
+  /**
+   * Where each line starts in `text`, so a span of the block can be traced back
+   * to the lines -- and therefore the boxes -- that produced it.
+   */
+  lineOffsets: number[];
+}
+

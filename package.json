@@ -34,7 +34,8 @@
     "web": "expo start --web",
     "test": "vitest run",
     "vendor:pdfjs": "node -e \"const fs=require('fs');for(const f of ['pdf.min.mjs','pdf.worker.min.mjs'])fs.copyFileSync(require.resolve('pdfjs-dist/legacy/build/'+f),'assets/pdfjs/'+f+'.txt')\"",
-    "fixture": "node scripts/extractFixture.mjs"
+    "fixture": "node scripts/extractFixture.mjs",
+    "score": "vite-node scripts/score.ts --"
   },
   "private": true
 }
