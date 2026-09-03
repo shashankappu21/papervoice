@@ -130,6 +130,18 @@ describe('buildSentences', () => {
     expect(out).toHaveLength(6);
   });
 
+  it('drops a fragment with nothing speakable in it', () => {
+    // Dot leaders in a table of contents ("Chapter One . . . . . 12") otherwise
+    // become sentences that are a single period, and the engine is asked to
+    // read silence aloud.
+    const out = buildSentences(
+      [item('Chapter One . . . . . 12 The story begins here.', { y: 400 })],
+      792,
+    );
+    expect(out.every((s) => /[\p{L}\p{N}]/u.test(s.text))).toBe(true);
+    expect(out.some((s) => s.text === '.')).toBe(false);
+  });
+
   it('carries a sentence across a page boundary as one sentence', () => {
     const out = buildSentences(
       [

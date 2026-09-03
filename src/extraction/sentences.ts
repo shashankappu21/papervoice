@@ -184,7 +184,10 @@ export function buildSentences(items: TextItem[], pageHeight: number): Sentence[
   const sentences: Sentence[] = [];
   for (const [start, end] of spans) {
     const text = full.slice(start, end).replace(/\s+/g, ' ').trim();
-    if (text.length === 0) continue;
+    // Nothing to say: an empty span, or punctuation on its own. Dot leaders in
+    // a table of contents produce runs of these, and every one would cost a
+    // synthesis slot and a silent gap in playback.
+    if (!/[\p{L}\p{N}]/u.test(text)) continue;
 
     const boxes = pieces
       .filter((p) => p.start < end && p.end > start)
