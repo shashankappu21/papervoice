@@ -61,6 +61,75 @@ describe('buildSentences', () => {
     expect(out).toHaveLength(1);
   });
 
+  it('does not split on a dotted acronym', () => {
+    // Found in a real document: "the Superintendent of Documents, U.S.
+    // Government Printing Office" was being cut in two after "U.S.".
+    const out = buildSentences([item('Sold by the U.S. Government Printing Office today.')], 792);
+    expect(out.map((s) => s.text)).toEqual([
+      'Sold by the U.S. Government Printing Office today.',
+    ]);
+  });
+
+  it('does not split on a lowercase dotted abbreviation', () => {
+    const out = buildSentences([item('It arrived at 4 p.m. and left again.')], 792);
+    expect(out).toHaveLength(1);
+  });
+
+  it('keeps reading past a sentence that really did end in a dotted acronym', () => {
+    // "U.S. Government" and "F.B.I. She" are the same shape, so no rule tells
+    // them apart without a lexicon. Running the two together only costs a pause;
+    // splitting mid-phrase would be read aloud as a wrong, jarring stop.
+    const out = buildSentences([item('He worked for the F.B.I. She did not.')], 792);
+    expect(out.map((s) => s.text)).toEqual(['He worked for the F.B.I. She did not.']);
+  });
+
+  it('drops a running header that repeats at the same spot on every page', () => {
+    const items = [];
+    for (let page = 1; page <= 6; page++) {
+      items.push(item('A Tale of Two Cities', { page, y: 20, fontSize: 8 }));
+      items.push(item(`Body line for page ${page}.`, { page, y: 400 }));
+    }
+    const out = buildSentences(items, 792);
+    expect(out.map((s) => s.text)).toEqual([
+      'Body line for page 1.',
+      'Body line for page 2.',
+      'Body line for page 3.',
+      'Body line for page 4.',
+      'Body line for page 5.',
+      'Body line for page 6.',
+    ]);
+  });
+
+  it('drops a running footer whose page number varies', () => {
+    const items = [];
+    for (let page = 1; page <= 6; page++) {
+      items.push(item(`Chapter 2 * ${page}`, { page, y: 18, fontSize: 8 }));
+      items.push(item('The body carries on.', { page, y: 400 }));
+    }
+    const out = buildSentences(items, 792);
+    expect(out).toHaveLength(6);
+    expect(out.every((s) => s.text === 'The body carries on.')).toBe(true);
+  });
+
+  it('keeps edge text that only appears on a couple of pages', () => {
+    const items = [];
+    for (let page = 1; page <= 8; page++) {
+      if (page <= 2) items.push(item('A dedication.', { page, y: 20 }));
+      items.push(item('Body text here.', { page, y: 400 }));
+    }
+    const out = buildSentences(items, 792);
+    expect(out.filter((s) => s.text === 'A dedication.')).toHaveLength(2);
+  });
+
+  it('keeps a repeated line that sits in the body rather than at the edge', () => {
+    const items = [];
+    for (let page = 1; page <= 6; page++) {
+      items.push(item('And the raven answered.', { page, y: 400 }));
+    }
+    const out = buildSentences(items, 792);
+    expect(out).toHaveLength(6);
+  });
+
   it('carries a sentence across a page boundary as one sentence', () => {
     const out = buildSentences(
       [

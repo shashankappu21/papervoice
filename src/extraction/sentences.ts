@@ -22,11 +22,59 @@ const CLOSERS = /["'’”)\]]/;
  * Page furniture is only stripped near the top or bottom edge, so a number in
  * the body ("He counted them all. 42") survives.
  */
-function isPageFurniture(item: TextItem, pageHeight: number): boolean {
+function isNearEdge(item: TextItem, pageHeight: number): boolean {
+  return item.y < pageHeight * 0.08 || item.y > pageHeight * 0.92;
+}
+
+/**
+ * Identifies an edge item by where it sits and what it says, with digits
+ * flattened so a footer only differing by its page number ("Chapter 2 * 14")
+ * still counts as the same footer.
+ */
+function furnitureKey(item: TextItem): string {
+  const band = Math.round(item.y / 6);
+  return `${band}|${item.text.trim().replace(/\d+/g, '#')}`;
+}
+
+/**
+ * Running heads and feet repeat in the same place page after page. They are
+ * found by that repetition rather than by pattern, because the text varies by
+ * book — a title, a chapter name, a printer's watermark. They have to go: left
+ * in, they are spliced into the middle of a body sentence and read aloud.
+ */
+function findRunningFurniture(items: TextItem[], pageHeight: number): Set<string> {
+  const pagesByKey = new Map<string, Set<number>>();
+  const pages = new Set<number>();
+
+  for (const item of items) {
+    pages.add(item.page);
+    if (!isNearEdge(item, pageHeight)) continue;
+    if (item.text.trim().length === 0) continue;
+    const key = furnitureKey(item);
+    let seen = pagesByKey.get(key);
+    if (!seen) pagesByKey.set(key, (seen = new Set()));
+    seen.add(item.page);
+  }
+
+  // Three pages is the floor: two repetitions could be a dedication or an
+  // epigraph, and a short document has no running furniture worth guessing at.
+  const threshold = Math.max(3, pages.size * 0.5);
+  const running = new Set<string>();
+  for (const [key, seen] of pagesByKey) {
+    if (seen.size >= threshold) running.add(key);
+  }
+  return running;
+}
+
+function isPageFurniture(
+  item: TextItem,
+  pageHeight: number,
+  running: Set<string>,
+): boolean {
   const text = item.text.trim();
   if (text.length === 0) return true;
-  const nearEdge = item.y < pageHeight * 0.08 || item.y > pageHeight * 0.92;
-  if (!nearEdge) return false;
+  if (!isNearEdge(item, pageHeight)) return false;
+  if (running.has(furnitureKey(item))) return true;
   return PAGE_NUMBER_PATTERNS.some((re) => re.test(text));
 }
 
@@ -48,6 +96,10 @@ function isSentenceEnd(text: string): boolean {
 
   if (ABBREVIATIONS.has(bare)) return false;
   if (/^\p{L}$/u.test(bare)) return false; // a single initial: "J."
+  // A dotted acronym: "U.S.", "p.m.", "F.B.I.". A real sentence can end in one,
+  // but nothing distinguishes that from "U.S. Government" without a lexicon, and
+  // a missing pause reads better aloud than a stop in the middle of a phrase.
+  if (/^(?:\p{L}\.)+\p{L}$/u.test(bare)) return false;
   return true;
 }
 
@@ -87,9 +139,10 @@ export function buildSentences(items: TextItem[], pageHeight: number): Sentence[
   // produced each character range.
   const pieces: Piece[] = [];
   let full = '';
+  const running = findRunningFurniture(items, pageHeight);
 
   for (const item of items) {
-    if (isPageFurniture(item, pageHeight)) continue;
+    if (isPageFurniture(item, pageHeight, running)) continue;
 
     if (full.length > 0) {
       if (/-$/.test(full)) {
