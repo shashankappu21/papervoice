@@ -1,13 +1,14 @@
 {
   "name": "papervoice",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "dependencies": {
     "expo": "~57.0.19",
     "expo-asset": "~57.0.16",
     "expo-audio": "~57.0.4",
     "expo-document-picker": "~57.0.1",
     "expo-file-system": "~57.0.6",
+    "expo-linking": "~57.0.9",
     "expo-router": "~57.0.18",
     "expo-sqlite": "~57.0.2",
     "expo-status-bar": "~57.0.1",
@@ -18,7 +19,9 @@
     "react-native-webview": "13.16.1"
   },
   "devDependencies": {
+    "@types/node": "^26.4.1",
     "@types/react": "~19.2.2",
+    "babel-preset-expo": "~57.0.0",
     "pdfjs-dist": "^6.3.289",
     "typescript": "~6.0.3",
     "vite": "^8.2.2",
@@ -26,8 +29,8 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "test": "vitest run",
     "vendor:pdfjs": "node -e \"const fs=require('fs');for(const f of ['pdf.min.mjs','pdf.worker.min.mjs'])fs.copyFileSync(require.resolve('pdfjs-dist/legacy/build/'+f),'assets/pdfjs/'+f+'.txt')\"",
