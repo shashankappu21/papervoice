@@ -13,6 +13,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import type { TextItem } from '../src/extraction/types';
 import { buildSentences } from '../src/extraction/sentences';
+import { speakable } from '../src/tts/speakable';
+import { chunk } from '../src/tts/chunk';
 import { buildLines } from '../src/extraction/lines';
 import { buildBlocks } from '../src/extraction/blocks';
 
@@ -62,11 +64,38 @@ out.push(`DROPPED AS PAGE FURNITURE (${dropped.length} blocks, never read aloud)
 for (const block of dropped.slice(0, 40)) out.push(`  p${block.page}  ${JSON.stringify(block.text.slice(0, 90))}`);
 if (dropped.length > 40) out.push(`  ... and ${dropped.length - 40} more`);
 out.push('');
+/** How long an utterance may be before it is cut into separate jobs. */
+const CHUNK_LIMIT = 300;
+
+const rewritten = sentences.filter(
+  (s) => s.kind !== 'header' && s.kind !== 'footer' && speakable(s.text) !== s.text,
+);
+out.push(`REWRITTEN FOR SPEECH (${rewritten.length} sentences)`);
+for (const s of rewritten.slice(0, 25)) {
+  out.push(`  page  ${s.text}`);
+  out.push(`  says  ${speakable(s.text)}`);
+}
+if (rewritten.length > 25) out.push(`  ... and ${rewritten.length - 25} more`);
+out.push('');
+
+const split = sentences.filter(
+  (s) => s.kind !== 'header' && s.kind !== 'footer' && chunk(speakable(s.text), CHUNK_LIMIT).length > 1,
+);
+out.push(`CUT INTO SEVERAL UTTERANCES (${split.length} sentences over ${CHUNK_LIMIT} characters)`);
+for (const s of split.slice(0, 10)) {
+  out.push(`  #${s.index} (${s.text.length} chars) -> ${chunk(speakable(s.text), CHUNK_LIMIT).length} pieces`);
+}
+out.push('');
+
 out.push('SENTENCES, in the order they will be spoken');
 out.push('='.repeat(72));
 for (const s of sentences) {
   const tag = s.kind === 'body' ? '         ' : `[${s.kind}]`.padEnd(9);
   out.push(`${String(s.index).padStart(5)}  p${String(pageOf(s.index)).padStart(3)}  ${tag}${s.text}`);
+  const spoken = speakable(s.text);
+  if (spoken !== s.text && s.kind !== 'header' && s.kind !== 'footer') {
+    out.push(`${' '.repeat(21)}says: ${spoken}`);
+  }
 }
 fs.writeFileSync(`${stem}.sentences.txt`, out.join('\n') + '\n');
 
