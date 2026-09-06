@@ -7,6 +7,7 @@ import { createSynthQueue } from '../tts/synthQueue';
 import { speakable } from '../tts/speakable';
 import { chunk } from '../tts/chunk';
 import { pauseAfter } from '../tts/pauses';
+import { LJSPEECH, voicePaths } from '../tts/modelPaths';
 import type { Sentence } from '../extraction/types';
 
 /**
@@ -37,6 +38,12 @@ export interface Playback {
   playing: boolean;
   /** True while waiting on synthesis rather than on the listener. */
   buffering: boolean;
+  /**
+   * True while the voice itself is being loaded, which takes seconds: a 63MB
+   * model and a 21MB runtime, read cold. It happens once per session and is
+   * started as soon as a document is open, so pressing play rarely waits.
+   */
+  loadingVoice: boolean;
   error: string | null;
   play(from?: number): Promise<void>;
   pause(): void;
@@ -54,10 +61,13 @@ export function usePlayback(sentences: Sentence[], title: string): Playback {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [buffering, setBuffering] = useState(false);
+  const [loadingVoice, setLoadingVoice] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const player = useRef<AudioPlayer | null>(null);
   const voiceLoaded = useRef(false);
+  /** The load in flight, so concurrent callers wait on one rather than racing. */
+  const voiceLoading = useRef<Promise<void> | null>(null);
   const recentRtf = useRef<number | undefined>(undefined);
   /** The sentence playback is waiting on, when its audio is not ready yet. */
   const awaiting = useRef<number | null>(null);
@@ -170,18 +180,39 @@ export function usePlayback(sentences: Sentence[], title: string): Playback {
       // go with it. Left set, the next synthesis would call into an engine that
       // is no longer there and fail on every sentence.
       voiceLoaded.current = false;
+      voiceLoading.current = null;
       void SherpaTts.unload();
     },
     [queue],
   );
 
-  const ensureVoice = async () => {
-    if (voiceLoaded.current) return;
-    const { LJSPEECH, voicePaths } = await import('../tts/modelPaths');
+  const ensureVoice = useCallback((): Promise<void> => {
+    if (voiceLoaded.current) return Promise.resolve();
+    if (voiceLoading.current) return voiceLoading.current;
+
+    setLoadingVoice(true);
     const paths = voicePaths(LJSPEECH.id, LJSPEECH.file);
-    await SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2);
-    voiceLoaded.current = true;
-  };
+    const loading = SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2)
+      .then(() => {
+        voiceLoaded.current = true;
+      })
+      .catch((cause: unknown) => {
+        // Let the next attempt try again rather than caching the failure.
+        voiceLoading.current = null;
+        throw cause;
+      })
+      .finally(() => setLoadingVoice(false));
+
+    voiceLoading.current = loading;
+    return loading;
+  }, []);
+
+  // Load the voice as soon as there is something to read. It takes seconds, and
+  // doing it on the first press makes the app look broken while it waits.
+  useEffect(() => {
+    if (sentences.length === 0) return;
+    ensureVoice().catch((cause: unknown) => setError(`Voice unavailable: ${String(cause)}`));
+  }, [sentences.length, ensureVoice]);
 
   const play = async (from = index.current) => {
     try {
@@ -229,5 +260,5 @@ export function usePlayback(sentences: Sentence[], title: string): Playback {
     await play(to);
   };
 
-  return { currentIndex, playing, buffering, error, play, pause, jumpTo };
+  return { currentIndex, playing, buffering, loadingVoice, error, play, pause, jumpTo };
 }

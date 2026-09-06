@@ -53,6 +53,7 @@ export default function Library() {
         <View style={styles.row}>
           <Button
             title={playback.playing ? 'Pause' : 'Read from the start'}
+            disabled={playback.loadingVoice}
             onPress={() => (playback.playing ? playback.pause() : void playback.play(0))}
           />
           {skipTo !== null && !playback.playing && (
@@ -62,7 +63,12 @@ export default function Library() {
       )}
 
       <Text style={styles.status}>
-        {playback.error ?? (playback.buffering ? 'Synthesising...' : status)}
+        {playback.error ??
+          (playback.loadingVoice
+            ? 'Loading the voice...'
+            : playback.buffering
+              ? 'Synthesising...'
+              : status)}
       </Text>
 
       {doc && (
