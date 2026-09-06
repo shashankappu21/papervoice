@@ -1,0 +1,233 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PermissionsAndroid, Platform } from 'react-native';
+import { Directory, Paths } from 'expo-file-system';
+import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
+import { SherpaTts } from '../../modules/sherpa-tts';
+import { createSynthQueue } from '../tts/synthQueue';
+import { speakable } from '../tts/speakable';
+import { chunk } from '../tts/chunk';
+import { pauseAfter } from '../tts/pauses';
+import type { Sentence } from '../extraction/types';
+
+/**
+ * How many sentences to keep synthesized ahead of the listener. At the measured
+ * real-time factor a handful is already minutes of audio, and the window costs
+ * disk while it waits.
+ */
+const LOOKAHEAD = 8;
+
+/** How long an utterance may be before it is cut into separate synthesis jobs. */
+const CHUNK_LIMIT = 300;
+
+/** Silence between the pieces of one sentence, where a full pause would be heard. */
+const SEAM_MS = 90;
+
+/**
+ * How many sentences may fail in a row before playback stops and says so.
+ *
+ * One failure is a bad sentence and must not stop a book. A run of them is the
+ * engine being broken, and skipping silently through a whole document while
+ * reporting nothing is worse than halting.
+ */
+const FAILURES_BEFORE_GIVING_UP = 3;
+
+export interface Playback {
+  /** The sentence being spoken, which is what the reader highlights. */
+  currentIndex: number;
+  playing: boolean;
+  /** True while waiting on synthesis rather than on the listener. */
+  buffering: boolean;
+  error: string | null;
+  play(from?: number): Promise<void>;
+  pause(): void;
+  jumpTo(index: number): Promise<void>;
+}
+
+/**
+ * Reads a document aloud, keeping synthesis ahead of playback.
+ *
+ * One sentence is one audio file and one track, so the index being played is
+ * the index being read -- which is what the highlight follows and what a saved
+ * position records.
+ */
+export function usePlayback(sentences: Sentence[], title: string): Playback {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [buffering, setBuffering] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const player = useRef<AudioPlayer | null>(null);
+  const voiceLoaded = useRef(false);
+  const recentRtf = useRef<number | undefined>(undefined);
+  /** The sentence playback is waiting on, when its audio is not ready yet. */
+  const awaiting = useRef<number | null>(null);
+  const index = useRef(0);
+  const consecutiveFailures = useRef(0);
+
+  const cacheDir = useMemo(() => {
+    const dir = new Directory(Paths.cache, 'synth');
+    if (!dir.exists) dir.create({ intermediates: true });
+    return `${dir.uri.replace(/^file:\/\//, '')}/`;
+  }, []);
+
+  const queue = useMemo(
+    () =>
+      createSynthQueue({
+        sentences,
+        cacheDir,
+        lookahead: LOOKAHEAD,
+        synthesize: async (sentence, outPath) => {
+          const parts = chunk(speakable(sentence.text), CHUNK_LIMIT);
+          const tailMs = pauseAfter({
+            kind: sentence.kind,
+            endsSentence: true,
+            rtf: recentRtf.current,
+          });
+          const result = await SherpaTts.synthesize(parts, 0, 1.0, outPath, SEAM_MS, tailMs);
+          recentRtf.current = result.rtf;
+          consecutiveFailures.current = 0;
+          return result;
+        },
+        onReady: (ready, path) => {
+          // Playback may have caught up with synthesis and be sitting idle.
+          if (awaiting.current === ready) {
+            awaiting.current = null;
+            setBuffering(false);
+            startTrack(path);
+          }
+        },
+        onFailed: (failed, cause) => {
+          consecutiveFailures.current += 1;
+          if (consecutiveFailures.current >= FAILURES_BEFORE_GIVING_UP) {
+            awaiting.current = null;
+            setBuffering(false);
+            setPlaying(false);
+            setError(`Speech failed: ${cause.message}`);
+            queue.stop();
+            return;
+          }
+          // A single bad sentence must not stop the book.
+          if (awaiting.current === failed) advance();
+        },
+      }),
+    // startTrack and advance are stable for the life of the hook.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sentences, cacheDir],
+  );
+
+  const startTrack = (path: string) => {
+    const current = player.current;
+    if (!current) return;
+    current.replace({ uri: `file://${path}` });
+    current.play();
+    setPlaying(true);
+  };
+
+  /** Moves to the next sentence, playing it now if its audio already exists. */
+  const advance = useCallback(() => {
+    const next = index.current + 1;
+    if (next >= sentences.length) {
+      setPlaying(false);
+      return;
+    }
+
+    index.current = next;
+    setCurrentIndex(next);
+    queue.setCurrent(next);
+
+    const path = queue.pathFor(next);
+    if (path) {
+      startTrack(path);
+    } else {
+      // Synthesis has not caught up. onReady resumes when it does.
+      awaiting.current = next;
+      setBuffering(true);
+    }
+  }, [queue, sentences.length]);
+
+  // One player for the whole session: lock screen controls belong to a player,
+  // and handing them between players loses them.
+  useEffect(() => {
+    const created = createAudioPlayer(null);
+    player.current = created;
+
+    const subscription = created.addListener('playbackStatusUpdate', (status) => {
+      if (status.didJustFinish) advance();
+    });
+
+    return () => {
+      subscription.remove();
+      created.clearLockScreenControls();
+      created.remove();
+      player.current = null;
+    };
+  }, [advance]);
+
+  useEffect(
+    () => () => {
+      queue.stop();
+      // The engine is being released, so the flag that says it is loaded has to
+      // go with it. Left set, the next synthesis would call into an engine that
+      // is no longer there and fail on every sentence.
+      voiceLoaded.current = false;
+      void SherpaTts.unload();
+    },
+    [queue],
+  );
+
+  const ensureVoice = async () => {
+    if (voiceLoaded.current) return;
+    const { LJSPEECH, voicePaths } = await import('../tts/modelPaths');
+    const paths = voicePaths(LJSPEECH.id, LJSPEECH.file);
+    await SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2);
+    voiceLoaded.current = true;
+  };
+
+  const play = async (from = index.current) => {
+    try {
+      setError(null);
+      // Without this permission the media notification never appears, and with
+      // it the lock screen controls. Playback still works, so a refusal is a
+      // missing convenience rather than a failure.
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        await PermissionsAndroid.request('android.permission.POST_NOTIFICATIONS');
+      }
+
+      await ensureVoice();
+
+      index.current = from;
+      setCurrentIndex(from);
+      consecutiveFailures.current = 0;
+      await queue.start(from);
+
+      // The lock screen keeps the foreground service alive; without it Android
+      // stops background playback after roughly three minutes.
+      player.current?.setActiveForLockScreen(true, { title, artist: 'Papervoice' });
+
+      const path = queue.pathFor(from);
+      if (path) {
+        startTrack(path);
+      } else {
+        awaiting.current = from;
+        setBuffering(true);
+      }
+    } catch (cause) {
+      setError(String(cause));
+      setPlaying(false);
+      setBuffering(false);
+    }
+  };
+
+  const pause = () => {
+    player.current?.pause();
+    setPlaying(false);
+  };
+
+  const jumpTo = async (to: number) => {
+    pause();
+    awaiting.current = null;
+    await play(to);
+  };
+
+  return { currentIndex, playing, buffering, error, play, pause, jumpTo };
+}

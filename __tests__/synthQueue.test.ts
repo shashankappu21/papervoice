@@ -10,7 +10,7 @@ const sentences: Sentence[] = Array.from({ length: 50 }, (_, i) => ({
 }));
 
 const fakeSynth = () =>
-  vi.fn(async (_text: string, _sid: number, _speed: number, outPath: string) => {
+  vi.fn(async (_sentence: Sentence, outPath: string) => {
     await new Promise((r) => setTimeout(r, 1));
     return { path: outPath, durationSec: 2, rtf: 0.15 };
   });
@@ -55,7 +55,7 @@ describe('createSynthQueue', () => {
     await q.drain();
     q.setCurrent(1);
     await q.drain();
-    const paths = synthesize.mock.calls.map((c) => c[3]);
+    const paths = synthesize.mock.calls.map((c) => c[1]);
     expect(new Set(paths).size).toBe(paths.length);
   });
 
@@ -65,18 +65,16 @@ describe('createSynthQueue', () => {
     await q.start(0);
     await q.start(30);
     await q.drain();
-    const texts = synthesize.mock.calls.map((c) => c[0]);
-    expect(texts).toContain('Sentence number 30.');
+    const spoken = synthesize.mock.calls.map((c) => c[0].text);
+    expect(spoken).toContain('Sentence number 30.');
     expect(q.pathFor(30)).toBe('/c/s30.wav');
   });
 
   it('skips a sentence that fails to synthesize and keeps going', async () => {
-    const synthesize = vi.fn(
-      async (text: string, _sid: number, _speed: number, outPath: string) => {
-        if (text.includes('number 1.')) throw new Error('engine blew up');
-        return { path: outPath, durationSec: 2, rtf: 0.15 };
-      },
-    );
+    const synthesize = vi.fn(async (sentence: Sentence, outPath: string) => {
+      if (sentence.text.includes('number 1.')) throw new Error('engine blew up');
+      return { path: outPath, durationSec: 2, rtf: 0.15 };
+    });
     const failed: number[] = [];
     const q = createSynthQueue({
       sentences,
@@ -105,19 +103,15 @@ describe('createSynthQueue', () => {
     expect(synthesize).toHaveBeenCalledTimes(2);
   });
 
-  it('passes the configured voice and speed through to the engine', async () => {
+  it('hands the engine the whole sentence, not only its words', async () => {
+    // How a sentence is spoken depends on what it is: a heading is followed by
+    // a longer pause than a line of prose. Voice and speed belong to the caller,
+    // which closes over them, so the queue has no opinion about them.
     const synthesize = fakeSynth();
-    const q = createSynthQueue({
-      sentences,
-      synthesize,
-      lookahead: 1,
-      cacheDir: '/c/',
-      sid: 3,
-      speed: 1.15,
-    });
+    const q = createSynthQueue({ sentences, synthesize, lookahead: 1, cacheDir: '/c/' });
     await q.start(0);
     await q.drain();
-    expect(synthesize).toHaveBeenCalledWith('Sentence number 0.', 3, 1.15, '/c/s0.wav');
+    expect(synthesize).toHaveBeenCalledWith(sentences[0], '/c/s0.wav');
   });
 
   it('stop() halts further synthesis', async () => {

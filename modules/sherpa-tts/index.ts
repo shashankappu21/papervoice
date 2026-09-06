@@ -18,17 +18,20 @@ interface SherpaTtsNative {
   /** Loads a Piper voice. All paths are absolute paths in the app's storage. */
   load(model: string, tokens: string, dataDir: string, numThreads: number): Promise<LoadResult>;
   /**
-   * Synthesises one utterance to a WAV file and returns how it went.
+   * Synthesises one sentence to a single WAV.
    *
-   * `silenceMs` of silence is appended to the audio: the playlist is gapless,
-   * so a pause between sentences has to be part of the track itself.
+   * `parts` is the sentence, already cut at clause boundaries when it is long
+   * enough that one synthesis job would hold up the queue. `seamMs` separates
+   * those pieces and `tailMs` follows the sentence: silence is written into the
+   * audio because a player cannot be relied on to leave a gap of any length.
    */
   synthesize(
-    text: string,
+    parts: string[],
     sid: number,
     speed: number,
     outPath: string,
-    silenceMs: number,
+    seamMs: number,
+    tailMs: number,
   ): Promise<SynthResult>;
   unload(): Promise<void>;
 }

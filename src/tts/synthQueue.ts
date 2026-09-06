@@ -7,12 +7,12 @@ export interface SynthResult {
   rtf: number;
 }
 
-export type SynthesizeFn = (
-  text: string,
-  sid: number,
-  speed: number,
-  outPath: string,
-) => Promise<SynthResult>;
+/**
+ * Turns one sentence into one audio file. The whole sentence is handed over,
+ * not just its text: how it is spoken depends on what it is -- a heading is
+ * followed by a longer pause than a line of prose.
+ */
+export type SynthesizeFn = (sentence: Sentence, outPath: string) => Promise<SynthResult>;
 
 export interface SynthQueueOptions {
   sentences: Sentence[];
@@ -20,8 +20,6 @@ export interface SynthQueueOptions {
   cacheDir: string;
   /** How many sentences to keep synthesized ahead of the current one. */
   lookahead: number;
-  sid?: number;
-  speed?: number;
   onReady?: (index: number, path: string) => void;
   onFailed?: (index: number, error: Error) => void;
 }
@@ -44,8 +42,6 @@ export interface SynthQueue {
  */
 export function createSynthQueue(opts: SynthQueueOptions): SynthQueue {
   const { sentences, synthesize, cacheDir, lookahead } = opts;
-  const sid = opts.sid ?? 0;
-  const speed = opts.speed ?? 1.0;
 
   /** index -> output path; an empty string marks a sentence that failed. */
   const produced = new Map<number, string>();
@@ -72,7 +68,7 @@ export function createSynthQueue(opts: SynthQueueOptions): SynthQueue {
 
       const outPath = `${cacheDir}s${index}.wav`;
       try {
-        const result = await synthesize(sentences[index].text, sid, speed, outPath);
+        const result = await synthesize(sentences[index], outPath);
         if (stopped || myGeneration !== generation) return;
         produced.set(index, result.path);
         opts.onReady?.(index, result.path);

@@ -28,6 +28,19 @@ const CURRENCY: Record<string, { one: string; many: string }> = {
 const AMOUNT =
   /([$£€₹¥])\s?(\d[\d,]*(?:\.\d+)?)(\s+(?:hundred|thousand|million|billion|trillion|lakh|crore))?/g;
 
+/**
+ * Currencies written as words rather than symbols, which behave the same way:
+ * "Rs. 14,000" is spoken "fourteen thousand rupees".
+ */
+const WRITTEN_AMOUNT =
+  /\b(Rs|INR|USD)\.?\s?(\d[\d,]*(?:\.\d+)?)(\s+(?:hundred|thousand|million|billion|trillion|lakh|crore))?/gi;
+
+const WRITTEN_CURRENCY: Record<string, { one: string; many: string }> = {
+  rs: { one: 'rupee', many: 'rupees' },
+  inr: { one: 'rupee', many: 'rupees' },
+  usd: { one: 'dollar', many: 'dollars' },
+};
+
 const ABBREVIATIONS: Array<[RegExp, string]> = [
   [/\be\.g\.(?=\s|$)/g, 'for example'],
   [/\bi\.e\.(?=\s|$)/g, 'that is'],
@@ -48,6 +61,12 @@ export function speakable(text: string): string {
     return `${digits}${magnitude ?? ''} ${singular ? unit.one : unit.many}`;
   });
 
+  out = out.replace(WRITTEN_AMOUNT, (_all, word: string, digits: string, magnitude?: string) => {
+    const unit = WRITTEN_CURRENCY[word.toLowerCase()];
+    const singular = digits === '1' && !magnitude;
+    return `${digits}${magnitude ?? ''} ${singular ? unit.one : unit.many}`;
+  });
+
   // A percentage is spoken where it is written; only the symbol itself has no
   // pronunciation.
   out = out.replace(/(\d)\s?%/g, '$1 percent');
@@ -61,6 +80,14 @@ export function speakable(text: string): string {
   out = out.replace(/(\d+)\s?[–—-]\s?(\d+)/g, (all, from: string, to: string) =>
     Number(to) > Number(from) ? `${from} to ${to}` : all,
   );
+
+  // A dash standing between phrases is a pause a writer chose. espeak-ng
+  // ignores the character outright, so the sentence runs straight on unless the
+  // break is given to it as punctuation it reads: a comma pauses without
+  // resetting the intonation the way a full stop would. Ranges have already
+  // been rewritten above, and a hyphen inside a word is left alone.
+  out = out.replace(/\s*—\s*/g, ', ');
+  out = out.replace(/\s+[–-]\s+/g, ', ');
 
   for (const [pattern, replacement] of ABBREVIATIONS) {
     out = out.replace(pattern, replacement);

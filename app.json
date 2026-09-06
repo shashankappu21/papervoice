@@ -21,7 +21,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "package": "com.shappu21.papervoice"
     },
@@ -31,7 +32,8 @@
     "plugins": [
       "expo-router",
       "expo-audio",
-      "expo-sqlite"
+      "expo-sqlite",
+      "./plugins/withDevAbi"
     ],
     "scheme": "papervoice",
     "experiments": {

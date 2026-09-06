@@ -61,6 +61,16 @@ describe('buildSentences', () => {
     expect(out).toHaveLength(1);
   });
 
+  it('does not split after a currency abbreviation', () => {
+    // Found in a real document: "a refundable security deposit of Rs. 14,000"
+    // was cut in two, leaving the amount stranded from what it refers to.
+    const out = buildSentences(
+      [item('A refundable deposit of Rs. 14,000 was collected at joining.')],
+      792,
+    );
+    expect(out).toHaveLength(1);
+  });
+
   it('does not split on a dotted acronym', () => {
     // Found in a real document: "the Superintendent of Documents, U.S.
     // Government Printing Office" was being cut in two after "U.S.".

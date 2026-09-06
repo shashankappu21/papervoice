@@ -1,153 +1,31 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { Directory, Paths } from 'expo-file-system';
-import { useAudioPlaylist } from 'expo-audio';
 import { ExtractorWebView } from '../src/extraction/ExtractorWebView';
-import type { ExtractedDoc, Sentence } from '../src/extraction/types';
-import { SherpaTts } from '../modules/sherpa-tts';
-import { LJSPEECH, voicePaths } from '../src/tts/modelPaths';
 import { findMainContentStart } from '../src/extraction/mainContent';
-import { speakable } from '../src/tts/speakable';
-import { chunk } from '../src/tts/chunk';
-import { pauseAfter } from '../src/tts/pauses';
-
-/** How long an utterance may be before it is cut into separate synthesis jobs. */
-const CHUNK_LIMIT = 300;
-
-/** Sentences to read in this test harness, so a run finishes in a few seconds. */
-const PREVIEW = 6;
+import type { ExtractedDoc, Sentence } from '../src/extraction/types';
+import { usePlayback } from '../src/player/usePlayback';
 
 /**
- * Temporary harness for testing extraction and speech on a device. The real
- * library and reader screens replace it once the pipeline is trusted.
+ * A stable empty list. A fresh `[]` on every render would rebuild the synthesis
+ * queue each time, tearing down the loaded voice along with it.
+ */
+const NO_SENTENCES: Sentence[] = [];
+
+/**
+ * Temporary harness for testing extraction and reading aloud on a device. The
+ * real library and reader screens replace it once the pipeline is trusted.
  */
 export default function Library() {
   const [uri, setUri] = useState<string | null>(null);
-  const [status, setStatus] = useState('Pick a PDF, or speak the test sentence.');
-  const [log, setLog] = useState<string[]>([]);
+  const [status, setStatus] = useState('Pick a PDF to read.');
   const [doc, setDoc] = useState<ExtractedDoc | null>(null);
   // Where the book's own content starts, when there is front matter to skip.
   // Null means there is nothing to skip, and no button for it.
   const [skipTo, setSkipTo] = useState<number | null>(null);
-  const loaded = useRef(false);
-  const run = useRef(0);
-  // What the device actually managed on the last utterance, which decides
-  // whether there is room to spend on a pause after the next one.
-  const recentRtf = useRef<number | undefined>(undefined);
-  const playlist = useAudioPlaylist();
 
-  const say = (line: string) => {
-    console.log(`[papervoice] ${line}`);
-    setLog((lines) => [...lines, line]);
-  };
-
-  /** Loads the voice once per app run; it takes a moment and holds memory. */
-  const ensureVoice = async () => {
-    if (loaded.current) return;
-    const paths = voicePaths(LJSPEECH.id, LJSPEECH.file);
-    const started = Date.now();
-    const info = await SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2);
-    loaded.current = true;
-    say(`voice loaded in ${Date.now() - started}ms: ${info.sampleRate}Hz, ${info.numSpeakers} speaker(s)`);
-  };
-
-  /**
-   * Starts a run: empties the playlist and takes a fresh run number.
-   *
-   * Without the clear, a second run appends behind a track that has already
-   * finished, so play() resumes at the end of it and nothing is heard.
-   */
-  const startRun = () => {
-    playlist.clear();
-    setLog([]);
-    // Each run measures the device afresh rather than trusting the last one.
-    recentRtf.current = undefined;
-    run.current += 1;
-    return run.current;
-  };
-
-  /** Synthesises one sentence, adding each piece to the playlist as it lands. */
-  const speak = async (sentence: Sentence, order: number, runId: number) => {
-    const cache = new Directory(Paths.cache, 'utterances');
-    if (!cache.exists) cache.create({ intermediates: true });
-
-    const pieces = chunk(speakable(sentence.text), CHUNK_LIMIT);
-    for (const [n, piece] of pieces.entries()) {
-      const silenceMs = pauseAfter({
-        kind: sentence.kind,
-        endsSentence: n === pieces.length - 1,
-        rtf: recentRtf.current,
-      });
-      // A fresh name per run: overwriting a file the player still holds open
-      // leaves it playing the copy it already decoded.
-      const name = `${runId}-${order}-${n}.wav`;
-      const out = `${Paths.cache.uri.replace(/^file:\/\//, '')}utterances/${name}`;
-      const result = await SherpaTts.synthesize(piece, 0, 1.0, out, silenceMs);
-      recentRtf.current = result.rtf;
-      say(
-        `#${order}.${n} rtf ${result.rtf.toFixed(3)} for ${result.durationSec.toFixed(1)}s` +
-          (silenceMs > 0 ? ` +${silenceMs}ms` : ' no pause'),
-      );
-      // The type allows a bare string, but the native side only accepts the
-      // object form and rejects a string at the bridge.
-      playlist.add({ uri: `file://${result.path}` });
-    }
-  };
-
-  const speakTestSentence = async () => {
-    try {
-      const runId = startRun();
-      setStatus('Loading the voice...');
-      await ensureVoice();
-      setStatus('Synthesising...');
-      await speak(
-        {
-          index: 0,
-          kind: 'body',
-          text: 'The count had not yet spoken, and the room was very still.',
-          boxes: [],
-        },
-        0,
-        runId,
-      );
-      playlist.skipTo(0);
-      playlist.play();
-      setStatus(`Playing (${playlist.trackCount} track(s)).`);
-    } catch (error) {
-      setStatus(`Failed: ${String(error)}`);
-      say(String(error));
-    }
-  };
-
-  const readDocument = async (from: number) => {
-    if (!doc) return;
-    try {
-      const runId = startRun();
-      setStatus('Loading the voice...');
-      await ensureVoice();
-
-      const spoken = doc.sentences
-        .slice(from)
-        .filter((s) => s.kind !== 'header' && s.kind !== 'footer')
-        .slice(0, PREVIEW);
-
-      setStatus(`Synthesising ${spoken.length} sentences...`);
-      for (const [order, sentence] of spoken.entries()) {
-        await speak(sentence, order, runId);
-        // Start speaking as soon as there is something to say, rather than
-        // waiting for the whole preview to be synthesised.
-        if (order === 0) {
-          playlist.skipTo(0);
-          playlist.play();
-        }
-      }
-      setStatus('Playing.');
-    } catch (error) {
-      setStatus(`Failed: ${String(error)}`);
-      say(String(error));
-    }
-  };
+  const sentences = doc?.sentences ?? NO_SENTENCES;
+  const playback = usePlayback(sentences, 'Papervoice');
 
   const pick = async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -157,40 +35,51 @@ export default function Library() {
     if (result.canceled) return;
     setDoc(null);
     setSkipTo(null);
-    setLog([]);
     setStatus('Extracting...');
     setUri(result.assets[0].uri);
   };
 
+  const current = sentences[playback.currentIndex];
+  const around = sentences.slice(
+    Math.max(0, playback.currentIndex - 2),
+    playback.currentIndex + 8,
+  );
+
   return (
     <View style={styles.screen}>
-      <Button title="Speak a test sentence" onPress={() => void speakTestSentence()} />
       <Button title="Pick a PDF" onPress={() => void pick()} />
-      {doc && (
-        <Button
-          title={`Read the first ${PREVIEW} sentences`}
-          onPress={() => void readDocument(0)}
-        />
-      )}
-      {doc && skipTo !== null && (
-        <Button
-          title={`Skip front matter (start at "${doc.sentences[skipTo].text.slice(0, 24)}")`}
-          onPress={() => void readDocument(skipTo)}
-        />
-      )}
-      <Button title="Stop" onPress={() => playlist.pause()} />
 
-      <Text style={styles.status}>{status}</Text>
+      {doc && (
+        <View style={styles.row}>
+          <Button
+            title={playback.playing ? 'Pause' : 'Read from the start'}
+            onPress={() => (playback.playing ? playback.pause() : void playback.play(0))}
+          />
+          {skipTo !== null && !playback.playing && (
+            <Button title="Skip front matter" onPress={() => void playback.jumpTo(skipTo)} />
+          )}
+        </View>
+      )}
+
+      <Text style={styles.status}>
+        {playback.error ?? (playback.buffering ? 'Synthesising...' : status)}
+      </Text>
+
       {doc && (
         <Text style={styles.meta}>
-          {doc.sentences.length} sentences over {doc.pageCount} pages
+          sentence {playback.currentIndex + 1} of {sentences.length}
+          {current ? ` · ${current.kind}` : ''}
         </Text>
       )}
 
       <ScrollView style={styles.output}>
-        {log.map((line, i) => (
-          <Text key={i} style={styles.line}>
-            {line}
+        {around.map((sentence) => (
+          <Text
+            key={sentence.index}
+            style={[styles.sentence, sentence.index === playback.currentIndex && styles.speaking]}
+            onPress={() => void playback.jumpTo(sentence.index)}
+          >
+            {sentence.text}
           </Text>
         ))}
       </ScrollView>
@@ -217,8 +106,10 @@ export default function Library() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, padding: 16, gap: 8 },
+  row: { flexDirection: 'row', gap: 12 },
   status: { fontSize: 14, fontWeight: '600' },
-  meta: { fontSize: 13 },
+  meta: { fontSize: 12, color: '#555' },
   output: { flex: 1 },
-  line: { fontSize: 12, fontFamily: 'monospace' },
+  sentence: { fontSize: 16, lineHeight: 24, marginBottom: 10, color: '#333' },
+  speaking: { backgroundColor: '#ffe9a8', color: '#000' },
 });

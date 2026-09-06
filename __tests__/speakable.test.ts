@@ -19,6 +19,11 @@ describe('speakable', () => {
     expect(speakable('₹500')).toBe('500 rupees');
   });
 
+  it('reads a written currency abbreviation after its amount too', () => {
+    expect(speakable('a deposit of Rs. 14,000 was collected'))
+      .toBe('a deposit of 14,000 rupees was collected');
+  });
+
   it('reads a percentage as a word', () => {
     expect(speakable('down 40% this year')).toBe('down 40 percent this year');
   });
@@ -48,8 +53,20 @@ describe('speakable', () => {
     expect(speakable('1st Session No. 110–50')).toBe('1st Session No. 110–50');
   });
 
-  it('leaves an em dash alone, because it is a pause and not a range', () => {
-    expect(speakable('She paused — and then left.')).toBe('She paused — and then left.');
+  it('turns an em dash into a pause the engine can hear', () => {
+    // espeak-ng ignores the dash character outright, so the break a writer put
+    // there is lost and the sentence runs straight on. A comma is the nearest
+    // mark it does pause for, and it does not reset the intonation the way a
+    // full stop would.
+    expect(speakable('She paused — and then left.')).toBe('She paused, and then left.');
+  });
+
+  it('handles an em dash set tight against its words', () => {
+    expect(speakable('BEWARE "YES"—MASTER "NO"')).toBe('BEWARE "YES", MASTER "NO"');
+  });
+
+  it('does not turn a hyphenated word into a pause', () => {
+    expect(speakable('a real-time tweet evaluator')).toBe('a real-time tweet evaluator');
   });
 
   it('leaves ordinary prose exactly as it was', () => {

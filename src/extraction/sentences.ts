@@ -7,6 +7,9 @@ const ABBREVIATIONS = new Set([
   'mr', 'mrs', 'ms', 'dr', 'prof', 'st', 'jr', 'sr', 'vs', 'etc',
   'inc', 'ltd', 'co', 'no', 'fig', 'figs', 'vol', 'ch', 'ed', 'eds', 'pp',
   'al', 'ca', 'cf', 'eg', 'ie',
+  // Currency and measure abbreviations, which are followed by the amount they
+  // describe: "a deposit of Rs. 14,000" must not be cut after "Rs."
+  'rs', 'usd', 'inr', 'approx', 'est',
   'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
 ]);
 

@@ -53,27 +53,48 @@ class SherpaTtsModule : Module() {
       )
     }
 
-    AsyncFunction("synthesize") { text: String, sid: Int, speed: Float, outPath: String, silenceMs: Int ->
+    /**
+     * Synthesises one sentence, which may arrive already cut into pieces at
+     * clause boundaries so no single job is enormous, and writes it as one WAV.
+     *
+     * One file per sentence is what lets playback line up exactly with the text
+     * on screen: a track index is a sentence index.
+     */
+    AsyncFunction("synthesize") { parts: List<String>, sid: Int, speed: Float, outPath: String, seamMs: Int, tailMs: Int ->
       val engine = tts ?: throw CodedException("SherpaTts.load() must be called first")
+      if (parts.isEmpty()) throw CodedException("Nothing to synthesize")
 
       val startedAt = System.currentTimeMillis()
-      val audio = engine.generate(text, sid, speed)
+      val pieces = parts.map { engine.generate(it, sid, speed) }
       val elapsedSec = (System.currentTimeMillis() - startedAt) / 1000.0
-      val speechSec = audio.samples.size.toDouble() / audio.sampleRate.toDouble()
 
-      // The pause between utterances is written into the audio. The playlist is
-      // gapless by design, so silence has to be part of the track for the
-      // listener to hear a break between one sentence and the next.
-      val written = if (silenceMs > 0) withTrailingSilence(audio, silenceMs) else audio
-      if (!written.save(outPath)) throw CodedException("Could not write the WAV file: $outPath")
+      val sampleRate = pieces.first().sampleRate
+      val speechSamples = pieces.sumOf { it.samples.size }
+      val seam = sampleRate * seamMs / 1000
+      val tail = sampleRate * tailMs / 1000
+
+      val total = speechSamples + seam * (pieces.size - 1) + tail
+      val samples = FloatArray(total)
+      var at = 0
+      for ((i, piece) in pieces.withIndex()) {
+        piece.samples.copyInto(samples, at)
+        at += piece.samples.size
+        // Silence is written into the audio rather than left to the player,
+        // which cannot be relied on to leave a gap of any particular length.
+        if (i < pieces.size - 1) at += seam
+      }
+
+      if (!GeneratedAudio(samples, sampleRate).save(outPath)) {
+        throw CodedException("Could not write the WAV file: $outPath")
+      }
 
       mapOf(
         "path" to outPath,
         // How long the track takes to play, silence included.
-        "durationSec" to written.samples.size.toDouble() / written.sampleRate.toDouble(),
+        "durationSec" to total.toDouble() / sampleRate.toDouble(),
         // Real-time factor, measured against the speech alone: padding the
         // audio must not be allowed to flatter the number.
-        "rtf" to if (speechSec > 0) elapsedSec / speechSec else 0.0,
+        "rtf" to if (speechSamples > 0) elapsedSec / (speechSamples.toDouble() / sampleRate) else 0.0,
       )
     }
 
@@ -88,10 +109,4 @@ class SherpaTtsModule : Module() {
     }
   }
 
-  private fun withTrailingSilence(audio: GeneratedAudio, silenceMs: Int): GeneratedAudio {
-    val extra = audio.sampleRate * silenceMs / 1000
-    val samples = FloatArray(audio.samples.size + extra)
-    audio.samples.copyInto(samples)
-    return GeneratedAudio(samples, audio.sampleRate)
-  }
 }
