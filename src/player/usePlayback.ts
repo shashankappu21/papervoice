@@ -8,6 +8,7 @@ import { speakable } from '../tts/speakable';
 import { chunk } from '../tts/chunk';
 import { pauseAfter } from '../tts/pauses';
 import { LJSPEECH, voicePaths } from '../tts/modelPaths';
+import { getSetting, setSetting, SETTING_RATE } from '../db/settings';
 import type { Sentence } from '../extraction/types';
 
 /**
@@ -226,6 +227,18 @@ export function usePlayback(
     return loading;
   }, []);
 
+  // The reader's chosen speed outlives the session, and the book they chose it
+  // on: someone who listens at 1.6x listens at 1.6x to everything.
+  useEffect(() => {
+    getSetting(SETTING_RATE).then((saved) => {
+      const value = Number(saved);
+      if (!saved || Number.isNaN(value)) return;
+      rateRef.current = value;
+      setRateState(value);
+      player.current?.setPlaybackRate(value, 'high');
+    }, () => undefined);
+  }, []);
+
   // Load the voice as soon as there is something to read. It takes seconds, and
   // doing it on the first press makes the app look broken while it waits.
   useEffect(() => {
@@ -283,6 +296,7 @@ export function usePlayback(
     rateRef.current = clamped;
     setRateState(clamped);
     player.current?.setPlaybackRate(clamped, 'high');
+    void setSetting(SETTING_RATE, String(clamped));
   };
 
   const jumpTo = async (to: number) => {

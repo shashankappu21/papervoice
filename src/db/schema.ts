@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bumped whenever the statements below change. The version lives in the
  * database itself, so an app that skipped a release still migrates in order.
  */
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 /**
  * Creates or upgrades the library.
@@ -36,6 +36,15 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
         book_id INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,
         sentence_index INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
+      );
+    `);
+  }
+
+  if (version < 2) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
       );
     `);
   }

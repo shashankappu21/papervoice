@@ -1,6 +1,5 @@
-import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 import { Directory, File, Paths } from 'expo-file-system';
-import { migrate } from './schema';
+import { database } from './connection';
 import type { ExtractedDoc, Sentence } from '../extraction/types';
 
 export interface Book {
@@ -15,16 +14,6 @@ export interface Book {
   lastOpenedAt: number | null;
   /** Where the reader left off, or 0 for a book never opened. */
   position: number;
-}
-
-let opening: Promise<SQLiteDatabase> | null = null;
-
-async function database(): Promise<SQLiteDatabase> {
-  opening ??= openDatabaseAsync('papervoice.db').then(async (db) => {
-    await migrate(db);
-    return db;
-  });
-  return opening;
 }
 
 function booksDirectory(): Directory {
