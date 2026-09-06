@@ -83,14 +83,14 @@ describe('buildSentences', () => {
     expect(out.map((s) => s.text)).toEqual(['He worked for the F.B.I. She did not.']);
   });
 
-  it('drops a running header that repeats at the same spot on every page', () => {
+  it('marks a line repeating at the same spot on every page, and never as body', () => {
     const items = [];
     for (let page = 1; page <= 6; page++) {
       items.push(item('A Tale of Two Cities', { page, y: 20, fontSize: 8 }));
       items.push(item(`Body line for page ${page}.`, { page, y: 400 }));
     }
     const out = buildSentences(items, 792);
-    expect(out.map((s) => s.text)).toEqual([
+    expect(out.filter((s) => s.kind === 'body').map((s) => s.text)).toEqual([
       'Body line for page 1.',
       'Body line for page 2.',
       'Body line for page 3.',
@@ -100,15 +100,16 @@ describe('buildSentences', () => {
     ]);
   });
 
-  it('drops a running footer whose page number varies', () => {
+  it('marks a running footer whose page number varies as a footer, not body', () => {
     const items = [];
     for (let page = 1; page <= 6; page++) {
       items.push(item(`Chapter 2 * ${page}`, { page, y: 18, fontSize: 8 }));
       items.push(item('The body carries on.', { page, y: 400 }));
     }
     const out = buildSentences(items, 792);
-    expect(out).toHaveLength(6);
-    expect(out.every((s) => s.text === 'The body carries on.')).toBe(true);
+    expect(out.filter((s) => s.kind === 'body')).toHaveLength(6);
+    expect(out.filter((s) => s.kind === 'footer')).toHaveLength(6);
+    expect(out.every((s) => s.kind !== 'body' || s.text === 'The body carries on.')).toBe(true);
   });
 
   it('keeps edge text that only appears on a couple of pages', () => {
@@ -154,20 +155,24 @@ describe('buildSentences', () => {
     expect(out[0].boxes.map((b) => b.page)).toEqual([1, 2]);
   });
 
-  it('drops a bare page number', () => {
+  it('marks a bare page number as a footer so it is shown but not spoken', () => {
     const out = buildSentences(
       [item('A real sentence here.', { y: 700 }), item('42', { y: 40, fontSize: 9 })],
       792,
     );
-    expect(out.map((s) => s.text)).toEqual(['A real sentence here.']);
+    expect(out.filter((s) => s.kind === 'body').map((s) => s.text)).toEqual([
+      'A real sentence here.',
+    ]);
+    expect(out.find((s) => s.text === '42')?.kind).toBe('footer');
   });
 
-  it('drops a roman-numeral page number', () => {
+  it('marks a roman-numeral page number as a footer', () => {
     const out = buildSentences(
       [item('Front matter text.', { y: 700 }), item('xiv', { y: 40 })],
       792,
     );
-    expect(out).toHaveLength(1);
+    expect(out.filter((s) => s.kind === 'body')).toHaveLength(1);
+    expect(out.find((s) => s.text === 'xiv')?.kind).toBe('footer');
   });
 
   it('keeps a number that appears in the body text', () => {

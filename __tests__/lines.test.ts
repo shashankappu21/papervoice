@@ -71,3 +71,28 @@ describe('buildLines geometry', () => {
     expect(lines[0].fontSize).toBe(10);
   });
 });
+
+describe('buildLines list markers', () => {
+  it('strips a bullet glyph so it is not read aloud', () => {
+    const lines = buildLines([
+      item('●', { x: 50, width: 8 }),
+      item('The AI scans tweets for tone.', { x: 72, width: 150 }),
+    ]);
+    expect(lines[0].text).toBe('The AI scans tweets for tone.');
+  });
+
+  it('strips a bullet that arrives glued to its text', () => {
+    const lines = buildLines([item('• Users can connect the tool.', { x: 50 })]);
+    expect(lines[0].text).toBe('Users can connect the tool.');
+  });
+
+  it('keeps a numbered marker, which carries meaning a bullet does not', () => {
+    const lines = buildLines([item('1. Open the application.', { x: 50 })]);
+    expect(lines[0].text).toBe('1. Open the application.');
+  });
+
+  it('keeps a dash used as punctuation rather than as a marker', () => {
+    const lines = buildLines([item('— and then she left.', { x: 50 })]);
+    expect(lines[0].text).toBe('— and then she left.');
+  });
+});

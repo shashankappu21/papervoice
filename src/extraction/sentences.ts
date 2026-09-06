@@ -93,8 +93,10 @@ export function buildSentences(items: TextItem[], pageHeight: number): Sentence[
     if (block.kind === 'furniture') continue;
 
     // A heading has no terminal punctuation to split on and is read as one
-    // utterance, so it is taken whole.
-    const spans = block.kind === 'heading' ? [[0, block.text.length] as [number, number]] : splitSpans(block.text);
+    // utterance, so it is taken whole. So are headers and footers: a running
+    // title is one label, not a series of sentences.
+    const whole = block.kind === 'heading' || block.kind === 'header' || block.kind === 'footer';
+    const spans = whole ? [[0, block.text.length] as [number, number]] : splitSpans(block.text);
 
     for (const [start, end] of spans) {
       const text = block.text.slice(start, end).replace(/\s+/g, ' ').trim();

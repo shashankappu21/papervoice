@@ -111,18 +111,27 @@ describe('buildBlocks across pages and furniture', () => {
     expect(blocks[0].text).toBe('the extraordinary events.');
   });
 
-  it('marks a running header that repeats across pages as furniture', () => {
+  it('marks a title repeating at the top of every page as a header', () => {
     const lines: Line[] = [];
     for (let page = 1; page <= 6; page++) {
-      lines.push(line('A Tale of Two Cities', { page, y: 20 }));
+      lines.push(line('A Tale of Two Cities', { page, y: 770 }));
       lines.push(...filler(6, 600).map((l) => ({ ...l, page })));
     }
     const blocks = buildBlocks(lines, 792);
-    const header = blocks.find((b) => b.text === 'A Tale of Two Cities');
-    expect(header?.kind).toBe('furniture');
+    expect(blocks.find((b) => b.text === 'A Tale of Two Cities')?.kind).toBe('header');
   });
 
-  it('marks a running header as furniture even when it sits well inside the page', () => {
+  it('marks a line repeating at the bottom of every page as a footer', () => {
+    const lines: Line[] = [];
+    for (let page = 1; page <= 6; page++) {
+      lines.push(...filler(6, 600).map((l) => ({ ...l, page })));
+      lines.push(line('A Tale of Two Cities', { page, y: 20 }));
+    }
+    const blocks = buildBlocks(lines, 792);
+    expect(blocks.find((b) => b.text === 'A Tale of Two Cities')?.kind).toBe('footer');
+  });
+
+  it('marks a running header even when it sits well inside the page', () => {
     // Facsimile editions print a small page inside a large one, so the running
     // header can sit nowhere near the physical edge. What identifies it is that
     // it opens every page and says the same thing.
@@ -133,7 +142,7 @@ describe('buildBlocks across pages and furniture', () => {
     }
     const blocks = buildBlocks(lines, 792);
     const header = blocks.find((b) => b.text.startsWith('CONSTITUTION OF THE'));
-    expect(header?.kind).toBe('furniture');
+    expect(header?.kind).toBe('header');
   });
 
   it('marks a contents line with dot leaders as furniture', () => {
@@ -168,8 +177,10 @@ describe('buildBlocks line offsets', () => {
 
 describe('buildBlocks refinements', () => {
   it('drops a marginal line number set in small type', () => {
+    // Down the side of the text, not at the foot of the page: a number at the
+    // foot is a page number, which is a footer.
     const blocks = buildBlocks(
-      [...filler(20), line('12', { y: 200, x: 20, width: 10, fontSize: 7 })],
+      [...filler(10, 700), line('12', { y: 500, x: 20, width: 10, fontSize: 7 }), ...filler(10, 400)],
       792,
     );
     expect(blocks.some((b) => b.text === '12' && b.kind !== 'furniture')).toBe(false);
@@ -265,5 +276,50 @@ describe('buildBlocks tells an ellipsis from a contents leader', () => {
       792,
     );
     expect(blocks[blocks.length - 1].kind).toBe('furniture');
+  });
+});
+
+describe('buildBlocks header and footer', () => {
+  it('marks a page number at the foot of the page as a footer', () => {
+    const lines: Line[] = [];
+    for (let page = 1; page <= 6; page++) {
+      lines.push(...filler(6, 600).map((l) => ({ ...l, page })));
+      lines.push(line(String(page + 10), { page, y: 20 }));
+    }
+    const blocks = buildBlocks(lines, 792);
+    expect(blocks.filter((b) => b.kind === 'footer')).toHaveLength(6);
+  });
+
+  it('finds a header positionally in a document too short to repeat', () => {
+    // One page: there is nothing to repeat against, so position is all there is.
+    // "Think School" sits above the body, set no larger than it, and detached.
+    const blocks = buildBlocks(
+      [line('Think School', { y: 760 }), ...filler(20, 700)],
+      792,
+    );
+    expect(blocks[0].kind).toBe('header');
+  });
+
+  it('does not guess positionally once repetition can be checked', () => {
+    // Six pages, and this opening line never repeats: it is prose, and guessing
+    // from position would delete it.
+    const lines: Line[] = [];
+    const openings = ['Monday came first.', 'Tuesday was worse.', 'Wednesday broke.',
+      'Thursday dragged on.', 'Friday finally came.', 'Saturday was quiet.'];
+    openings.forEach((text, i) => {
+      const page = i + 1;
+      lines.push(line(text, { page, y: 760 }));
+      lines.push(...filler(20, 700).map((l) => ({ ...l, page })));
+    });
+    const blocks = buildBlocks(lines, 792);
+    expect(blocks.find((b) => b.text === 'Monday came first.')?.kind).toBe('body');
+  });
+
+  it('does not mistake a title for a header, however short and detached', () => {
+    const blocks = buildBlocks(
+      [line('The Great Gatsby', { y: 760, fontSize: 24 }), ...filler(20, 700)],
+      792,
+    );
+    expect(blocks[0].kind).toBe('heading');
   });
 });

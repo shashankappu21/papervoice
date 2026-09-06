@@ -23,10 +23,10 @@ export interface Sentence {
   index: number;
   /**
    * What this sentence is. A heading is read as its own utterance; a note is
-   * read only if the listener asks for footnotes. Page furniture never becomes
-   * a sentence at all.
+   * read only if the listener asks for footnotes; a header or footer is shown
+   * but not spoken. Furniture never becomes a sentence at all.
    */
-  kind: 'heading' | 'body' | 'note';
+  kind: 'heading' | 'body' | 'note' | 'header' | 'footer';
   /** Normalized text handed to the TTS engine. */
   text: string;
   /**
@@ -62,10 +62,11 @@ export interface Line {
 
 /**
  * What a run of lines is for. Playback treats these differently: body is read,
- * a heading is read as its own utterance, a note can be skipped, and furniture
- * is never read at all.
+ * a heading is read as its own utterance, a note can be skipped, a header or
+ * footer stays visible on the page but is never spoken, and furniture -- a
+ * contents leader, a marginal line number -- is dropped outright.
  */
-export type BlockKind = 'heading' | 'body' | 'note' | 'furniture';
+export type BlockKind = 'heading' | 'body' | 'note' | 'header' | 'footer' | 'furniture';
 
 /** A run of lines that belong together and share one purpose. */
 export interface Block {

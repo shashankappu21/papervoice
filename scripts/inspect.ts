@@ -52,7 +52,10 @@ const out: string[] = [];
 out.push(`${path.basename(pdfPath)}`);
 out.push(`${doc.pageCount} pages, ${doc.items.length} text items, ${lines.length} lines, ${blocks.length} blocks`);
 out.push(`${sentences.length} sentences: ` +
-  (['heading', 'body', 'note'] as const).map((k) => `${sentences.filter((s) => s.kind === k).length} ${k}`).join(', '));
+  (['heading', 'body', 'note', 'header', 'footer'] as const)
+    .map((k) => `${sentences.filter((s) => s.kind === k).length} ${k}`)
+    .join(', '));
+out.push(`spoken aloud: ${sentences.filter((s) => s.kind !== 'header' && s.kind !== 'footer').length}`);
 out.push(`coverage: ${((keptChars / totalChars) * 100).toFixed(1)}% of characters kept`);
 out.push('');
 out.push(`DROPPED AS PAGE FURNITURE (${dropped.length} blocks, never read aloud)`);
@@ -62,7 +65,7 @@ out.push('');
 out.push('SENTENCES, in the order they will be spoken');
 out.push('='.repeat(72));
 for (const s of sentences) {
-  const tag = s.kind === 'body' ? '        ' : `[${s.kind}] `.padEnd(8);
+  const tag = s.kind === 'body' ? '         ' : `[${s.kind}]`.padEnd(9);
   out.push(`${String(s.index).padStart(5)}  p${String(pageOf(s.index)).padStart(3)}  ${tag}${s.text}`);
 }
 fs.writeFileSync(`${stem}.sentences.txt`, out.join('\n') + '\n');

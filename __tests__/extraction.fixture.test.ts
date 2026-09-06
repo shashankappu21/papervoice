@@ -13,15 +13,30 @@ const fixture = JSON.parse(
   readFileSync(new URL('../fixtures/constitution.items.json', import.meta.url), 'utf8'),
 ) as { items: TextItem[]; pageHeight: number; pageCount: number };
 
-/** Baseline recorded 2026-09-04, after the line/block pipeline landed. */
+/** Baseline recorded 2026-09-04, counting the sentences that are spoken. */
 const BASELINE = 279;
 
-describe('extraction over a real document', () => {
-  const sentences = buildSentences(fixture.items, fixture.pageHeight);
+/** What the voice actually reads: headers and footers are shown, not spoken. */
+const SPOKEN = ['heading', 'body', 'note'];
 
-  it('yields a stable number of sentences', () => {
+describe('extraction over a real document', () => {
+  const all = buildSentences(fixture.items, fixture.pageHeight);
+  const sentences = all.filter((s) => SPOKEN.includes(s.kind));
+
+  it('yields a stable number of spoken sentences', () => {
     const drift = Math.abs(sentences.length - BASELINE) / BASELINE;
     expect(drift).toBeLessThanOrEqual(0.02);
+  });
+
+  it('shows the running headers and footers without speaking them', () => {
+    // This edition stamps a watermark and a running title on every page. They
+    // belong on the page, so they stay in the list -- tagged, and never read.
+    expect(all.filter((s) => s.kind === 'header').length).toBeGreaterThan(0);
+    expect(all.filter((s) => s.kind === 'footer').length).toBeGreaterThan(0);
+    for (const sentence of sentences) {
+      expect(sentence.kind).not.toBe('header');
+      expect(sentence.kind).not.toBe('footer');
+    }
   });
 
   it('keeps the first sentence unchanged', () => {
@@ -30,7 +45,7 @@ describe('extraction over a real document', () => {
     );
   });
 
-  it('keeps the last sentence unchanged', () => {
+  it('keeps the last spoken sentence unchanged', () => {
     expect(sentences[sentences.length - 1].text).toMatch(
       /^The dates of ratification were: New York, March 27, 1794;/,
     );

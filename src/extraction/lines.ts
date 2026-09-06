@@ -1,5 +1,14 @@
 import type { Line, TextItem } from './types';
 
+/**
+ * A list bullet: decoration a synthesiser would either name aloud ("black
+ * circle") or choke on. Numbered markers are left alone -- "1." carries meaning
+ * a bullet does not, and a reader saying "one" before each step is right. Dashes
+ * are left alone too: a line opening with one is far more often speech
+ * ("-- and then she left") than a list.
+ */
+const BULLET = /^[•‣▪▫●○◦⁃∙·■□❖✿¤*+]\s+/;
+
 /** Baselines this close belong to the same line: PDFs jitter by fractions of a point. */
 function tolerance(fontSize: number): number {
   return Math.max(1.5, fontSize * 0.3);
@@ -59,7 +68,7 @@ function toLine(group: TextItem[]): Line {
     width: right - left,
     height: Math.max(...items.map((i) => i.height)),
     fontSize: dominantFontSize(items),
-    text: text.replace(/\s+/g, ' ').trim(),
+    text: stripBullet(text.replace(/\s+/g, ' ').trim()),
     items,
   };
 }
@@ -75,4 +84,13 @@ function dominantFontSize(items: TextItem[]): number {
     weight.set(size, (weight.get(size) ?? 0) + item.text.length);
   }
   return [...weight.entries()].sort((a, b) => b[1] - a[1])[0][0];
+}
+
+/**
+ * Removes a leading list bullet. A line that is nothing but a bullet keeps it,
+ * so the line does not vanish and leave a block starting mid-thought.
+ */
+function stripBullet(text: string): string {
+  const stripped = text.replace(BULLET, '');
+  return stripped.length > 0 ? stripped : text;
 }

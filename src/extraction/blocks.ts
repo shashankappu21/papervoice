@@ -10,8 +10,15 @@ export function buildBlocks(lines: Line[], pageHeight: number): Block[] {
   const leading = findLeading(lines);
   const edges = findPageEdgeLines(lines);
   const running = findRunningFurniture(lines, pageHeight, edges);
+  const pageCount = new Set(lines.map((l) => l.page)).size;
+  // Repetition is the reliable signal. Position is guesswork, and it is only
+  // reached for a single-page document, where there is nothing to repeat
+  // against and no other signal exists. With even two pages the guess starts
+  // costing more than it wins: a sparse page can end far below its last
+  // paragraph, and that paragraph is not a footer.
+  const detached = pageCount === 1 ? findDetachedEdgeLines(lines, leading) : new Set<Line>();
   const kindOf = (line: Line) =>
-    classifyLine(line, bodySize, pageHeight, running, edges.has(line));
+    classifyLine(line, bodySize, pageHeight, running, edges.has(line), detached.has(line));
 
   const blocks: Block[] = [];
   let current: Line[] = [];
@@ -79,18 +86,36 @@ const PAGE_NUMBER_PATTERNS = [
   /^page\s+\d+$/i,
 ];
 
+/** Which end of the page a line sits at, which is what makes it head or foot. */
+function edgeKind(line: Line, pageHeight: number): 'header' | 'footer' {
+  return line.y >= pageHeight * 0.5 ? 'header' : 'footer';
+}
+
 function classifyLine(
   line: Line,
   bodySize: number,
   pageHeight: number,
   running: Set<string>,
   opensOrClosesPage: boolean,
+  detachedFromBody: boolean,
 ): BlockKind {
   const text = line.text.trim();
   if (DOT_LEADERS.test(text)) return 'furniture';
+
   if (isNearEdge(line.y, pageHeight) || opensOrClosesPage) {
-    if (runningShare(line, running) >= FURNITURE_SHARE) return 'furniture';
-    if (PAGE_NUMBER_PATTERNS.some((re) => re.test(text))) return 'furniture';
+    if (runningShare(line, running) >= FURNITURE_SHARE) return edgeKind(line, pageHeight);
+    if (PAGE_NUMBER_PATTERNS.some((re) => re.test(text))) return edgeKind(line, pageHeight);
+    // Too few pages to check repetition. A running head is short, set no larger
+    // than the body, and stands apart from it -- a title fails the size test, a
+    // first paragraph fails the length and detachment tests.
+    if (
+      detachedFromBody &&
+      line.fontSize <= bodySize &&
+      text.length <= 60 &&
+      isNearEdge(line.y, pageHeight)
+    ) {
+      return edgeKind(line, pageHeight);
+    }
   }
   if (line.fontSize > bodySize * 1.1) return 'heading';
   if (line.fontSize < bodySize * 0.9) {
@@ -214,6 +239,29 @@ function findPageEdgeLines(lines: Line[]): Set<Line> {
     edges.add(page[page.length - 1]);
   }
   return edges;
+}
+
+/**
+ * Lines that open or close a page with an unusually large gap to the rest of it.
+ * A running head sits in the margin, away from the text block; a first paragraph
+ * does not.
+ */
+function findDetachedEdgeLines(lines: Line[], leading: number): Set<Line> {
+  const byPage = new Map<number, Line[]>();
+  for (const line of lines) {
+    const page = byPage.get(line.page);
+    if (page) page.push(line);
+    else byPage.set(line.page, [line]);
+  }
+
+  const detached = new Set<Line>();
+  for (const page of byPage.values()) {
+    if (page.length < 2) continue;
+    if (page[0].y - page[1].y > leading * 1.5) detached.add(page[0]);
+    const last = page.length - 1;
+    if (page[last - 1].y - page[last].y > leading * 1.5) detached.add(page[last]);
+  }
+  return detached;
 }
 
 /** How much of the line's text comes from items that repeat page after page. */
