@@ -1,0 +1,29 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.sherpatts'
+version = '0.1.0'
+
+android {
+  namespace 'expo.modules.sherpatts'
+  defaultConfig {
+    // Required by expo-module-gradle-plugin, which reads them for publication.
+    versionCode 1
+    versionName '0.1.0'
+    // Development only. Add 'armeabi-v7a' before the first store release: the
+    // app ships as an AAB and Play generates per-ABI splits, so a 32-bit ABI
+    // costs arm64 users nothing in download size.
+    ndk { abiFilters 'arm64-v8a' }
+  }
+  androidResources {
+    // Not optional. aapt compresses assets by default, which misaligns the ONNX
+    // model and makes onnxruntime fail on read.
+    noCompress.addAll(['onnx', 'bin'])
+  }
+}
+
+dependencies {
+  implementation fileTree(dir: 'libs', include: ['*.aar'])
+}

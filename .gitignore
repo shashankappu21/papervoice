@@ -47,3 +47,12 @@ yarn-error.*
 
 # Inspection output from `npm run inspect`
 /out/
+
+# Prebuilt native library, fetched by `npm run setup:tts` rather than committed:
+# 49MB in git history is permanent, and the release it comes from is immutable.
+/modules/sherpa-tts/android/libs/*.aar
+
+# Gradle build output for the local native module
+/modules/*/android/build/
+/modules/*/android/.cxx/
+/modules/*/android/.gradle/

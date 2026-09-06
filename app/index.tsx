@@ -1,17 +1,109 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import { Directory, Paths } from 'expo-file-system';
+import { useAudioPlaylist } from 'expo-audio';
 import { ExtractorWebView } from '../src/extraction/ExtractorWebView';
-import type { ExtractedDoc } from '../src/extraction/types';
+import type { ExtractedDoc, Sentence } from '../src/extraction/types';
+import { SherpaTts } from '../modules/sherpa-tts';
+import { LJSPEECH, voicePaths } from '../src/tts/modelPaths';
+import { speakable } from '../src/tts/speakable';
+import { chunk } from '../src/tts/chunk';
+
+/** How long an utterance may be before it is cut into separate synthesis jobs. */
+const CHUNK_LIMIT = 300;
+
+/** Sentences to read in this test harness, so a run finishes in a few seconds. */
+const PREVIEW = 6;
 
 /**
- * Temporary harness for verifying extraction on a device. The real library
- * screen replaces this in Task 8.
+ * Temporary harness for testing extraction and speech on a device. The real
+ * library and reader screens replace it once the pipeline is trusted.
  */
 export default function Library() {
   const [uri, setUri] = useState<string | null>(null);
-  const [status, setStatus] = useState('Pick a PDF to extract.');
+  const [status, setStatus] = useState('Pick a PDF, or speak the test sentence.');
+  const [log, setLog] = useState<string[]>([]);
   const [doc, setDoc] = useState<ExtractedDoc | null>(null);
+  const loaded = useRef(false);
+  const playlist = useAudioPlaylist();
+
+  const say = (line: string) => {
+    console.log(`[papervoice] ${line}`);
+    setLog((lines) => [...lines, line]);
+  };
+
+  /** Loads the voice once per app run; it takes a moment and holds memory. */
+  const ensureVoice = async () => {
+    if (loaded.current) return;
+    const paths = voicePaths(LJSPEECH.id, LJSPEECH.file);
+    const started = Date.now();
+    const info = await SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2);
+    loaded.current = true;
+    say(`voice loaded in ${Date.now() - started}ms: ${info.sampleRate}Hz, ${info.numSpeakers} speaker(s)`);
+  };
+
+  /** Synthesises one sentence, adding each piece to the playlist as it lands. */
+  const speak = async (sentence: Sentence, order: number) => {
+    const cache = new Directory(Paths.cache, 'utterances');
+    if (!cache.exists) cache.create({ intermediates: true });
+
+    const pieces = chunk(speakable(sentence.text), CHUNK_LIMIT);
+    for (const [n, piece] of pieces.entries()) {
+      const out = `${Paths.cache.uri.replace(/^file:\/\//, '')}utterances/${order}-${n}.wav`;
+      const result = await SherpaTts.synthesize(piece, 0, 1.0, out);
+      say(`#${order}.${n} rtf ${result.rtf.toFixed(3)} for ${result.durationSec.toFixed(1)}s`);
+      // The type allows a bare string, but the native side only accepts the
+      // object form and rejects a string at the bridge.
+      playlist.add({ uri: `file://${result.path}` });
+    }
+  };
+
+  const speakTestSentence = async () => {
+    try {
+      setLog([]);
+      setStatus('Loading the voice...');
+      await ensureVoice();
+      setStatus('Synthesising...');
+      await speak(
+        {
+          index: 0,
+          kind: 'body',
+          text: 'The count had not yet spoken, and the room was very still.',
+          boxes: [],
+        },
+        0,
+      );
+      playlist.play();
+      setStatus('Playing.');
+    } catch (error) {
+      setStatus(`Failed: ${String(error)}`);
+      say(String(error));
+    }
+  };
+
+  const readDocument = async () => {
+    if (!doc) return;
+    try {
+      setLog([]);
+      setStatus('Loading the voice...');
+      await ensureVoice();
+
+      const spoken = doc.sentences
+        .filter((s) => s.kind !== 'header' && s.kind !== 'footer')
+        .slice(0, PREVIEW);
+
+      setStatus(`Synthesising ${spoken.length} sentences...`);
+      for (const [order, sentence] of spoken.entries()) {
+        await speak(sentence, order);
+        if (order === 0) playlist.play();
+      }
+      setStatus('Playing.');
+    } catch (error) {
+      setStatus(`Failed: ${String(error)}`);
+      say(String(error));
+    }
+  };
 
   const pick = async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -20,27 +112,32 @@ export default function Library() {
     });
     if (result.canceled) return;
     setDoc(null);
+    setLog([]);
     setStatus('Extracting...');
     setUri(result.assets[0].uri);
   };
 
   return (
     <View style={styles.screen}>
+      <Button title="Speak a test sentence" onPress={() => void speakTestSentence()} />
       <Button title="Pick a PDF" onPress={() => void pick()} />
-      <Text style={styles.status}>{status}</Text>
+      {doc && <Button title={`Read the first ${PREVIEW} sentences`} onPress={() => void readDocument()} />}
+      <Button title="Stop" onPress={() => playlist.pause()} />
 
+      <Text style={styles.status}>{status}</Text>
       {doc && (
-        <ScrollView style={styles.output}>
-          <Text style={styles.meta}>
-            {doc.sentences.length} sentences over {doc.pageCount} pages
-          </Text>
-          {doc.sentences.slice(0, 5).map((sentence) => (
-            <Text key={sentence.index} style={styles.sentence}>
-              [{sentence.index}] {sentence.text}
-            </Text>
-          ))}
-        </ScrollView>
+        <Text style={styles.meta}>
+          {doc.sentences.length} sentences over {doc.pageCount} pages
+        </Text>
       )}
+
+      <ScrollView style={styles.output}>
+        {log.map((line, i) => (
+          <Text key={i} style={styles.line}>
+            {line}
+          </Text>
+        ))}
+      </ScrollView>
 
       {uri && (
         <ExtractorWebView
@@ -49,14 +146,11 @@ export default function Library() {
           onDone={(extracted) => {
             setUri(null);
             setDoc(extracted);
-            setStatus(`Done: ${extracted.sentences.length} sentences.`);
-            console.log(`[extract] ${extracted.sentences.length} sentences`);
-            extracted.sentences.slice(0, 5).forEach((s) => console.log(`[extract] ${s.index}: ${s.text}`));
+            setStatus(`Extracted ${extracted.sentences.length} sentences.`);
           }}
           onError={(message) => {
             setUri(null);
-            setStatus(`Failed: ${message}`);
-            console.log(`[extract] error: ${message}`);
+            setStatus(`Extraction failed: ${message}`);
           }}
         />
       )}
@@ -65,9 +159,9 @@ export default function Library() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 16, gap: 12 },
-  status: { fontSize: 14 },
-  meta: { fontWeight: '600', marginBottom: 8 },
+  screen: { flex: 1, padding: 16, gap: 8 },
+  status: { fontSize: 14, fontWeight: '600' },
+  meta: { fontSize: 13 },
   output: { flex: 1 },
-  sentence: { fontSize: 13, marginBottom: 8 },
+  line: { fontSize: 12, fontFamily: 'monospace' },
 });
