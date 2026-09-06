@@ -7,8 +7,9 @@ import { createSynthQueue } from '../tts/synthQueue';
 import { speakable } from '../tts/speakable';
 import { chunk } from '../tts/chunk';
 import { pauseAfter } from '../tts/pauses';
-import { LJSPEECH, voicePaths } from '../tts/modelPaths';
-import { getSetting, setSetting, SETTING_RATE } from '../db/settings';
+import { VOICES, findVoice } from '../voices/catalog';
+import { voiceStore, voiceLoadPaths } from '../voices/deviceVoices';
+import { getSetting, setSetting, SETTING_RATE, SETTING_VOICE } from '../db/settings';
 import type { Sentence } from '../extraction/types';
 
 /**
@@ -211,8 +212,20 @@ export function usePlayback(
     if (voiceLoading.current) return voiceLoading.current;
 
     setLoadingVoice(true);
-    const paths = voicePaths(LJSPEECH.id, LJSPEECH.file);
-    const loading = SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2)
+    const loading = (async () => {
+      const chosen = await getSetting(SETTING_VOICE);
+      const store = voiceStore();
+      // Whatever was chosen, if it is installed; otherwise anything that is.
+      const voice =
+        (chosen ? findVoice(chosen) : undefined) ?? VOICES.find((v) => store.isInstalled(v));
+
+      if (!voice || !store.isInstalled(voice)) {
+        throw new Error('No voice is installed yet. Choose one from Voices.');
+      }
+
+      const paths = await voiceLoadPaths(voice);
+      await SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2);
+    })()
       .then(() => {
         voiceLoaded.current = true;
       })

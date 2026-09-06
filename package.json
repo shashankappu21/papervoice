@@ -39,7 +39,8 @@
     "score": "vite-node scripts/score.ts --",
     "inspect": "vite-node scripts/inspect.ts --",
     "setup:tts": "node scripts/fetchSherpa.mjs",
-    "push:voice": "node scripts/pushVoice.mjs"
+    "push:voice": "node scripts/pushVoice.mjs",
+    "setup:espeak": "node scripts/fetchEspeak.mjs"
   },
   "private": true
 }

@@ -99,7 +99,11 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
           <Button title="−" onPress={() => playback.setRate(playback.rate - RATE_RANGE.step)} />
           <Text style={styles.rate}>{playback.rate.toFixed(1)}×</Text>
           <Button title="+" onPress={() => playback.setRate(playback.rate + RATE_RANGE.step)} />
-          {message && <Text style={styles.status}>{message}</Text>}
+          {message && (
+            <Text style={styles.status} numberOfLines={2}>
+              {message}
+            </Text>
+          )}
         </View>
       </View>
     </View>
@@ -117,5 +121,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   meta: { fontSize: 13, color: '#777', marginLeft: 'auto' },
   rate: { fontSize: 15, fontVariant: ['tabular-nums'], minWidth: 44, textAlign: 'center' },
-  status: { fontSize: 13, color: '#444', marginLeft: 'auto' },
+  // flexShrink lets a long message wrap rather than run off the screen: an
+  // error nobody can read is an error nobody can act on.
+  status: { fontSize: 13, color: '#444', marginLeft: 'auto', flexShrink: 1, textAlign: 'right' },
 });

@@ -56,3 +56,6 @@ yarn-error.*
 /modules/*/android/build/
 /modules/*/android/.cxx/
 /modules/*/android/.gradle/
+
+# Phonemiser data, fetched by `npm run setup:espeak` rather than committed
+/modules/sherpa-tts/android/src/main/assets/espeak-ng-data/

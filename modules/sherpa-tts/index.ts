@@ -33,6 +33,16 @@ interface SherpaTtsNative {
     seamMs: number,
     tailMs: number,
   ): Promise<SynthResult>;
+  /**
+   * Unpacks the bundled phonemiser data to `destination` if it is not already
+   * there, and returns the path. Every Piper voice shares it, so it ships with
+   * the app once rather than with each voice.
+   */
+  installEspeakData(destination: string): Promise<string>;
+
+  /** Hashes a file natively, so 63MB never passes through JavaScript. */
+  sha256(path: string): Promise<string>;
+
   unload(): Promise<void>;
 }
 

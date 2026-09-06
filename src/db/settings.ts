@@ -28,3 +28,4 @@ export async function setSetting(key: string, value: string): Promise<void> {
 }
 
 export const SETTING_RATE = 'playback.rate';
+export const SETTING_VOICE = 'playback.voice';

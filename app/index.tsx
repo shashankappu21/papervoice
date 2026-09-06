@@ -80,7 +80,10 @@ export default function Library() {
       />
 
       <View style={styles.footer}>
-        <Button title="Import a PDF" onPress={() => void pick()} disabled={importing !== null} />
+        <View style={styles.footerRow}>
+          <Button title="Import a PDF" onPress={() => void pick()} disabled={importing !== null} />
+          <Button title="Voices" onPress={() => router.push('/voices')} />
+        </View>
         {status && <Text style={styles.status}>{status}</Text>}
       </View>
 
@@ -121,5 +124,6 @@ const styles = StyleSheet.create({
   fill: { height: 3, backgroundColor: '#2f95dc' },
   progressText: { fontSize: 12, color: '#999', fontVariant: ['tabular-nums'] },
   footer: { borderTopWidth: 1, borderTopColor: '#e2e2e2', padding: 12, gap: 6 },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   status: { fontSize: 13, color: '#444' },
 });

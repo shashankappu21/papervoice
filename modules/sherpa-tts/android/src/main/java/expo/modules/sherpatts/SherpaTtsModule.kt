@@ -9,6 +9,7 @@ import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
+import java.security.MessageDigest
 
 /**
  * Wraps sherpa-onnx so a Piper voice can turn one sentence into a WAV on disk.
@@ -16,6 +17,8 @@ import java.io.File
  * Every path handed in is an absolute path in the app's own storage: the models
  * are downloaded or pushed there, never bundled, and never read over a network.
  */
+private const val ESPEAK_ASSET = "espeak-ng-data"
+
 class SherpaTtsModule : Module() {
   private var tts: OfflineTts? = null
 
@@ -98,6 +101,38 @@ class SherpaTtsModule : Module() {
       )
     }
 
+    /**
+     * Copies the bundled phonemiser data out of the app package and onto the
+     * filesystem, where sherpa-onnx opens it by path, and answers with that
+     * path. Does nothing if it is already there, so it costs once per install.
+     */
+    AsyncFunction("installEspeakData") { destination: String ->
+      val target = File(destination)
+      val marker = File(target, "phontab")
+      if (!marker.exists()) {
+        target.deleteRecursively()
+        copyAsset(ESPEAK_ASSET, target)
+      }
+      target.absolutePath
+    }
+
+    /**
+     * Hashes a file so a download can be checked before it is trusted. Done
+     * here because a 63MB model has no business being read through JavaScript.
+     */
+    AsyncFunction("sha256") { path: String ->
+      val digest = MessageDigest.getInstance("SHA-256")
+      File(path).inputStream().use { input ->
+        val buffer = ByteArray(1 shl 16)
+        while (true) {
+          val read = input.read(buffer)
+          if (read <= 0) break
+          digest.update(buffer, 0, read)
+        }
+      }
+      digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
     AsyncFunction("unload") {
       tts?.release()
       tts = null
@@ -109,4 +144,25 @@ class SherpaTtsModule : Module() {
     }
   }
 
+  /** Recursively copies an asset directory to the filesystem. */
+  private fun copyAsset(assetPath: String, target: File) {
+    val assets = appContext.reactContext?.assets
+      ?: throw CodedException("No Android context to read assets from")
+
+    val children = assets.list(assetPath) ?: emptyArray()
+    if (children.isEmpty()) {
+      // A file rather than a directory: assets.list() is empty for both, and
+      // this is what tells them apart.
+      target.parentFile?.mkdirs()
+      assets.open(assetPath).use { input ->
+        target.outputStream().use { output -> input.copyTo(output) }
+      }
+      return
+    }
+
+    target.mkdirs()
+    for (child in children) {
+      copyAsset("$assetPath/$child", File(target, child))
+    }
+  }
 }

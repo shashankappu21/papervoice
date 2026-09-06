@@ -8,8 +8,15 @@ only, and everything happens offline: no text ever leaves the phone.
 
 ```bash
 npm run setup:tts     # fetches the prebuilt AAR into android/libs/
-npm run push:voice    # downloads a voice and adb-pushes it into app storage
+npm run setup:espeak  # bundles the phonemiser data into the module's assets
 ```
+
+Both are idempotent, and both fetch rather than commit: 49MB of AAR and 1MB of
+phonemiser data are reproducible from immutable releases, and binaries in git
+history are permanent.
+
+`npm run push:voice` still exists for pushing a voice over adb, but it is no
+longer needed -- voices are downloaded in the app from the Voices screen.
 
 The AAR is 49MB and is deliberately **not committed** — a binary that size in
 git history is permanent, and the GitHub release it comes from is immutable, so
@@ -35,6 +42,12 @@ release they are downloaded on demand and work fully offline once present.
 
 The default is `en_US-ljspeech-medium`: single speaker, 22.05kHz, trained from
 scratch on the public-domain LJ Speech dataset (verified in its MODEL_CARD).
+
+The phonemiser data every Piper voice shares **is** bundled, once, so a voice
+download is two plain HTTPS fetches with no archive to unpack -- React Native
+has no business handling tar.bz2. Only the English data is kept: the full set is
+18MB, almost all of it dictionaries for languages this app does not read, and
+`ru_dict` alone is 8MB. English-only is 1MB.
 
 ## API
 
