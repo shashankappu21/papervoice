@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { getBook, readSentences, touchBook, type Book } from '../../src/db/books';
 import { findMainContentStart } from '../../src/extraction/mainContent';
 import type { Sentence } from '../../src/extraction/types';
@@ -46,6 +46,7 @@ export default function ReaderScreen() {
 }
 
 function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
+  const router = useRouter();
   const playback = usePlayback(sentences, book.title, book.position);
   useSavedPosition(book.id, playback.currentIndex);
 
@@ -69,6 +70,16 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
 
       <View style={styles.controls}>
         <View style={styles.row}>
+          <Button
+            title="Library"
+            onPress={() => {
+              // Leaving stops the voice: a book read from the library screen
+              // would have no text to follow and no way to be paused.
+              playback.pause();
+              if (router.canGoBack()) router.back();
+              else router.replace('/');
+            }}
+          />
           <Button
             title={playback.playing ? 'Pause' : 'Play'}
             disabled={playback.loadingVoice}

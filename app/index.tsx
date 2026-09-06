@@ -1,9 +1,11 @@
 import { useCallback, useState } from 'react';
 import { Button, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { ExtractorWebView } from '../src/extraction/ExtractorWebView';
 import { addBook, listBooks, type Book } from '../src/db/books';
+
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
 /** The library: what has been imported, and how far each one has been read. */
 export default function Library() {
@@ -34,6 +36,8 @@ export default function Library() {
 
   return (
     <View style={styles.screen}>
+      <Stack.Screen options={{ title: 'Library' }} />
+
       <FlatList
         data={books}
         keyExtractor={(book) => String(book.id)}
@@ -46,7 +50,7 @@ export default function Library() {
             <Pressable style={styles.book} onPress={() => router.push({ pathname: '/reader/[bookId]', params: { bookId: item.id } })}>
               <Text style={styles.title}>{item.title}</Text>
               <Text style={styles.detail}>
-                {item.pageCount} pages · {item.sentenceCount} sentences
+                {plural(item.pageCount, 'page')} · {plural(item.sentenceCount, 'sentence')}
                 {item.position > 0 ? ` · ${percent}% read` : ''}
               </Text>
             </Pressable>
