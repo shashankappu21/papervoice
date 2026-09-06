@@ -38,20 +38,38 @@ function isSentenceEnd(text: string): boolean {
   return true;
 }
 
+/**
+ * An ellipsis, written as one character or as separated periods. Books set it
+ * the long way ("away . . . and never"), and each of those periods looks exactly
+ * like the end of a sentence.
+ */
+const ELLIPSIS = /^(?:…|\.(?:[   ]?\.)+)/;
+
 /** Cuts one block's text at real sentence boundaries. */
 function splitSpans(text: string): Array<[number, number]> {
   const spans: Array<[number, number]> = [];
   let start = 0;
 
   for (let i = 0; i < text.length; i++) {
-    if (!/[.!?]/.test(text[i])) continue;
+    if (!/[.!?…]/.test(text[i])) continue;
 
-    let j = i + 1;
+    const ellipsis = ELLIPSIS.exec(text.slice(i));
+    let j = i + (ellipsis ? ellipsis[0].length : 1);
     while (j < text.length && CLOSERS.test(text[j])) j++;
     // A terminator must be followed by whitespace or the end of the block, so
     // decimals ("3.5") and URLs do not split.
     if (j < text.length && !/\s/.test(text[j])) continue;
-    if (!isSentenceEnd(text.slice(start, j))) continue;
+
+    if (ellipsis) {
+      // An ellipsis trails off far more often than it ends a sentence, so it
+      // only ends one when what follows opens like a new sentence.
+      if (!/^\s*["'‘“(]?\p{Lu}/u.test(text.slice(j))) {
+        i = j - 1;
+        continue;
+      }
+    } else if (!isSentenceEnd(text.slice(start, j))) {
+      continue;
+    }
 
     spans.push([start, j]);
     start = j;
@@ -98,18 +116,38 @@ export function buildSentences(items: TextItem[], pageHeight: number): Sentence[
     const whole = block.kind === 'heading' || block.kind === 'header' || block.kind === 'footer';
     const spans = whole ? [[0, block.text.length] as [number, number]] : splitSpans(block.text);
 
+    // Stray punctuation attaches to a neighbour, but only inside its own block:
+    // it must never be welded onto the last sentence of the block before.
+    const firstOfBlock = sentences.length;
+    let pending = '';
+
     for (const [start, end] of spans) {
       const text = block.text.slice(start, end).replace(/\s+/g, ' ').trim();
-      // Nothing to say: punctuation on its own, such as the dot leaders in a
-      // table of contents. Each one would cost a synthesis slot and a silence.
-      if (!/[\p{L}\p{N}]/u.test(text)) continue;
+
+      // Punctuation with no words around it is not an utterance. It still
+      // belongs on the page, and a stranded '?' changes how the sentence before
+      // it is read, so it joins that sentence rather than being dropped.
+      if (!/[\p{L}\p{N}]/u.test(text)) {
+        const previous = sentences[sentences.length - 1];
+        if (text.length > 0 && previous && sentences.length > firstOfBlock) {
+          previous.text = `${previous.text} ${text}`;
+          previous.boxes = boxesFor(block, start, end).reduce(
+            (boxes, box) => (boxes.some((b) => b.page === box.page && b.y === box.y) ? boxes : [...boxes, box]),
+            previous.boxes,
+          );
+        } else if (text.length > 0) {
+          pending = pending.length > 0 ? `${pending} ${text}` : text;
+        }
+        continue;
+      }
 
       sentences.push({
         index: sentences.length,
         kind: block.kind,
-        text,
+        text: pending.length > 0 ? `${pending} ${text}` : text,
         boxes: boxesFor(block, start, end),
       });
+      pending = '';
     }
   }
 

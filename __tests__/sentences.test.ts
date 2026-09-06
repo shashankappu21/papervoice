@@ -143,6 +143,44 @@ describe('buildSentences', () => {
     expect(out.some((s) => s.text === '.')).toBe(false);
   });
 
+  it('keeps a spaced ellipsis inside the sentence it belongs to', () => {
+    // Books set an ellipsis as separated periods. Each one used to look like a
+    // sentence ending, shredding the sentence into a fragment plus a run of
+    // sentences that were nothing but a dot.
+    const out = buildSentences(
+      [item('They chased my driver away . . . and never came back.')],
+      792,
+    );
+    expect(out.map((s) => s.text)).toEqual([
+      'They chased my driver away . . . and never came back.',
+    ]);
+  });
+
+  it('ends the sentence when an ellipsis is followed by a new one', () => {
+    const out = buildSentences([item('He paused . . . She had already gone.')], 792);
+    expect(out.map((s) => s.text)).toEqual(['He paused . . .', 'She had already gone.']);
+  });
+
+  it('handles a single-character ellipsis the same way', () => {
+    const out = buildSentences([item('He paused … and said nothing more.')], 792);
+    expect(out).toHaveLength(1);
+  });
+
+  it('keeps stray punctuation with the sentence before it rather than losing it', () => {
+    // Nothing should ever be deleted without trace. Punctuation with no words
+    // around it joins the sentence it follows: visible on the page, and not an
+    // utterance of its own.
+    const out = buildSentences([item('Stop. !! Go home now.')], 792);
+    expect(out.map((s) => s.text)).toEqual(['Stop. !!', 'Go home now.']);
+  });
+
+  it('never emits a sentence made only of punctuation', () => {
+    const out = buildSentences([item('She left. . . . He stayed behind.')], 792);
+    for (const sentence of out) {
+      expect(sentence.text).toMatch(/[\p{L}\p{N}]/u);
+    }
+  });
+
   it('carries a sentence across a page boundary as one sentence', () => {
     const out = buildSentences(
       [
