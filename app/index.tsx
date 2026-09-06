@@ -7,8 +7,10 @@ import { ExtractorWebView } from '../src/extraction/ExtractorWebView';
 import type { ExtractedDoc, Sentence } from '../src/extraction/types';
 import { SherpaTts } from '../modules/sherpa-tts';
 import { LJSPEECH, voicePaths } from '../src/tts/modelPaths';
+import { findMainContentStart } from '../src/extraction/mainContent';
 import { speakable } from '../src/tts/speakable';
 import { chunk } from '../src/tts/chunk';
+import { pauseAfter } from '../src/tts/pauses';
 
 /** How long an utterance may be before it is cut into separate synthesis jobs. */
 const CHUNK_LIMIT = 300;
@@ -25,8 +27,14 @@ export default function Library() {
   const [status, setStatus] = useState('Pick a PDF, or speak the test sentence.');
   const [log, setLog] = useState<string[]>([]);
   const [doc, setDoc] = useState<ExtractedDoc | null>(null);
+  // Where the book's own content starts, when there is front matter to skip.
+  // Null means there is nothing to skip, and no button for it.
+  const [skipTo, setSkipTo] = useState<number | null>(null);
   const loaded = useRef(false);
   const run = useRef(0);
+  // What the device actually managed on the last utterance, which decides
+  // whether there is room to spend on a pause after the next one.
+  const recentRtf = useRef<number | undefined>(undefined);
   const playlist = useAudioPlaylist();
 
   const say = (line: string) => {
@@ -53,6 +61,8 @@ export default function Library() {
   const startRun = () => {
     playlist.clear();
     setLog([]);
+    // Each run measures the device afresh rather than trusting the last one.
+    recentRtf.current = undefined;
     run.current += 1;
     return run.current;
   };
@@ -64,12 +74,21 @@ export default function Library() {
 
     const pieces = chunk(speakable(sentence.text), CHUNK_LIMIT);
     for (const [n, piece] of pieces.entries()) {
+      const silenceMs = pauseAfter({
+        kind: sentence.kind,
+        endsSentence: n === pieces.length - 1,
+        rtf: recentRtf.current,
+      });
       // A fresh name per run: overwriting a file the player still holds open
       // leaves it playing the copy it already decoded.
       const name = `${runId}-${order}-${n}.wav`;
       const out = `${Paths.cache.uri.replace(/^file:\/\//, '')}utterances/${name}`;
-      const result = await SherpaTts.synthesize(piece, 0, 1.0, out);
-      say(`#${order}.${n} rtf ${result.rtf.toFixed(3)} for ${result.durationSec.toFixed(1)}s`);
+      const result = await SherpaTts.synthesize(piece, 0, 1.0, out, silenceMs);
+      recentRtf.current = result.rtf;
+      say(
+        `#${order}.${n} rtf ${result.rtf.toFixed(3)} for ${result.durationSec.toFixed(1)}s` +
+          (silenceMs > 0 ? ` +${silenceMs}ms` : ' no pause'),
+      );
       // The type allows a bare string, but the native side only accepts the
       // object form and rejects a string at the bridge.
       playlist.add({ uri: `file://${result.path}` });
@@ -101,7 +120,7 @@ export default function Library() {
     }
   };
 
-  const readDocument = async () => {
+  const readDocument = async (from: number) => {
     if (!doc) return;
     try {
       const runId = startRun();
@@ -109,6 +128,7 @@ export default function Library() {
       await ensureVoice();
 
       const spoken = doc.sentences
+        .slice(from)
         .filter((s) => s.kind !== 'header' && s.kind !== 'footer')
         .slice(0, PREVIEW);
 
@@ -136,6 +156,7 @@ export default function Library() {
     });
     if (result.canceled) return;
     setDoc(null);
+    setSkipTo(null);
     setLog([]);
     setStatus('Extracting...');
     setUri(result.assets[0].uri);
@@ -145,7 +166,18 @@ export default function Library() {
     <View style={styles.screen}>
       <Button title="Speak a test sentence" onPress={() => void speakTestSentence()} />
       <Button title="Pick a PDF" onPress={() => void pick()} />
-      {doc && <Button title={`Read the first ${PREVIEW} sentences`} onPress={() => void readDocument()} />}
+      {doc && (
+        <Button
+          title={`Read the first ${PREVIEW} sentences`}
+          onPress={() => void readDocument(0)}
+        />
+      )}
+      {doc && skipTo !== null && (
+        <Button
+          title={`Skip front matter (start at "${doc.sentences[skipTo].text.slice(0, 24)}")`}
+          onPress={() => void readDocument(skipTo)}
+        />
+      )}
       <Button title="Stop" onPress={() => playlist.pause()} />
 
       <Text style={styles.status}>{status}</Text>
@@ -170,6 +202,7 @@ export default function Library() {
           onDone={(extracted) => {
             setUri(null);
             setDoc(extracted);
+            setSkipTo(findMainContentStart(extracted.sentences));
             setStatus(`Extracted ${extracted.sentences.length} sentences.`);
           }}
           onError={(message) => {

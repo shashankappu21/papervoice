@@ -1,5 +1,6 @@
 package expo.modules.sherpatts
 
+import com.k2fsa.sherpa.onnx.GeneratedAudio
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
@@ -52,21 +53,27 @@ class SherpaTtsModule : Module() {
       )
     }
 
-    AsyncFunction("synthesize") { text: String, sid: Int, speed: Float, outPath: String ->
+    AsyncFunction("synthesize") { text: String, sid: Int, speed: Float, outPath: String, silenceMs: Int ->
       val engine = tts ?: throw CodedException("SherpaTts.load() must be called first")
 
       val startedAt = System.currentTimeMillis()
       val audio = engine.generate(text, sid, speed)
-      if (!audio.save(outPath)) throw CodedException("Could not write the WAV file: $outPath")
-
-      val durationSec = audio.samples.size.toDouble() / audio.sampleRate.toDouble()
       val elapsedSec = (System.currentTimeMillis() - startedAt) / 1000.0
+      val speechSec = audio.samples.size.toDouble() / audio.sampleRate.toDouble()
+
+      // The pause between utterances is written into the audio. The playlist is
+      // gapless by design, so silence has to be part of the track for the
+      // listener to hear a break between one sentence and the next.
+      val written = if (silenceMs > 0) withTrailingSilence(audio, silenceMs) else audio
+      if (!written.save(outPath)) throw CodedException("Could not write the WAV file: $outPath")
 
       mapOf(
         "path" to outPath,
-        "durationSec" to durationSec,
-        // Real-time factor: below 1 means synthesis outruns playback.
-        "rtf" to if (durationSec > 0) elapsedSec / durationSec else 0.0,
+        // How long the track takes to play, silence included.
+        "durationSec" to written.samples.size.toDouble() / written.sampleRate.toDouble(),
+        // Real-time factor, measured against the speech alone: padding the
+        // audio must not be allowed to flatter the number.
+        "rtf" to if (speechSec > 0) elapsedSec / speechSec else 0.0,
       )
     }
 
@@ -79,5 +86,12 @@ class SherpaTtsModule : Module() {
       tts?.release()
       tts = null
     }
+  }
+
+  private fun withTrailingSilence(audio: GeneratedAudio, silenceMs: Int): GeneratedAudio {
+    val extra = audio.sampleRate * silenceMs / 1000
+    val samples = FloatArray(audio.samples.size + extra)
+    audio.samples.copyInto(samples)
+    return GeneratedAudio(samples, audio.sampleRate)
   }
 }
