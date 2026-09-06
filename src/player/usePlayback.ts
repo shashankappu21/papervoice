@@ -45,10 +45,16 @@ export interface Playback {
    */
   loadingVoice: boolean;
   error: string | null;
+  /** Playback speed, where 1 is the voice's own pace. */
+  rate: number;
   play(from?: number): Promise<void>;
   pause(): void;
   jumpTo(index: number): Promise<void>;
+  setRate(rate: number): void;
 }
+
+/** The range worth offering: below this is a drawl, above it is unintelligible. */
+export const RATE_RANGE = { min: 0.5, max: 3, step: 0.1 };
 
 /**
  * Reads a document aloud, keeping synthesis ahead of playback.
@@ -63,6 +69,8 @@ export function usePlayback(sentences: Sentence[], title: string): Playback {
   const [buffering, setBuffering] = useState(false);
   const [loadingVoice, setLoadingVoice] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rate, setRateState] = useState(1);
+  const rateRef = useRef(1);
 
   const player = useRef<AudioPlayer | null>(null);
   const voiceLoaded = useRef(false);
@@ -129,6 +137,9 @@ export function usePlayback(sentences: Sentence[], title: string): Playback {
     const current = player.current;
     if (!current) return;
     current.replace({ uri: `file://${path}` });
+    // The rate belongs to the player, and replacing the source resets it, so it
+    // has to be applied to every track rather than once.
+    current.setPlaybackRate(rateRef.current, 'high');
     current.play();
     setPlaying(true);
   };
@@ -159,6 +170,9 @@ export function usePlayback(sentences: Sentence[], title: string): Playback {
   // and handing them between players loses them.
   useEffect(() => {
     const created = createAudioPlayer(null);
+    // Speeding a voice up must not raise its pitch: the brief asks for a rate
+    // control, not a chipmunk.
+    created.shouldCorrectPitch = true;
     player.current = created;
 
     const subscription = created.addListener('playbackStatusUpdate', (status) => {
@@ -254,11 +268,34 @@ export function usePlayback(sentences: Sentence[], title: string): Playback {
     setPlaying(false);
   };
 
+  /**
+   * Changes speed without re-synthesising: the engine could speak faster, but
+   * that would throw away every sentence already made and stall the listener.
+   * Pitch correction keeps the voice from turning into a chipmunk.
+   */
+  const setRate = (next: number) => {
+    const clamped = Math.min(RATE_RANGE.max, Math.max(RATE_RANGE.min, next));
+    rateRef.current = clamped;
+    setRateState(clamped);
+    player.current?.setPlaybackRate(clamped, 'high');
+  };
+
   const jumpTo = async (to: number) => {
     pause();
     awaiting.current = null;
     await play(to);
   };
 
-  return { currentIndex, playing, buffering, loadingVoice, error, play, pause, jumpTo };
+  return {
+    currentIndex,
+    playing,
+    buffering,
+    loadingVoice,
+    error,
+    rate,
+    play,
+    pause,
+    jumpTo,
+    setRate,
+  };
 }

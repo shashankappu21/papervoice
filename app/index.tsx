@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Button, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { ExtractorWebView } from '../src/extraction/ExtractorWebView';
 import { findMainContentStart } from '../src/extraction/mainContent';
 import type { ExtractedDoc, Sentence } from '../src/extraction/types';
-import { usePlayback } from '../src/player/usePlayback';
+import { usePlayback, RATE_RANGE } from '../src/player/usePlayback';
+import { SentenceList } from '../src/ui/SentenceList';
 
 /**
  * A stable empty list. A fresh `[]` on every render would rebuild the synthesis
@@ -12,11 +13,13 @@ import { usePlayback } from '../src/player/usePlayback';
  */
 const NO_SENTENCES: Sentence[] = [];
 
+const FONT_SIZE = 18;
+
 /**
- * Temporary harness for testing extraction and reading aloud on a device. The
- * real library and reader screens replace it once the pipeline is trusted.
+ * The reader. Still reached by picking a file rather than from a library, which
+ * arrives with the books themselves.
  */
-export default function Library() {
+export default function Reader() {
   const [uri, setUri] = useState<string | null>(null);
   const [status, setStatus] = useState('Pick a PDF to read.');
   const [doc, setDoc] = useState<ExtractedDoc | null>(null);
@@ -39,56 +42,60 @@ export default function Library() {
     setUri(result.assets[0].uri);
   };
 
-  const current = sentences[playback.currentIndex];
-  const around = sentences.slice(
-    Math.max(0, playback.currentIndex - 2),
-    playback.currentIndex + 8,
-  );
+  const message =
+    playback.error ??
+    (playback.loadingVoice
+      ? 'Loading the voice...'
+      : playback.buffering
+        ? 'Synthesising...'
+        : status);
 
   return (
     <View style={styles.screen}>
-      <Button title="Pick a PDF" onPress={() => void pick()} />
-
-      {doc && (
-        <View style={styles.row}>
-          <Button
-            title={playback.playing ? 'Pause' : 'Read from the start'}
-            disabled={playback.loadingVoice}
-            onPress={() => (playback.playing ? playback.pause() : void playback.play(0))}
-          />
-          {skipTo !== null && !playback.playing && (
-            <Button title="Skip front matter" onPress={() => void playback.jumpTo(skipTo)} />
-          )}
+      {doc ? (
+        <SentenceList
+          sentences={sentences}
+          currentIndex={playback.currentIndex}
+          onJump={(index) => void playback.jumpTo(index)}
+          fontSize={FONT_SIZE}
+          following={playback.playing}
+        />
+      ) : (
+        <View style={styles.empty}>
+          <Text style={styles.status}>{message}</Text>
         </View>
       )}
 
-      <Text style={styles.status}>
-        {playback.error ??
-          (playback.loadingVoice
-            ? 'Loading the voice...'
-            : playback.buffering
-              ? 'Synthesising...'
-              : status)}
-      </Text>
+      <View style={styles.controls}>
+        <View style={styles.row}>
+          <Button title="Open" onPress={() => void pick()} />
+          {doc && (
+            <Button
+              title={playback.playing ? 'Pause' : 'Play'}
+              disabled={playback.loadingVoice}
+              onPress={() =>
+                playback.playing ? playback.pause() : void playback.play(playback.currentIndex)
+              }
+            />
+          )}
+          {doc && skipTo !== null && !playback.playing && (
+            <Button title="Skip to chapter 1" onPress={() => void playback.jumpTo(skipTo)} />
+          )}
+        </View>
 
-      {doc && (
-        <Text style={styles.meta}>
-          sentence {playback.currentIndex + 1} of {sentences.length}
-          {current ? ` · ${current.kind}` : ''}
-        </Text>
-      )}
+        {doc && (
+          <View style={styles.row}>
+            <Button title="−" onPress={() => playback.setRate(playback.rate - RATE_RANGE.step)} />
+            <Text style={styles.rate}>{playback.rate.toFixed(1)}×</Text>
+            <Button title="+" onPress={() => playback.setRate(playback.rate + RATE_RANGE.step)} />
+            <Text style={styles.meta}>
+              {doc ? `${playback.currentIndex + 1} / ${sentences.length}` : ''}
+            </Text>
+          </View>
+        )}
 
-      <ScrollView style={styles.output}>
-        {around.map((sentence) => (
-          <Text
-            key={sentence.index}
-            style={[styles.sentence, sentence.index === playback.currentIndex && styles.speaking]}
-            onPress={() => void playback.jumpTo(sentence.index)}
-          >
-            {sentence.text}
-          </Text>
-        ))}
-      </ScrollView>
+        {doc && message !== status && <Text style={styles.status}>{message}</Text>}
+      </View>
 
       {uri && (
         <ExtractorWebView
@@ -98,7 +105,7 @@ export default function Library() {
             setUri(null);
             setDoc(extracted);
             setSkipTo(findMainContentStart(extracted.sentences));
-            setStatus(`Extracted ${extracted.sentences.length} sentences.`);
+            setStatus(`${extracted.sentences.length} sentences.`);
           }}
           onError={(message) => {
             setUri(null);
@@ -111,11 +118,11 @@ export default function Library() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 16, gap: 8 },
-  row: { flexDirection: 'row', gap: 12 },
-  status: { fontSize: 14, fontWeight: '600' },
-  meta: { fontSize: 12, color: '#555' },
-  output: { flex: 1 },
-  sentence: { fontSize: 16, lineHeight: 24, marginBottom: 10, color: '#333' },
-  speaking: { backgroundColor: '#ffe9a8', color: '#000' },
+  screen: { flex: 1, paddingTop: 8 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  controls: { borderTopWidth: 1, borderTopColor: '#e2e2e2', padding: 12, gap: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  status: { fontSize: 13, color: '#444' },
+  meta: { fontSize: 13, color: '#777', marginLeft: 'auto' },
+  rate: { fontSize: 15, fontVariant: ['tabular-nums'], minWidth: 44, textAlign: 'center' },
 });
