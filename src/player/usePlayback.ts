@@ -4,11 +4,7 @@ import { Directory, Paths } from 'expo-file-system';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { SherpaTts } from '../../modules/sherpa-tts';
 import { createSynthQueue } from '../tts/synthQueue';
-import { speakable } from '../tts/speakable';
-import { chunk } from '../tts/chunk';
-import { pauseAfter } from '../tts/pauses';
-import { VOICES, findVoice } from '../voices/catalog';
-import { voiceStore, voiceLoadPaths } from '../voices/deviceVoices';
+import { openEngine, type SpeechEngine } from '../voices/engine';
 import { getSetting, setSetting, SETTING_RATE, SETTING_VOICE } from '../db/settings';
 import type { Sentence } from '../extraction/types';
 
@@ -18,12 +14,6 @@ import type { Sentence } from '../extraction/types';
  * disk while it waits.
  */
 const LOOKAHEAD = 8;
-
-/** How long an utterance may be before it is cut into separate synthesis jobs. */
-const CHUNK_LIMIT = 300;
-
-/** Silence between the pieces of one sentence, where a full pause would be heard. */
-const SEAM_MS = 90;
 
 /**
  * How many sentences may fail in a row before playback stops and says so.
@@ -81,6 +71,7 @@ export function usePlayback(
 
   const player = useRef<AudioPlayer | null>(null);
   const voiceLoaded = useRef(false);
+  const engine = useRef<SpeechEngine | null>(null);
   /** The load in flight, so concurrent callers wait on one rather than racing. */
   const voiceLoading = useRef<Promise<void> | null>(null);
   const recentRtf = useRef<number | undefined>(undefined);
@@ -102,13 +93,9 @@ export function usePlayback(
         cacheDir,
         lookahead: LOOKAHEAD,
         synthesize: async (sentence, outPath) => {
-          const parts = chunk(speakable(sentence.text), CHUNK_LIMIT);
-          const tailMs = pauseAfter({
-            kind: sentence.kind,
-            endsSentence: true,
-            rtf: recentRtf.current,
-          });
-          const result = await SherpaTts.synthesize(parts, 0, 1.0, outPath, SEAM_MS, tailMs);
+          const speaking = engine.current;
+          if (!speaking) throw new Error('No voice is ready');
+          const result = await speaking.speak(sentence, outPath, recentRtf.current);
           recentRtf.current = result.rtf;
           consecutiveFailures.current = 0;
           return result;
@@ -213,18 +200,9 @@ export function usePlayback(
 
     setLoadingVoice(true);
     const loading = (async () => {
-      const chosen = await getSetting(SETTING_VOICE);
-      const store = voiceStore();
-      // Whatever was chosen, if it is installed; otherwise anything that is.
-      const voice =
-        (chosen ? findVoice(chosen) : undefined) ?? VOICES.find((v) => store.isInstalled(v));
-
-      if (!voice || !store.isInstalled(voice)) {
-        throw new Error('No voice is installed yet. Choose one from Voices.');
-      }
-
-      const paths = await voiceLoadPaths(voice);
-      await SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2);
+      // Whatever was chosen, or the phone's own voice: reading should not wait
+      // on a download that may never have happened.
+      engine.current = await openEngine(await getSetting(SETTING_VOICE));
     })()
       .then(() => {
         voiceLoaded.current = true;

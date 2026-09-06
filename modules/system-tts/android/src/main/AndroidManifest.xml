@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <queries>
+    <!-- Required from Android 11 to see which engines are installed. -->
+    <intent>
+      <action android:name="android.intent.action.TTS_SERVICE" />
+    </intent>
+  </queries>
+</manifest>

@@ -3,6 +3,8 @@ import { ActivityIndicator, Button, FlatList, StyleSheet, Text, View } from 'rea
 import { Stack, useFocusEffect } from 'expo-router';
 import { VOICES, type VoiceMeta } from '../src/voices/catalog';
 import { voiceStore } from '../src/voices/deviceVoices';
+import { listUsableSystemVoices, systemVoiceId, systemVoiceLabel } from '../src/voices/engine';
+import type { SystemVoice } from '../modules/system-tts';
 import { getSetting, setSetting, SETTING_VOICE } from '../src/db/settings';
 
 const megabytes = (bytes: number) => `${Math.round(bytes / 1_000_000)} MB`;
@@ -15,6 +17,8 @@ const megabytes = (bytes: number) => `${Math.round(bytes / 1_000_000)} MB`;
  */
 export default function Voices() {
   const [installed, setInstalled] = useState<Set<string>>(new Set());
+  const [system, setSystem] = useState<SystemVoice[]>([]);
+  const [hiddenVoices, setHiddenVoices] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ id: string; fraction: number } | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
@@ -23,6 +27,13 @@ export default function Voices() {
     const store = voiceStore();
     setInstalled(new Set(VOICES.filter((voice) => store.isInstalled(voice)).map((v) => v.id)));
     getSetting(SETTING_VOICE).then(setSelected, () => undefined);
+    listUsableSystemVoices().then(
+      ({ usable, hiddenForNetwork }) => {
+        setSystem(usable);
+        setHiddenVoices(hiddenForNetwork);
+      },
+      () => setSystem([]),
+    );
   }, []);
 
   useFocusEffect(refresh);
@@ -53,6 +64,47 @@ export default function Voices() {
       <FlatList
         data={VOICES}
         keyExtractor={(voice) => voice.id}
+        ListHeaderComponent={
+          <View>
+            <Text style={styles.section}>Already on this phone</Text>
+            {system.length === 0 && (
+              <Text style={styles.detail}>
+                No offline system voice was found. Voices that speak over the network are not
+                offered, because reading one of your documents with them would send it away.
+              </Text>
+            )}
+            {system.slice(0, 4).map((voice) => {
+              const id = systemVoiceId(voice);
+              return (
+                <View key={id} style={styles.voice}>
+                  <View style={styles.headline}>
+                    <Text style={styles.name}>{systemVoiceLabel(voice)}</Text>
+                    {selected === id && <Text style={styles.badge}>in use</Text>}
+                  </View>
+                  <Text style={styles.detail}>
+                    System voice · works offline · nothing to download
+                  </Text>
+                  <View style={styles.actions}>
+                    <Button
+                      title={selected === id ? 'In use' : 'Use this voice'}
+                      disabled={selected === id}
+                      onPress={() => void setSetting(SETTING_VOICE, id).then(refresh)}
+                    />
+                  </View>
+                </View>
+              );
+            })}
+            {hiddenVoices > 0 && (
+              <Text style={styles.hidden}>
+                {hiddenVoices} more {hiddenVoices === 1 ? 'voice is' : 'voices are'} installed on
+                this phone but {hiddenVoices === 1 ? 'speaks' : 'speak'} over the internet. Reading
+                a document with {hiddenVoices === 1 ? 'it' : 'them'} would send it away, so
+                {hiddenVoices === 1 ? ' it is' : ' they are'} not offered.
+              </Text>
+            )}
+            <Text style={styles.section}>Natural voices</Text>
+          </View>
+        }
         renderItem={({ item }) => {
           const isInstalled = installed.has(item.id);
           const busy = progress?.id === item.id;
@@ -113,6 +165,8 @@ export default function Voices() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   note: { padding: 16, fontSize: 13, color: '#666', lineHeight: 19 },
+  hidden: { paddingHorizontal: 20, paddingTop: 10, fontSize: 12, color: '#999', lineHeight: 17 },
+  section: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6, fontSize: 12, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 },
   voice: { paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#eee', gap: 6 },
   headline: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   name: { fontSize: 17, fontWeight: '600' },
