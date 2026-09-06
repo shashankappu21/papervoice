@@ -63,8 +63,13 @@ export const RATE_RANGE = { min: 0.5, max: 3, step: 0.1 };
  * the index being read -- which is what the highlight follows and what a saved
  * position records.
  */
-export function usePlayback(sentences: Sentence[], title: string): Playback {
-  const [currentIndex, setCurrentIndex] = useState(0);
+export function usePlayback(
+  sentences: Sentence[],
+  title: string,
+  /** Where to pick up: a saved position, or the start of a new book. */
+  initialIndex = 0,
+): Playback {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [playing, setPlaying] = useState(false);
   const [buffering, setBuffering] = useState(false);
   const [loadingVoice, setLoadingVoice] = useState(false);
@@ -79,7 +84,7 @@ export function usePlayback(sentences: Sentence[], title: string): Playback {
   const recentRtf = useRef<number | undefined>(undefined);
   /** The sentence playback is waiting on, when its audio is not ready yet. */
   const awaiting = useRef<number | null>(null);
-  const index = useRef(0);
+  const index = useRef(initialIndex);
   const consecutiveFailures = useRef(0);
 
   const cacheDir = useMemo(() => {

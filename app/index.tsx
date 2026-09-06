@@ -1,34 +1,24 @@
-import { useState } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Button, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { ExtractorWebView } from '../src/extraction/ExtractorWebView';
-import { findMainContentStart } from '../src/extraction/mainContent';
-import type { ExtractedDoc, Sentence } from '../src/extraction/types';
-import { usePlayback, RATE_RANGE } from '../src/player/usePlayback';
-import { SentenceList } from '../src/ui/SentenceList';
+import { addBook, listBooks, type Book } from '../src/db/books';
 
-/**
- * A stable empty list. A fresh `[]` on every render would rebuild the synthesis
- * queue each time, tearing down the loaded voice along with it.
- */
-const NO_SENTENCES: Sentence[] = [];
+/** The library: what has been imported, and how far each one has been read. */
+export default function Library() {
+  const router = useRouter();
+  const [books, setBooks] = useState<Book[]>([]);
+  const [importing, setImporting] = useState<{ uri: string; title: string } | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
 
-const FONT_SIZE = 18;
-
-/**
- * The reader. Still reached by picking a file rather than from a library, which
- * arrives with the books themselves.
- */
-export default function Reader() {
-  const [uri, setUri] = useState<string | null>(null);
-  const [status, setStatus] = useState('Pick a PDF to read.');
-  const [doc, setDoc] = useState<ExtractedDoc | null>(null);
-  // Where the book's own content starts, when there is front matter to skip.
-  // Null means there is nothing to skip, and no button for it.
-  const [skipTo, setSkipTo] = useState<number | null>(null);
-
-  const sentences = doc?.sentences ?? NO_SENTENCES;
-  const playback = usePlayback(sentences, 'Papervoice');
+  // Progress changes while reading, so the list is refreshed on the way back
+  // rather than only when it is first built.
+  useFocusEffect(
+    useCallback(() => {
+      listBooks().then(setBooks, (cause: unknown) => setStatus(String(cause)));
+    }, []),
+  );
 
   const pick = async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -36,80 +26,58 @@ export default function Reader() {
       copyToCacheDirectory: true,
     });
     if (result.canceled) return;
-    setDoc(null);
-    setSkipTo(null);
-    setStatus('Extracting...');
-    setUri(result.assets[0].uri);
-  };
 
-  const message =
-    playback.error ??
-    (playback.loadingVoice
-      ? 'Loading the voice...'
-      : playback.buffering
-        ? 'Synthesising...'
-        : status);
+    const asset = result.assets[0];
+    setStatus('Reading the document...');
+    setImporting({ uri: asset.uri, title: asset.name.replace(/\.pdf$/i, '') });
+  };
 
   return (
     <View style={styles.screen}>
-      {doc ? (
-        <SentenceList
-          sentences={sentences}
-          currentIndex={playback.currentIndex}
-          onJump={(index) => void playback.jumpTo(index)}
-          fontSize={FONT_SIZE}
-          following={playback.playing}
-        />
-      ) : (
-        <View style={styles.empty}>
-          <Text style={styles.status}>{message}</Text>
-        </View>
-      )}
+      <FlatList
+        data={books}
+        keyExtractor={(book) => String(book.id)}
+        ListEmptyComponent={
+          <Text style={styles.empty}>Nothing here yet. Import a PDF to start.</Text>
+        }
+        renderItem={({ item }) => {
+          const percent = Math.round((item.position / Math.max(1, item.sentenceCount)) * 100);
+          return (
+            <Pressable style={styles.book} onPress={() => router.push({ pathname: '/reader/[bookId]', params: { bookId: item.id } })}>
+              <Text style={styles.title}>{item.title}</Text>
+              <Text style={styles.detail}>
+                {item.pageCount} pages · {item.sentenceCount} sentences
+                {item.position > 0 ? ` · ${percent}% read` : ''}
+              </Text>
+            </Pressable>
+          );
+        }}
+      />
 
-      <View style={styles.controls}>
-        <View style={styles.row}>
-          <Button title="Open" onPress={() => void pick()} />
-          {doc && (
-            <Button
-              title={playback.playing ? 'Pause' : 'Play'}
-              disabled={playback.loadingVoice}
-              onPress={() =>
-                playback.playing ? playback.pause() : void playback.play(playback.currentIndex)
-              }
-            />
-          )}
-          {doc && skipTo !== null && !playback.playing && (
-            <Button title="Skip to chapter 1" onPress={() => void playback.jumpTo(skipTo)} />
-          )}
-        </View>
-
-        {doc && (
-          <View style={styles.row}>
-            <Button title="−" onPress={() => playback.setRate(playback.rate - RATE_RANGE.step)} />
-            <Text style={styles.rate}>{playback.rate.toFixed(1)}×</Text>
-            <Button title="+" onPress={() => playback.setRate(playback.rate + RATE_RANGE.step)} />
-            <Text style={styles.meta}>
-              {doc ? `${playback.currentIndex + 1} / ${sentences.length}` : ''}
-            </Text>
-          </View>
-        )}
-
-        {doc && message !== status && <Text style={styles.status}>{message}</Text>}
+      <View style={styles.footer}>
+        <Button title="Import a PDF" onPress={() => void pick()} disabled={importing !== null} />
+        {status && <Text style={styles.status}>{status}</Text>}
       </View>
 
-      {uri && (
+      {importing && (
         <ExtractorWebView
-          uri={uri}
-          onProgress={(page, total) => setStatus(`Extracting page ${page} of ${total}...`)}
-          onDone={(extracted) => {
-            setUri(null);
-            setDoc(extracted);
-            setSkipTo(findMainContentStart(extracted.sentences));
-            setStatus(`${extracted.sentences.length} sentences.`);
+          uri={importing.uri}
+          onProgress={(page, total) => setStatus(`Reading page ${page} of ${total}...`)}
+          onDone={(doc) => {
+            const { uri, title } = importing;
+            setImporting(null);
+            setStatus('Saving...');
+            addBook(uri, title, doc).then(
+              (book) => {
+                setStatus(null);
+                router.push({ pathname: '/reader/[bookId]', params: { bookId: book.id } });
+              },
+              (cause: unknown) => setStatus(`Could not save: ${String(cause)}`),
+            );
           }}
           onError={(message) => {
-            setUri(null);
-            setStatus(`Extraction failed: ${message}`);
+            setImporting(null);
+            setStatus(`Could not read that PDF: ${message}`);
           }}
         />
       )}
@@ -118,11 +86,11 @@ export default function Reader() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingTop: 8 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  controls: { borderTopWidth: 1, borderTopColor: '#e2e2e2', padding: 12, gap: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  screen: { flex: 1 },
+  empty: { padding: 32, textAlign: 'center', color: '#777' },
+  book: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  title: { fontSize: 17, fontWeight: '600' },
+  detail: { fontSize: 13, color: '#777', marginTop: 2 },
+  footer: { borderTopWidth: 1, borderTopColor: '#e2e2e2', padding: 12, gap: 6 },
   status: { fontSize: 13, color: '#444' },
-  meta: { fontSize: 13, color: '#777', marginLeft: 'auto' },
-  rate: { fontSize: 15, fontVariant: ['tabular-nums'], minWidth: 44, textAlign: 'center' },
 });
