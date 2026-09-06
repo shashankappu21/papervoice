@@ -57,8 +57,13 @@ function continues(
   return previous.y - line.y <= limit;
 }
 
-/** Dot leaders in a table of contents: "Chapter One . . . . . 12". */
-const DOT_LEADERS = /(?:\.\s?){4,}/;
+/**
+ * Dot leaders in a table of contents: "Chapter One . . . . . . 12". Six is the
+ * floor, not four: an ellipsis ending a sentence is set as four spaced dots
+ * ("I was in love. . . . I never said so"), and treating that as a leader
+ * deletes the sentence around it.
+ */
+const DOT_LEADERS = /(?:\.\s?){6,}/;
 
 /**
  * A line at the page edge that is only a page number. Checked by pattern rather
@@ -84,7 +89,7 @@ function classifyLine(
   const text = line.text.trim();
   if (DOT_LEADERS.test(text)) return 'furniture';
   if (isNearEdge(line.y, pageHeight) || opensOrClosesPage) {
-    if (runningShare(line, running) > 0.5) return 'furniture';
+    if (runningShare(line, running) >= FURNITURE_SHARE) return 'furniture';
     if (PAGE_NUMBER_PATTERNS.some((re) => re.test(text))) return 'furniture';
   }
   if (line.fontSize > bodySize * 1.1) return 'heading';
@@ -146,8 +151,20 @@ function furnitureKey(item: TextItem): string {
  *
  * Matching is per item, not per line: one page's footer often carries an extra
  * fragment the others lack, and matching whole lines would let that page's
- * footer through intact.
+ * footer through intact. Short runs are ignored, because a PDF emits a line as
+ * many small pieces and the short ones -- "I", "was", "and" -- recur at the same
+ * height in any book, which is enough to condemn a unique sentence.
  */
+const MIN_FURNITURE_RUN = 3;
+
+/**
+ * How much of a line must repeat before it is furniture rather than prose.
+ * Measured on two real books, the split is wide: running footers score 0.65 to
+ * 1.0 (one page's footer carries an extra fragment, which is what puts the
+ * floor at 0.65), and no prose line anywhere in either book scores above 0.3.
+ */
+const FURNITURE_SHARE = 0.6;
+
 function findRunningFurniture(
   lines: Line[],
   pageHeight: number,
@@ -160,7 +177,7 @@ function findRunningFurniture(
     pages.add(line.page);
     if (!isNearEdge(line.y, pageHeight) && !edges.has(line)) continue;
     for (const item of line.items) {
-      if (item.text.trim().length === 0) continue;
+      if (item.text.trim().length < MIN_FURNITURE_RUN) continue;
       const key = furnitureKey(item);
       let seen = pagesByKey.get(key);
       if (!seen) pagesByKey.set(key, (seen = new Set()));
@@ -206,6 +223,7 @@ function runningShare(line: Line, running: Set<string>): number {
   let total = 0;
   for (const item of line.items) {
     const length = item.text.trim().length;
+    if (length < MIN_FURNITURE_RUN) continue;
     total += length;
     if (running.has(furnitureKey(item))) repeated += length;
   }

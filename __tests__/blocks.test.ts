@@ -209,3 +209,61 @@ describe('buildBlocks refinements', () => {
     expect(blocks[0].text).toBe('THE CONSTITUTION OF THE UNITED STATES');
   });
 });
+
+describe('buildBlocks does not delete prose', () => {
+  it('keeps a prose line whose common words happen to repeat at the same height', () => {
+    // Furniture is detected per item so one odd page cannot smuggle a footer
+    // through. But a PDF emits a line as many small runs, and the short ones --
+    // "I", "was", "and" -- recur at the same height on page after page in any
+    // book. Counting those was enough to condemn a unique sentence and delete
+    // it silently, which is the worst thing this pipeline can do.
+    const words = (text: string, page: number, y: number): Line => {
+      let x = 50;
+      const items = text.split(' ').map((word) => {
+        const item = { text: word, page, x, y, width: word.length * 5, height: 10, fontSize: 10 };
+        x += word.length * 5 + 4;
+        return item;
+      });
+      return { page, y, x: 50, width: x - 50, height: 10, fontSize: 10, text, items };
+    };
+
+    const sentences = [
+      'I was hungry and the room had gone very quiet by then.',
+      'She asked whether the money was already gone from the account.',
+      'He said nothing at all for what felt like a long time.',
+      'They wanted the deal closed before anyone else could bid.',
+      'We had one hour left and no way to reach the building.',
+      'The kidnappers called again just after midnight that night.',
+    ];
+    const lines: Line[] = [];
+    sentences.forEach((text, i) => {
+      const page = i + 1;
+      lines.push(words(text, page, 700));
+      lines.push(...filler(6, 640).map((l) => ({ ...l, page })));
+    });
+
+    const blocks = buildBlocks(lines, 792);
+    const prose = blocks.find((b) => b.text.startsWith('I was hungry'));
+    expect(prose?.kind).toBe('body');
+  });
+});
+
+describe('buildBlocks tells an ellipsis from a contents leader', () => {
+  it('keeps a sentence written with a spaced ellipsis', () => {
+    // American typography sets an ellipsis at the end of a sentence as four
+    // spaced dots. A contents leader runs far longer than that.
+    const blocks = buildBlocks(
+      [line('Actually, I was in love. . . . I never said so.', { y: 700 }), ...filler(20)],
+      792,
+    );
+    expect(blocks[0].kind).toBe('body');
+  });
+
+  it('still drops a contents line whose leader runs the width of the page', () => {
+    const blocks = buildBlocks(
+      [...filler(20), line('Text of the Constitution . . . . . . . . . . . . 14', { y: 200 })],
+      792,
+    );
+    expect(blocks[blocks.length - 1].kind).toBe('furniture');
+  });
+});
