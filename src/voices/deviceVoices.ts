@@ -15,7 +15,7 @@ const plain = (uri: string) => uri.replace(/^file:\/\//, '').replace(/\/$/, '');
 
 const voicesRoot = (): string => {
   const dir = new Directory(Paths.document, 'voices');
-  if (!dir.exists) dir.create({ intermediates: true });
+  dir.create({ intermediates: true, idempotent: true });
   return plain(dir.uri);
 };
 
@@ -39,7 +39,9 @@ export function voiceStore(): VoiceStore {
     },
     download: async (url, to, onProgress) => {
       const target = new File(`file://${to}`);
-      target.parentDirectory.create({ intermediates: true });
+      // idempotent: create() is not mkdir -p and throws when the directory is
+      // already there, which it is for every voice after the first attempt.
+      target.parentDirectory.create({ intermediates: true, idempotent: true });
       if (target.exists) target.delete();
 
       const task = File.createDownloadTask(url, target, {

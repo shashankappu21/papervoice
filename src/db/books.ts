@@ -41,7 +41,9 @@ export async function addBook(
   await new File(pickedUri).copy(pdf);
 
   const sentences = new File(dir, `${stamp}.sentences.json`);
-  sentences.create();
+  // overwrite: a file object has no idempotent flag, and create() throws on a
+  // name that is already taken.
+  sentences.create({ overwrite: true });
   sentences.write(JSON.stringify(doc.sentences));
 
   const db = await database();
