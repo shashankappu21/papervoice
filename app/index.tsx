@@ -45,14 +45,35 @@ export default function Library() {
           <Text style={styles.empty}>Nothing here yet. Import a PDF to start.</Text>
         }
         renderItem={({ item }) => {
-          const percent = Math.round((item.position / Math.max(1, item.sentenceCount)) * 100);
+          const fraction = item.position / Math.max(1, item.sentenceCount);
           return (
-            <Pressable style={styles.book} onPress={() => router.push({ pathname: '/reader/[bookId]', params: { bookId: item.id } })}>
+            <Pressable
+              style={styles.book}
+              onPress={() =>
+                router.push({ pathname: '/reader/[bookId]', params: { bookId: item.id } })
+              }
+            >
               <Text style={styles.title}>{item.title}</Text>
               <Text style={styles.detail}>
                 {plural(item.pageCount, 'page')} · {plural(item.sentenceCount, 'sentence')}
-                {item.position > 0 ? ` · ${percent}% read` : ''}
               </Text>
+
+              {item.position > 0 && (
+                <View style={styles.progressRow}>
+                  <View style={styles.track}>
+                    {/*
+                      A long book is barely started for its first hundred
+                      sentences, and a bar that rounds to nothing looks like a
+                      book never opened. The fill keeps a sliver so that having
+                      started is visible at all.
+                    */}
+                    <View style={[styles.fill, { width: `${Math.max(1, fraction * 100)}%` }]} />
+                  </View>
+                  <Text style={styles.progressText}>
+                    {item.position + 1} / {item.sentenceCount}
+                  </Text>
+                </View>
+              )}
             </Pressable>
           );
         }}
@@ -95,6 +116,10 @@ const styles = StyleSheet.create({
   book: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#eee' },
   title: { fontSize: 17, fontWeight: '600' },
   detail: { fontSize: 13, color: '#777', marginTop: 2 },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  track: { flex: 1, height: 3, backgroundColor: '#e4e4e4', borderRadius: 2, overflow: 'hidden' },
+  fill: { height: 3, backgroundColor: '#2f95dc' },
+  progressText: { fontSize: 12, color: '#999', fontVariant: ['tabular-nums'] },
   footer: { borderTopWidth: 1, borderTopColor: '#e2e2e2', padding: 12, gap: 6 },
   status: { fontSize: 13, color: '#444' },
 });
