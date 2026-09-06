@@ -30,6 +30,22 @@ export function SentenceList({ sentences, currentIndex, onJump, fontSize, follow
   const list = useRef<FlatList<Sentence>>(null);
   const lastTap = useRef<{ index: number; at: number }>({ index: -1, at: 0 });
   const [autoScroll, setAutoScroll] = useState(true);
+  const opened = useRef(false);
+
+  // Opening a book puts the reader back where they stopped. The audio already
+  // resumes there; without this the page did not, so a reader returning to a
+  // long book had to go looking for their own place.
+  useEffect(() => {
+    if (opened.current || sentences.length === 0) return;
+    opened.current = true;
+    if (currentIndex === 0) return;
+    list.current?.scrollToIndex({
+      index: currentIndex,
+      viewPosition: VIEW_POSITION,
+      // No animation: this is where the book opens, not somewhere it travels to.
+      animated: false,
+    });
+  }, [sentences.length, currentIndex]);
 
   useEffect(() => {
     if (!autoScroll || !following) return;
