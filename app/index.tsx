@@ -26,6 +26,7 @@ export default function Library() {
   const [log, setLog] = useState<string[]>([]);
   const [doc, setDoc] = useState<ExtractedDoc | null>(null);
   const loaded = useRef(false);
+  const run = useRef(0);
   const playlist = useAudioPlaylist();
 
   const say = (line: string) => {
@@ -43,14 +44,30 @@ export default function Library() {
     say(`voice loaded in ${Date.now() - started}ms: ${info.sampleRate}Hz, ${info.numSpeakers} speaker(s)`);
   };
 
+  /**
+   * Starts a run: empties the playlist and takes a fresh run number.
+   *
+   * Without the clear, a second run appends behind a track that has already
+   * finished, so play() resumes at the end of it and nothing is heard.
+   */
+  const startRun = () => {
+    playlist.clear();
+    setLog([]);
+    run.current += 1;
+    return run.current;
+  };
+
   /** Synthesises one sentence, adding each piece to the playlist as it lands. */
-  const speak = async (sentence: Sentence, order: number) => {
+  const speak = async (sentence: Sentence, order: number, runId: number) => {
     const cache = new Directory(Paths.cache, 'utterances');
     if (!cache.exists) cache.create({ intermediates: true });
 
     const pieces = chunk(speakable(sentence.text), CHUNK_LIMIT);
     for (const [n, piece] of pieces.entries()) {
-      const out = `${Paths.cache.uri.replace(/^file:\/\//, '')}utterances/${order}-${n}.wav`;
+      // A fresh name per run: overwriting a file the player still holds open
+      // leaves it playing the copy it already decoded.
+      const name = `${runId}-${order}-${n}.wav`;
+      const out = `${Paths.cache.uri.replace(/^file:\/\//, '')}utterances/${name}`;
       const result = await SherpaTts.synthesize(piece, 0, 1.0, out);
       say(`#${order}.${n} rtf ${result.rtf.toFixed(3)} for ${result.durationSec.toFixed(1)}s`);
       // The type allows a bare string, but the native side only accepts the
@@ -61,7 +78,7 @@ export default function Library() {
 
   const speakTestSentence = async () => {
     try {
-      setLog([]);
+      const runId = startRun();
       setStatus('Loading the voice...');
       await ensureVoice();
       setStatus('Synthesising...');
@@ -73,9 +90,11 @@ export default function Library() {
           boxes: [],
         },
         0,
+        runId,
       );
+      playlist.skipTo(0);
       playlist.play();
-      setStatus('Playing.');
+      setStatus(`Playing (${playlist.trackCount} track(s)).`);
     } catch (error) {
       setStatus(`Failed: ${String(error)}`);
       say(String(error));
@@ -85,7 +104,7 @@ export default function Library() {
   const readDocument = async () => {
     if (!doc) return;
     try {
-      setLog([]);
+      const runId = startRun();
       setStatus('Loading the voice...');
       await ensureVoice();
 
@@ -95,8 +114,13 @@ export default function Library() {
 
       setStatus(`Synthesising ${spoken.length} sentences...`);
       for (const [order, sentence] of spoken.entries()) {
-        await speak(sentence, order);
-        if (order === 0) playlist.play();
+        await speak(sentence, order, runId);
+        // Start speaking as soon as there is something to say, rather than
+        // waiting for the whole preview to be synthesised.
+        if (order === 0) {
+          playlist.skipTo(0);
+          playlist.play();
+        }
       }
       setStatus('Playing.');
     } catch (error) {
