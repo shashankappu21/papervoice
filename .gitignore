@@ -44,3 +44,6 @@ yarn-error.*
 # they are copyrighted, and a document's text must not leave the device.
 *.pdf
 /fixtures/local/
+
+# Inspection output from `npm run inspect`
+/out/
