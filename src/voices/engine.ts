@@ -101,26 +101,45 @@ export async function listAvailableVoices(): Promise<AvailableVoice[]> {
   return [...downloaded, ...system];
 }
 
+export interface OpenedVoice {
+  engine: SpeechEngine;
+  /**
+   * What was actually loaded, which is not always what was asked for: a saved
+   * voice can belong to an engine the phone no longer uses, and nothing was
+   * chosen at all the first time. The screen shows this, not the request.
+   */
+  voiceId: string;
+}
+
 /** Prepares whichever engine the chosen voice belongs to. */
-export async function openEngine(chosenId: string | null): Promise<SpeechEngine> {
+export async function openEngine(chosenId: string | null): Promise<OpenedVoice> {
+  const store = voiceStore();
+
   if (chosenId && isSystemVoice(chosenId)) {
-    return systemEngine(chosenId.slice(SYSTEM_PREFIX.length));
+    const wanted = chosenId.slice(SYSTEM_PREFIX.length);
+    const { usable } = await listUsableSystemVoices();
+    // Changing the phone's speech engine changes the names of its voices, so a
+    // saved one can simply cease to exist. That is not an error worth stopping
+    // for; it is a reason to pick something that does.
+    if (usable.some((voice) => voice.id === wanted)) {
+      return { engine: systemEngine(wanted), voiceId: chosenId };
+    }
+  } else {
+    const voice =
+      (chosenId ? findVoice(chosenId) : undefined) ??
+      VOICES.find((candidate) => store.isInstalled(candidate));
+    if (voice && store.isInstalled(voice)) {
+      return { engine: await neuralEngine(voice), voiceId: voice.id };
+    }
   }
 
-  const store = voiceStore();
-  const voice =
-    (chosenId ? findVoice(chosenId) : undefined) ??
-    VOICES.find((candidate) => store.isInstalled(candidate));
-
-  if (voice && store.isInstalled(voice)) return neuralEngine(voice);
-
-  // Nothing downloaded: fall back to the phone's own voice rather than refusing
-  // to read, which is the whole point of having a floor.
+  // Nothing chosen, or what was chosen has gone: fall back to the phone's own
+  // voice rather than refusing to read, which is the point of having a floor.
   const { usable } = await listUsableSystemVoices();
   if (usable.length === 0) {
     throw new Error('This phone has no offline voice, and no voice has been downloaded yet.');
   }
-  return systemEngine(usable[0].id);
+  return { engine: systemEngine(usable[0].id), voiceId: systemVoiceId(usable[0]) };
 }
 
 async function neuralEngine(voice: VoiceMeta): Promise<SpeechEngine> {

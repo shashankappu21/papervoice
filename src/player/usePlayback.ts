@@ -82,8 +82,8 @@ export function usePlayback(
   const engine = useRef<SpeechEngine | null>(null);
   /** Which voice the loaded engine belongs to, so a change can be noticed. */
   const loadedVoiceId = useRef<string | null>(null);
-  /** The load in flight, so concurrent callers wait on one rather than racing. */
-  const voiceLoading = useRef<Promise<void> | null>(null);
+  /** Loads run one after another, so the last one asked for is the one that wins. */
+  const voiceLoading = useRef<Promise<void>>(Promise.resolve());
   const recentRtf = useRef<number | undefined>(undefined);
   /** The sentence playback is waiting on, when its audio is not ready yet. */
   const awaiting = useRef<number | null>(null);
@@ -198,7 +198,7 @@ export function usePlayback(
       // go with it. Left set, the next synthesis would call into an engine that
       // is no longer there and fail on every sentence.
       voiceLoaded.current = false;
-      voiceLoading.current = null;
+      voiceLoading.current = Promise.resolve();
       loadedVoiceId.current = null;
       void SherpaTts.unload();
     },
@@ -206,57 +206,46 @@ export function usePlayback(
   );
 
   /**
-   * Loads the chosen voice, or reloads it when the choice has changed.
+   * Loads a voice, one at a time.
    *
-   * The choice is read every time rather than once: an engine cached for the
-   * life of the screen meant picking a different voice did nothing at all until
-   * the app was restarted.
+   * Loads are chained rather than deduplicated: a switch asked for while
+   * another load was in flight used to wait on that one and then believe it had
+   * finished, leaving the old voice loaded and the new one only apparently
+   * chosen. Whichever was asked for last is the one that ends up loaded.
    */
-  const ensureVoice = useCallback((): Promise<void> => {
-    if (voiceLoading.current) return voiceLoading.current;
+  const loadVoice = useCallback((target: string | null): Promise<void> => {
+    const next = voiceLoading.current.then(async () => {
+      if (voiceLoaded.current && loadedVoiceId.current === target) return;
 
-    setLoadingVoice(true);
-    const loading = (async () => {
-      const chosen = (await getSetting(SETTING_VOICE)) ?? null;
-      if (voiceLoaded.current && loadedVoiceId.current === chosen) return;
+      setLoadingVoice(true);
+      try {
+        // Let go of the engine being replaced, rather than holding two models.
+        if (voiceLoaded.current) {
+          voiceLoaded.current = false;
+          engine.current = null;
+          await SherpaTts.unload().catch(() => undefined);
+        }
 
-      // Release the engine that is going, or two of them hold a model each.
-      if (voiceLoaded.current) {
-        voiceLoaded.current = false;
-        engine.current = null;
-        await SherpaTts.unload().catch(() => undefined);
-      }
-
-      // Whatever was chosen, or the phone's own voice: reading should not wait
-      // on a download that may never have happened.
-      engine.current = await openEngine(chosen);
-      loadedVoiceId.current = chosen;
-    })()
-      .then(() => {
+        const opened = await openEngine(target);
+        engine.current = opened.engine;
         voiceLoaded.current = true;
-      })
-      .catch((cause: unknown) => {
-        // Let the next attempt try again rather than caching the failure.
-        voiceLoading.current = null;
-        throw cause;
-      })
-      .finally(() => setLoadingVoice(false));
+        // What actually loaded, which is not always what was asked for.
+        loadedVoiceId.current = opened.voiceId;
+        setVoiceId(opened.voiceId);
+      } finally {
+        setLoadingVoice(false);
+      }
+    });
 
-    voiceLoading.current = loading;
-    return loading;
+    // A failure must not poison the chain for every later load.
+    voiceLoading.current = next.catch(() => undefined);
+    return next;
   }, []);
 
-  // The reader's chosen speed outlives the session, and the book they chose it
-  // on: someone who listens at 1.6x listens at 1.6x to everything.
-  useEffect(() => {
-    getSetting(SETTING_RATE).then((saved) => {
-      const value = Number(saved);
-      if (!saved || Number.isNaN(value)) return;
-      rateRef.current = value;
-      setRateState(value);
-      player.current?.setPlaybackRate(value, 'high');
-    }, () => undefined);
-  }, []);
+  const ensureVoice = useCallback(async (): Promise<void> => {
+    if (voiceLoaded.current) return;
+    await loadVoice(await getSetting(SETTING_VOICE));
+  }, [loadVoice]);
 
   useEffect(() => {
     listAvailableVoices().then(setVoices, () => setVoices([]));
@@ -279,7 +268,7 @@ export function usePlayback(
     try {
       setError(null);
       await setSetting(SETTING_VOICE, id);
-      await ensureVoice();
+      await loadVoice(id);
       await queue.start(index.current);
 
       if (wasPlaying) {
