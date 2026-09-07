@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Button, FlatList, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
-import { VOICES, type VoiceMeta } from '../src/voices/catalog';
+import { OFFERED_VOICES, type VoiceMeta } from '../src/voices/catalog';
 import { voiceStore, removeUnknownVoices } from '../src/voices/deviceVoices';
 import { listUsableSystemVoices, systemVoiceId, systemVoiceLabel } from '../src/voices/engine';
 import type { SystemVoice } from '../modules/system-tts';
@@ -32,7 +32,7 @@ export default function Voices() {
       // Reclaiming space is worth doing, not worth failing the screen over.
     }
     const store = voiceStore();
-    setInstalled(new Set(VOICES.filter((voice) => store.isInstalled(voice)).map((v) => v.id)));
+    setInstalled(new Set(OFFERED_VOICES.filter((voice) => store.isInstalled(voice)).map((v) => v.id)));
     getSetting(SETTING_VOICE).then(setSelected, () => undefined);
     listUsableSystemVoices().then(
       ({ usable, hiddenForNetwork }) => {
@@ -69,7 +69,7 @@ export default function Voices() {
       </Text>
 
       <FlatList
-        data={VOICES}
+        data={OFFERED_VOICES}
         keyExtractor={(voice) => voice.id}
         ListHeaderComponent={
           <View>

@@ -1,6 +1,6 @@
 import { SherpaTts } from '../../modules/sherpa-tts';
 import { SystemTts, type SystemVoice } from '../../modules/system-tts';
-import { VOICES, findVoice, type VoiceMeta } from './catalog';
+import { OFFERED_VOICES, findVoice, type VoiceMeta } from './catalog';
 import { voiceStore, voiceLoadPaths } from './deviceVoices';
 import type { Sentence } from '../extraction/types';
 import { speakable } from '../tts/speakable';
@@ -91,7 +91,7 @@ export interface AvailableVoice {
  */
 export async function listAvailableVoices(): Promise<AvailableVoice[]> {
   const store = voiceStore();
-  const downloaded = VOICES.filter((voice) => store.isInstalled(voice)).map((voice) => ({
+  const downloaded = OFFERED_VOICES.filter((voice) => store.isInstalled(voice)).map((voice) => ({
     id: voice.id,
     label: voice.name,
     detail: `${voice.accent} · ${voice.gender} · natural`,
@@ -135,7 +135,7 @@ export async function openEngine(chosenId: string | null): Promise<OpenedVoice> 
   } else {
     const voice =
       (chosenId ? findVoice(chosenId) : undefined) ??
-      VOICES.find((candidate) => store.isInstalled(candidate));
+      OFFERED_VOICES.find((candidate) => store.isInstalled(candidate));
     if (voice && store.isInstalled(voice)) {
       return { engine: await neuralEngine(voice), voiceId: voice.id };
     }

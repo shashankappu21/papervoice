@@ -53,6 +53,13 @@ export interface VoiceMeta {
    * Piper does not, and cutting what is not there risks clipping a consonant.
    */
   trimTail?: number;
+  /**
+   * Kept, but not offered. A voice can be worth loading and not worth choosing
+   * -- it stays selectable by whoever already has it, and out of the list for
+   * everyone else. Hiding is not removing: removed voices get their files
+   * deleted from the phone as unknown.
+   */
+  hidden?: boolean;
   /** What the licence permits, shown rather than buried. */
   licence: string;
 }
@@ -102,22 +109,36 @@ const KITTEN = 'https://huggingface.co/csukuangfj/kitten-nano-en-v0_2-fp16/resol
  * but far inside what a listener can outrun, and with none of the dropped
  * phonemes that made Kokoro unusable.
  *
- * The names are KittenML's own, in the order its voice list gives, which is
- * taken to be the order of the speaker ids. If a voice does not sound like its
- * name, that assumption is where to look.
+ * The speakers are in the model's own order, which alternates male first --
+ * expr-voice-2-m, expr-voice-2-f, and so on. KittenML's published list of names
+ * is alphabetical-ish and does NOT follow it: mapping the names to ids in that
+ * order labelled every voice with the wrong gender, which is how this was
+ * found. The names below are paired to the order the model actually uses.
+ *
+ * Speakers 1 and 6 read slowly enough to be uncomfortable even with the rate
+ * correction below, so they are not offered. They stay in the catalog because
+ * they are part of a download that is already on the phone, and because anyone
+ * who had one selected should keep hearing it rather than have the app change
+ * voice underneath them. Their ids are written out rather than taken from this
+ * list's order, so hiding a speaker cannot shift the others onto the wrong one.
  */
-const KITTEN_VOICES: Array<[string, 'female' | 'male']> = [
-  ['Bella', 'female'],
-  ['Jasper', 'male'],
-  ['Luna', 'female'],
-  ['Bruno', 'male'],
-  ['Rosie', 'female'],
-  ['Hugo', 'male'],
-  ['Kiki', 'female'],
-  ['Leo', 'male'],
+const KITTEN_VOICES: Array<{
+  speakerId: number;
+  name: string;
+  gender: 'female' | 'male';
+  hidden?: boolean;
+}> = [
+  { speakerId: 0, name: 'Jasper', gender: 'male' },
+  { speakerId: 1, name: 'Bella', gender: 'female', hidden: true },
+  { speakerId: 2, name: 'Bruno', gender: 'male' },
+  { speakerId: 3, name: 'Luna', gender: 'female' },
+  { speakerId: 4, name: 'Hugo', gender: 'male' },
+  { speakerId: 5, name: 'Rosie', gender: 'female' },
+  { speakerId: 6, name: 'Leo', gender: 'male', hidden: true },
+  { speakerId: 7, name: 'Kiki', gender: 'female' },
 ];
 
-KITTEN_VOICES.forEach(([name, gender], speakerId) => {
+KITTEN_VOICES.forEach(({ speakerId, name, gender, hidden }) => {
   VOICES.push({
     id: `kitten-nano-${speakerId}`,
     packId: 'kitten-nano-v0_2',
@@ -125,6 +146,7 @@ KITTEN_VOICES.forEach(([name, gender], speakerId) => {
     name,
     accent: 'US',
     gender,
+    hidden,
     sizeBytes: 23_000_000,
     modelUrl: `${KITTEN}/model.fp16.onnx`,
     tokensUrl: `${KITTEN}/tokens.txt`,
@@ -134,12 +156,17 @@ KITTEN_VOICES.forEach(([name, gender], speakerId) => {
     // It reads slowly by nature; corrected here rather than left to the
     // listener to notice and fix.
     defaultRate: 1.15,
-    // Measured on a real utterance: the words ended at 2.1s and a breathy tail
-    // ran to 2.6s at about a quarter of the peak. Cut above that.
-    trimTail: 0.3,
+    // Measured on real utterances: the breathy tail sits at about a tenth of
+    // the loudest moment. 0.3 was cutting through the words' own decay instead,
+    // leaving the waveform stepping to silence from a third of full volume.
+    trimTail: 0.12,
     licence: 'Apache-2.0',
   });
 });
 
+/** The voices to put in front of someone choosing one. */
+export const OFFERED_VOICES: VoiceMeta[] = VOICES.filter((voice) => !voice.hidden);
+
+/** Looks up any voice, offered or not, so a saved choice still resolves. */
 export const findVoice = (id: string): VoiceMeta | undefined =>
   VOICES.find((voice) => voice.id === id);

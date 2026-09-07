@@ -262,6 +262,15 @@ class SherpaTtsModule : Module() {
    * sentence is judged against itself rather than an absolute level. Zero turns
    * trimming off. At most a fraction of a second is ever removed, so a mistake
    * costs a clipped breath rather than a swallowed word.
+   *
+   * What survives is faded out. No edit to a waveform should end on a step down
+   * to silence, which is heard as a click whatever the level it steps from.
+   *
+   * This does not catch everything. Short sentences sometimes end with a hum
+   * that arrives AFTER the sound has already fallen to silence, and is louder
+   * than the decay before it -- so walking back through quiet samples stops at
+   * the hum rather than removing it. Detecting it by shape instead was tried
+   * and is not obviously right either; it is left open rather than guessed at.
    */
   private fun trimTail(audio: GeneratedAudio, threshold: Float): GeneratedAudio {
     if (threshold <= 0f || audio.samples.isEmpty()) return audio
@@ -282,6 +291,13 @@ class SherpaTtsModule : Module() {
     // Leave a little of the decay, so the last consonant is not clipped short.
     val guard = audio.sampleRate / 50 // 20ms
     val keep = minOf(samples.size, end + guard)
-    return GeneratedAudio(samples.copyOfRange(0, keep), audio.sampleRate)
+
+    val faded = samples.copyOfRange(0, keep)
+    val fade = minOf(audio.sampleRate / 40, faded.size) // 25ms
+    for (i in 0 until fade) {
+      faded[faded.size - fade + i] *= 1f - (i.toFloat() / fade)
+    }
+
+    return GeneratedAudio(faded, audio.sampleRate)
   }
 }
