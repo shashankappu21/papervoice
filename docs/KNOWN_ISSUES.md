@@ -35,7 +35,24 @@ if everything after it stays under 60% of peak. It is plausible but was not
 confidently correct, and each attempt costs a full native rebuild plus listening
 to real sentences to judge. Left open rather than guessed at.
 
-**Worth trying next.** Whether the burst exists in sherpa-onnx's output at all
-or is introduced when the pieces of one utterance are joined; and whether it
-correlates with utterance length in samples, which would point at padding in the
-model rather than at anything this app does.
+**Where it comes from.** The model. The same sound is audible in KittenML's own
+demos on their site, faintly. So it is not introduced by joining the pieces of
+an utterance, by the trim, or by anything else this app does -- which means
+there is no bug here to fix, only an artifact to mitigate. Anything done about
+it is a workaround, and should be written as one.
+
+**Why it is worse here than in their demos.** Not established. Three candidates,
+cheapest first:
+
+- The app uses `model.fp16.onnx`. If the demos run the fp32 model, halving the
+  precision is the obvious suspect, and swapping the file is a download rather
+  than a code change.
+- The app asks for `defaultRate: 1.15`, because the voices read slowly. Rate in
+  sherpa changes the duration predictor, so it does not merely resample the
+  output -- it can lengthen or emphasise whatever is in the tail.
+- A phone speaker is not a laptop speaker. A low hum that a laptop barely
+  reproduces can sit right in the range a small driver is loudest in.
+
+Worth an experiment in that order: synthesise the same short sentences at fp16
+and fp32, and at rate 1.0 and 1.15, and compare the envelope of the tail. That
+is four files and no rebuild.
