@@ -36,10 +36,12 @@ describe('pauseAfter under strain', () => {
     expect(pauseAfter({ ...sentence, rtf: 0.15 })).toBe(pauseAfter(sentence));
   });
 
-  it('drops the pause when synthesis barely outruns playback', () => {
-    // The listener is already waiting on the next utterance. A designed pause
-    // only lengthens a gap they can hear.
-    expect(pauseAfter({ ...sentence, rtf: 0.95 })).toBe(0);
+  it('shortens but never removes the pause when synthesis is struggling', () => {
+    // A sentence that ends with no silence at all sounds cut off, which is
+    // worse than the gap the pause was being surrendered to avoid.
+    const strained = pauseAfter({ ...sentence, rtf: 0.95 });
+    expect(strained).toBeGreaterThan(0);
+    expect(strained).toBeLessThan(pauseAfter(sentence));
   });
 
   it('shortens the pause as synthesis comes under strain', () => {
@@ -50,8 +52,14 @@ describe('pauseAfter under strain', () => {
 
   it('shortens a heading pause under the same strain', () => {
     const heading = { kind: 'heading' as const, endsSentence: true };
-    expect(pauseAfter({ ...heading, rtf: 0.95 })).toBe(0);
+    expect(pauseAfter({ ...heading, rtf: 0.95 })).toBeLessThan(pauseAfter(heading));
     expect(pauseAfter({ ...heading, rtf: 0.15 })).toBe(pauseAfter(heading));
+  });
+
+  it('always leaves enough silence for a sentence to land', () => {
+    for (const rtf of [0.1, 0.5, 0.7, 0.9, 1.5, 3]) {
+      expect(pauseAfter({ kind: 'body', endsSentence: true, rtf })).toBeGreaterThanOrEqual(120);
+    }
   });
 
   it('treats a missing measurement as comfortable', () => {

@@ -26,6 +26,15 @@ const STRAINED = 0.6;
 /** At this point the listener is already waiting between utterances. */
 const OVERRUN = 0.9;
 
+/**
+ * The least silence a finished sentence may have after it.
+ *
+ * Tapering all the way to nothing produced sentences that ended dead, with the
+ * next one starting on top of the last syllable. That sounds like a fault --
+ * worse than the gap the pause was being surrendered to avoid.
+ */
+const LEAST_PAUSE = 120;
+
 export function pauseAfter({ kind, endsSentence, rtf }: Utterance): number {
   const full = baseline(kind, endsSentence);
 
@@ -33,9 +42,14 @@ export function pauseAfter({ kind, endsSentence, rtf }: Utterance): number {
   // the engine is barely outrunning playback they are already hearing a gap
   // while the next utterance is made, and a designed pause only lengthens it.
   if (rtf === undefined || rtf < STRAINED) return full;
-  if (rtf >= OVERRUN) return 0;
 
-  return Math.round((full * (OVERRUN - rtf)) / (OVERRUN - STRAINED));
+  // Mid-sentence seams may close up entirely: there is no sentence ending there
+  // to land, and the pieces belong to one breath anyway.
+  const floor = endsSentence ? Math.min(LEAST_PAUSE, full) : 0;
+  if (rtf >= OVERRUN) return floor;
+
+  const tapered = Math.round((full * (OVERRUN - rtf)) / (OVERRUN - STRAINED));
+  return Math.max(floor, tapered);
 }
 
 function baseline(kind: Sentence['kind'], endsSentence: boolean): number {
