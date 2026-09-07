@@ -148,12 +148,12 @@ class SherpaTtsModule : Module() {
       )
     }
 
-    AsyncFunction("synthesize") { parts: List<String>, sid: Int, speed: Float, outPath: String, seamMs: Int, tailMs: Int ->
+    AsyncFunction("synthesize") { parts: List<String>, sid: Int, speed: Float, outPath: String, seamMs: Int, tailMs: Int, trim: Float ->
       val engine = tts ?: throw CodedException("SherpaTts.load() must be called first")
       if (parts.isEmpty()) throw CodedException("Nothing to synthesize")
 
       val startedAt = System.currentTimeMillis()
-      val pieces = parts.map { engine.generate(it, sid, speed) }
+      val pieces = parts.map { trimTail(engine.generate(it, sid, speed), trim) }
       val elapsedSec = (System.currentTimeMillis() - startedAt) / 1000.0
 
       val sampleRate = pieces.first().sampleRate
@@ -249,5 +249,39 @@ class SherpaTtsModule : Module() {
     for (child in children) {
       copyAsset("$assetPath/$child", File(target, child))
     }
+  }
+
+  /**
+   * Cuts the noise some models leave after the words have finished.
+   *
+   * Kitten ends an utterance with roughly a third of a second of low, breathy
+   * sound. Silence after it does not hide it -- the listener hears the sentence
+   * end and then something else -- so it is cut off before the pause is added.
+   *
+   * `threshold` is a fraction of the utterance's own loudest moment, so a quiet
+   * sentence is judged against itself rather than an absolute level. Zero turns
+   * trimming off. At most a fraction of a second is ever removed, so a mistake
+   * costs a clipped breath rather than a swallowed word.
+   */
+  private fun trimTail(audio: GeneratedAudio, threshold: Float): GeneratedAudio {
+    if (threshold <= 0f || audio.samples.isEmpty()) return audio
+
+    val samples = audio.samples
+    var peak = 0f
+    for (sample in samples) peak = maxOf(peak, kotlin.math.abs(sample))
+    if (peak == 0f) return audio
+
+    val floor = peak * threshold
+    val mostRemovable = audio.sampleRate / 2 // half a second
+    val limit = maxOf(0, samples.size - mostRemovable)
+
+    var end = samples.size
+    while (end > limit && kotlin.math.abs(samples[end - 1]) < floor) end--
+    if (end == samples.size) return audio
+
+    // Leave a little of the decay, so the last consonant is not clipped short.
+    val guard = audio.sampleRate / 50 // 20ms
+    val keep = minOf(samples.size, end + guard)
+    return GeneratedAudio(samples.copyOfRange(0, keep), audio.sampleRate)
   }
 }

@@ -47,6 +47,12 @@ export interface VoiceMeta {
   modelSha256: string;
   /** Some voices read slowly by nature and are corrected per voice. */
   defaultRate: number;
+  /**
+   * How much trailing noise to cut, as a fraction of the utterance's loudest
+   * moment. Kitten leaves about a third of a second of breath after the words;
+   * Piper does not, and cutting what is not there risks clipping a consonant.
+   */
+  trimTail?: number;
   /** What the licence permits, shown rather than buried. */
   licence: string;
 }
@@ -128,6 +134,9 @@ KITTEN_VOICES.forEach(([name, gender], speakerId) => {
     // It reads slowly by nature; corrected here rather than left to the
     // listener to notice and fix.
     defaultRate: 1.15,
+    // Measured on a real utterance: the words ended at 2.1s and a breathy tail
+    // ran to 2.6s at about a quarter of the peak. Cut above that.
+    trimTail: 0.3,
     licence: 'Apache-2.0',
   });
 });

@@ -58,6 +58,12 @@ interface SherpaTtsNative {
     outPath: string,
     seamMs: number,
     tailMs: number,
+    /**
+     * Cuts trailing noise below this fraction of the utterance's own loudest
+     * moment. Some models leave a breathy sound after the words end, which
+     * silence does not hide. Zero turns it off.
+     */
+    trim: number,
   ): Promise<SynthResult>;
   /**
    * Unpacks the bundled phonemiser data to `destination` if it is not already

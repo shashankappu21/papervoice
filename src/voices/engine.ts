@@ -185,7 +185,15 @@ async function neuralEngine(voice: VoiceMeta): Promise<SpeechEngine> {
     async speak(sentence, outPath, rtf) {
       const parts = chunk(speakable(sentence.text), CHUNK_LIMIT);
       const tailMs = pauseAfter({ kind: sentence.kind, endsSentence: true, rtf });
-      return SherpaTts.synthesize(parts, speaker, voice.defaultRate, outPath, SEAM_MS, tailMs);
+      return SherpaTts.synthesize(
+        parts,
+        speaker,
+        voice.defaultRate,
+        outPath,
+        SEAM_MS,
+        tailMs,
+        voice.trimTail ?? 0,
+      );
     },
   };
 }

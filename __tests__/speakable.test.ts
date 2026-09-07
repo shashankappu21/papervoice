@@ -62,11 +62,35 @@ describe('speakable', () => {
   });
 
   it('handles an em dash set tight against its words', () => {
-    expect(speakable('BEWARE "YES"—MASTER "NO"')).toBe('BEWARE "YES", MASTER "NO"');
+    // The quotes go too, which is tested on its own; what matters here is that
+    // the dash between them becomes a pause rather than nothing.
+    expect(speakable('BEWARE "YES"—MASTER "NO"')).toBe('BEWARE YES, MASTER NO');
   });
 
   it('does not turn a hyphenated word into a pause', () => {
     expect(speakable('a real-time tweet evaluator')).toBe('a real-time tweet evaluator');
+  });
+
+  it('does not hand quotation marks to the engine', () => {
+    // A reader conveys speech marks with their voice, never by saying them.
+    // Given the characters, the engine makes a sound for them.
+    expect(speakable('“We’ve got your son, Voss.”')).toBe(
+      'We’ve got your son, Voss.',
+    );
+    expect(speakable('He said "stop" twice.')).toBe('He said stop twice.');
+  });
+
+  it('keeps the apostrophes inside words', () => {
+    // The same characters that quote also contract, and losing these would
+    // turn "don't" into "dont".
+    expect(speakable("don't, it's, O'Brien")).toBe("don't, it's, O'Brien");
+    expect(speakable('the ’90s and Jane’s book')).toBe('the ’90s and Jane’s book');
+  });
+
+  it('reads an exclamation as a firm full stop', () => {
+    // Kitten delivers an exclamation as alarm, which is exhausting over a book.
+    // The sentence still ends; it simply is not shouted.
+    expect(speakable('Stop right there!')).toBe('Stop right there.');
   });
 
   it('leaves ordinary prose exactly as it was', () => {

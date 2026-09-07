@@ -67,6 +67,16 @@ export function speakable(text: string): string {
     return `${digits}${magnitude ?? ''} ${singular ? unit.one : unit.many}`;
   });
 
+  // Quotation marks are for the eye. A reader conveys speech by delivery, never
+  // by saying the marks, and an engine handed them makes a sound for them. Only
+  // the double-quote family goes: the single ones are apostrophes far more
+  // often than quotes, and losing those would turn "don't" into "dont".
+  out = out.replace(/[“”„«»"]/g, '');
+
+  // An exclamation is delivered as alarm, which is exhausting across a book and
+  // sounds like a fright rather than emphasis. The sentence still ends.
+  out = out.replace(/!+/g, '.');
+
   // A percentage is spoken where it is written; only the symbol itself has no
   // pronunciation.
   out = out.replace(/(\d)\s?%/g, '$1 percent');
