@@ -65,6 +65,6 @@ export async function espeakDataDir(): Promise<string> {
 
 /** Everything a loaded voice needs, once it is installed. */
 export async function voiceLoadPaths(voice: VoiceMeta) {
-  const { model, tokens } = voiceStore().paths(voice);
-  return { model, tokens, dataDir: await espeakDataDir() };
+  const paths = voiceStore().paths(voice);
+  return { ...paths, dataDir: await espeakDataDir() };
 }

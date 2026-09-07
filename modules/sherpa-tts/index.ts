@@ -18,6 +18,23 @@ interface SherpaTtsNative {
   /** Loads a Piper voice. All paths are absolute paths in the app's storage. */
   load(model: string, tokens: string, dataDir: string, numThreads: number): Promise<LoadResult>;
   /**
+   * Loads a Kokoro voice. Its speaker embeddings live in a separate `voices`
+   * file, so one model can speak in many voices, selected by speaker id.
+   */
+  loadKokoro(
+    model: string,
+    voices: string,
+    tokens: string,
+    /** espeak data, or empty to phonemise from the lexicon instead. */
+    dataDir: string,
+    /** The voice's own pronunciations, or empty to leave it to espeak. */
+    lexicon: string,
+    /** Which espeak voice does the phonemising, when espeak is doing it. */
+    lang: string,
+    numThreads: number,
+  ): Promise<LoadResult>;
+
+  /**
    * Synthesises one sentence to a single WAV.
    *
    * `parts` is the sentence, already cut at clause boundaries when it is long

@@ -59,14 +59,22 @@ export async function listUsableSystemVoices(): Promise<SystemVoices> {
  * which tells a reader nothing, so the locale is spelled out instead.
  */
 export function systemVoiceLabel(voice: SystemVoice): string {
+  const fallback = voice.locale || voice.id;
   try {
     const [language, region] = voice.locale.split('-');
-    const languages = new Intl.DisplayNames(['en'], { type: 'language' });
-    const regions = region ? new Intl.DisplayNames(['en'], { type: 'region' }) : null;
-    const place = regions && region ? ` (${regions.of(region.toUpperCase())})` : '';
-    return `${languages.of(language)}${place}`;
+    // Android reports locales three-letter as well as two ("eng-NGA"), and
+    // DisplayNames answers undefined for names it does not know rather than
+    // throwing -- which is how a voice ended up displayed with no name at all.
+    const named = new Intl.DisplayNames(['en'], { type: 'language' }).of(language);
+    if (!named || named === language) return fallback;
+
+    const place = region
+      ? new Intl.DisplayNames(['en'], { type: 'region' }).of(region.toUpperCase())
+      : null;
+
+    return place && place !== region ? `${named} (${place})` : named;
   } catch {
-    return voice.locale || voice.id;
+    return fallback;
   }
 }
 
@@ -144,14 +152,30 @@ export async function openEngine(chosenId: string | null): Promise<OpenedVoice> 
 
 async function neuralEngine(voice: VoiceMeta): Promise<SpeechEngine> {
   const paths = await voiceLoadPaths(voice);
-  await SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2);
+
+  if (voice.family === 'kokoro') {
+    const phonemes = voice.phonemes ?? { useEspeak: true, lang: 'en-us' };
+    await SherpaTts.loadKokoro(
+      paths.model,
+      paths.voices,
+      paths.tokens,
+      phonemes.useEspeak ? paths.dataDir : '',
+      voice.lexiconUrl ? paths.lexicon : '',
+      phonemes.lang,
+      2,
+    );
+  } else {
+    await SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2);
+  }
+
+  const speaker = voice.speakerId ?? 0;
 
   return {
     label: voice.name,
     async speak(sentence, outPath, rtf) {
       const parts = chunk(speakable(sentence.text), CHUNK_LIMIT);
       const tailMs = pauseAfter({ kind: sentence.kind, endsSentence: true, rtf });
-      return SherpaTts.synthesize(parts, 0, voice.defaultRate, outPath, SEAM_MS, tailMs);
+      return SherpaTts.synthesize(parts, speaker, voice.defaultRate, outPath, SEAM_MS, tailMs);
     },
   };
 }

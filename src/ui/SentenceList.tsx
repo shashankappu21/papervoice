@@ -31,6 +31,7 @@ export function SentenceList({ sentences, currentIndex, onJump, fontSize, follow
   const lastTap = useRef<{ index: number; at: number }>({ index: -1, at: 0 });
   const [autoScroll, setAutoScroll] = useState(true);
   const opened = useRef(false);
+  const wasFollowing = useRef(following);
 
   // Opening a book puts the reader back where they stopped. The audio already
   // resumes there; without this the page did not, so a reader returning to a
@@ -46,6 +47,18 @@ export function SentenceList({ sentences, currentIndex, onJump, fontSize, follow
       animated: false,
     });
   }, [sentences.length, currentIndex]);
+
+  /**
+   * Pressing play means "follow the voice again".
+   *
+   * Following used to resume only on a double-tap, so a reader who scrolled
+   * back to check something earlier was never taken to the spoken line again,
+   * however long they listened -- the page simply stopped moving.
+   */
+  useEffect(() => {
+    if (following && !wasFollowing.current) setAutoScroll(true);
+    wasFollowing.current = following;
+  }, [following]);
 
   useEffect(() => {
     if (!autoScroll || !following) return;

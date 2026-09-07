@@ -4,6 +4,7 @@ import type { VoiceMeta } from '../src/voices/catalog';
 
 const voice: VoiceMeta = {
   id: 'test-voice',
+  family: 'vits',
   name: 'Test',
   accent: 'US',
   gender: 'female',
@@ -94,6 +95,26 @@ describe('voiceStore', () => {
     expect(seen[seen.length - 1]).toBe(1);
     // Progress only ever moves forwards, or a bar jumps backwards mid-download.
     expect([...seen].sort((a, b) => a - b)).toEqual(seen);
+  });
+
+  it('downloads the extra file a kokoro voice needs', async () => {
+    // Kokoro keeps its speaker embeddings in a separate file, so a voice that
+    // has the model and tokens but not that one cannot speak at all.
+    const kokoro: VoiceMeta = {
+      ...voice,
+      id: 'kokoro',
+      family: 'kokoro',
+      voicesUrl: 'https://example.invalid/voices.bin',
+    };
+    const files = fakeFiles();
+    const store = createVoiceStore({ files, download: downloader(files), root: '/v' });
+
+    files.present.add('/v/kokoro/model.onnx');
+    files.present.add('/v/kokoro/tokens.txt');
+    expect(store.isInstalled(kokoro)).toBe(false);
+
+    await store.install(kokoro);
+    expect(store.isInstalled(kokoro)).toBe(true);
   });
 
   it('removing a voice makes it uninstalled again', async () => {

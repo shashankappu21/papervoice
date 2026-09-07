@@ -3,6 +3,7 @@ package expo.modules.sherpatts
 import com.k2fsa.sherpa.onnx.GeneratedAudio
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
+import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import expo.modules.kotlin.exception.CodedException
@@ -63,6 +64,54 @@ class SherpaTtsModule : Module() {
      * One file per sentence is what lets playback line up exactly with the text
      * on screen: a track index is a sentence index.
      */
+    /**
+     * Loads a Kokoro voice, which is a different shape of model: one file holds
+     * the speaker embeddings for every voice it can do, so `voices` sits beside
+     * the model rather than a speaker being baked into it.
+     */
+    AsyncFunction("loadKokoro") { model: String, voices: String, tokens: String, dataDir: String, lexicon: String, lang: String, numThreads: Int ->
+      tts?.release()
+      tts = null
+
+      // dataDir and lexicon are each optional and are passed empty to turn one
+      // off: a Kokoro voice can be phonemised by espeak or by its own lexicon,
+      // and which of the two is right is decided by listening, not by guessing.
+      for (path in listOf(model, voices, tokens)) {
+        if (!File(path).exists()) throw CodedException("Not found: $path")
+      }
+      for (optional in listOf(dataDir, lexicon)) {
+        if (optional.isNotEmpty() && !File(optional).exists()) {
+          throw CodedException("Not found: $optional")
+        }
+      }
+
+      val config = OfflineTtsConfig(
+        model = OfflineTtsModelConfig(
+          kokoro = OfflineTtsKokoroModelConfig(
+            model = model,
+            voices = voices,
+            tokens = tokens,
+            dataDir = dataDir,
+            // A lexicon is how the multi-language models pronounce their own
+            // language; the English-only ones do without it.
+            lexicon = lexicon,
+            lang = lang,
+          ),
+          numThreads = numThreads,
+          debug = false,
+          provider = "cpu",
+        ),
+      )
+
+      val engine = OfflineTts(assetManager = null, config = config)
+      tts = engine
+
+      mapOf(
+        "sampleRate" to engine.sampleRate(),
+        "numSpeakers" to engine.numSpeakers(),
+      )
+    }
+
     AsyncFunction("synthesize") { parts: List<String>, sid: Int, speed: Float, outPath: String, seamMs: Int, tailMs: Int ->
       val engine = tts ?: throw CodedException("SherpaTts.load() must be called first")
       if (parts.isEmpty()) throw CodedException("Nothing to synthesize")

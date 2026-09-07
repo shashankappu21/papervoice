@@ -105,15 +105,15 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
 
           <Pressable style={styles.voicePicker} onPress={() => setChoosingVoice(true)}>
             <Text style={styles.voiceName} numberOfLines={1}>
-              {currentVoice?.label ?? (playback.loadingVoice ? 'Loading…' : 'Voice')} ▾
+              {currentVoice?.label ?? (playback.loadingVoice ? 'Loading…' : 'Voice')}
+              {playback.rtf !== null ? ` · ${playback.rtf.toFixed(2)}×` : ''} ▾
             </Text>
           </Pressable>
-          {message && (
-            <Text style={styles.status} numberOfLines={2}>
-              {message}
-            </Text>
-          )}
         </View>
+
+        {/* Its own row: squeezed beside the controls, a message long enough to
+            explain anything was cut off mid-word. */}
+        {message && <Text style={styles.status}>{message}</Text>}
       </View>
 
       <Modal
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   meta: { fontSize: 13, color: '#777', marginLeft: 'auto' },
   rate: { fontSize: 15, fontVariant: ['tabular-nums'], minWidth: 44, textAlign: 'center' },
-  voicePicker: { marginLeft: 'auto', paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#cfcfcf', borderRadius: 6, maxWidth: 150 },
+  voicePicker: { marginLeft: 'auto', paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#cfcfcf', borderRadius: 6, maxWidth: 190 },
   voiceName: { fontSize: 13, color: '#333' },
   backdrop: { flex: 1, backgroundColor: '#00000055', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 14, borderTopRightRadius: 14, paddingVertical: 12, maxHeight: '60%' },
@@ -197,5 +197,5 @@ const styles = StyleSheet.create({
   optionDetail: { fontSize: 12, color: '#888', marginTop: 2 },
   // flexShrink lets a long message wrap rather than run off the screen: an
   // error nobody can read is an error nobody can act on.
-  status: { fontSize: 13, color: '#444', marginLeft: 'auto', flexShrink: 1, textAlign: 'right' },
+  status: { fontSize: 13, color: '#444', lineHeight: 18 },
 });

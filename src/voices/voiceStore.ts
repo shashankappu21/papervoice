@@ -25,7 +25,8 @@ export interface VoiceStoreOptions {
 }
 
 export interface VoiceStore {
-  paths(voice: VoiceMeta): { model: string; tokens: string };
+  /** Where each of a voice's files lives, whether or not it needs them all. */
+  paths(voice: VoiceMeta): { model: string; tokens: string; voices: string; lexicon: string };
   isInstalled(voice: VoiceMeta): boolean;
   install(voice: VoiceMeta, onProgress?: (fraction: number) => void): Promise<void>;
   remove(voice: VoiceMeta): void;
@@ -44,24 +45,37 @@ export function createVoiceStore({ files, download, root }: VoiceStoreOptions): 
   const paths = (voice: VoiceMeta) => ({
     model: `${root}/${voice.id}/model.onnx`,
     tokens: `${root}/${voice.id}/tokens.txt`,
+    voices: `${root}/${voice.id}/voices.bin`,
+    lexicon: `${root}/${voice.id}/lexicon.txt`,
   });
 
-  const isInstalled = (voice: VoiceMeta): boolean => {
-    const { model, tokens } = paths(voice);
-    return files.exists(model) && files.exists(tokens);
+  /** Every file this particular voice cannot speak without. */
+  const required = (voice: VoiceMeta): string[] => {
+    const { model, tokens, voices, lexicon } = paths(voice);
+    return [
+      model,
+      tokens,
+      ...(voice.voicesUrl ? [voices] : []),
+      ...(voice.lexiconUrl ? [lexicon] : []),
+    ];
   };
+
+  const isInstalled = (voice: VoiceMeta): boolean =>
+    required(voice).every((path) => files.exists(path));
 
   return {
     paths,
     isInstalled,
 
     async install(voice, onProgress) {
-      const { model, tokens } = paths(voice);
+      const { model, tokens, voices, lexicon } = paths(voice);
 
-      // The model is almost all of the download; weighting by that keeps the
-      // bar honest rather than jumping at the end.
+      // Weighted by size, so the bar moves at the speed of the download rather
+      // than jumping when a small file finishes.
       const parts: Array<{ url: string; target: string; share: number }> = [
-        { url: voice.modelUrl, target: model, share: 0.99 },
+        { url: voice.modelUrl, target: model, share: voice.voicesUrl ? 0.7 : 0.98 },
+        ...(voice.voicesUrl ? [{ url: voice.voicesUrl, target: voices, share: 0.28 }] : []),
+        ...(voice.lexiconUrl ? [{ url: voice.lexiconUrl, target: lexicon, share: 0.01 }] : []),
         { url: voice.tokensUrl, target: tokens, share: 0.01 },
       ];
 
@@ -71,7 +85,10 @@ export function createVoiceStore({ files, download, root }: VoiceStoreOptions): 
         const base = done;
         await download(url, partial, (fraction) => onProgress?.(base + fraction * share));
 
-        if (target === model) {
+        // An empty checksum means one has not been recorded yet, which is the
+        // case while a voice is still being evaluated. Skipping the check is
+        // deliberate and visible, rather than a comparison that always passes.
+        if (target === model && voice.modelSha256 !== '') {
           const actual = await files.checksum(partial);
           if (actual !== voice.modelSha256) {
             files.remove(partial);
@@ -91,8 +108,8 @@ export function createVoiceStore({ files, download, root }: VoiceStoreOptions): 
     },
 
     remove(voice) {
-      const { model, tokens } = paths(voice);
-      for (const path of [model, tokens]) {
+      const { model, tokens, voices, lexicon } = paths(voice);
+      for (const path of [model, tokens, voices, lexicon]) {
         files.remove(path);
         files.remove(`${path}.part`);
       }

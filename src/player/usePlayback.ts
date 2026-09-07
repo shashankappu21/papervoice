@@ -40,6 +40,11 @@ export interface Playback {
   error: string | null;
   /** Playback speed, where 1 is the voice's own pace. */
   rate: number;
+  /**
+   * The real-time factor last measured on this device: below 1 means synthesis
+   * outruns playback. It is what decides whether a voice is usable here at all.
+   */
+  rtf: number | null;
   /** Voices that can read right now, for choosing between without leaving. */
   voices: AvailableVoice[];
   /** The one currently loaded, or null before anything is. */
@@ -74,6 +79,7 @@ export function usePlayback(
   const [error, setError] = useState<string | null>(null);
   const [rate, setRateState] = useState(1);
   const rateRef = useRef(1);
+  const [rtf, setRtf] = useState<number | null>(null);
   const [voices, setVoices] = useState<AvailableVoice[]>([]);
   const [voiceId, setVoiceId] = useState<string | null>(null);
 
@@ -107,6 +113,7 @@ export function usePlayback(
           if (!speaking) throw new Error('No voice is ready');
           const result = await speaking.speak(sentence, outPath, recentRtf.current);
           recentRtf.current = result.rtf;
+          setRtf(result.rtf);
           consecutiveFailures.current = 0;
           return result;
         },
@@ -268,6 +275,10 @@ export function usePlayback(
     try {
       setError(null);
       await setSetting(SETTING_VOICE, id);
+      // Each voice is measured on its own; the last one's figure means nothing
+      // about this one.
+      recentRtf.current = undefined;
+      setRtf(null);
       await loadVoice(id);
       await queue.start(index.current);
 
@@ -280,6 +291,7 @@ export function usePlayback(
         }
       }
     } catch (cause) {
+      console.log('[papervoice] voice switch failed:', String(cause));
       setError(`Voice unavailable: ${String(cause)}`);
     }
   };
@@ -288,7 +300,10 @@ export function usePlayback(
   // doing it on the first press makes the app look broken while it waits.
   useEffect(() => {
     if (sentences.length === 0) return;
-    ensureVoice().catch((cause: unknown) => setError(`Voice unavailable: ${String(cause)}`));
+    ensureVoice().catch((cause: unknown) => {
+      console.log('[papervoice] voice load failed:', String(cause));
+      setError(`Voice unavailable: ${String(cause)}`);
+    });
   }, [sentences.length, ensureVoice]);
 
   /**
@@ -392,6 +407,7 @@ export function usePlayback(
     loadingVoice,
     error,
     rate,
+    rtf,
     voices,
     voiceId,
     selectVoice,
