@@ -80,7 +80,7 @@ export function removeUnknownVoices(): number {
   const dir = new Directory(Paths.document, 'voices');
   if (!dir.exists) return 0;
 
-  const known = new Set(VOICES.map((voice) => voice.id));
+  const known = new Set(VOICES.map((voice) => voice.packId ?? voice.id));
   let removed = 0;
 
   for (const entry of dir.list()) {

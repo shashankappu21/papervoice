@@ -17,7 +17,7 @@ export interface VoiceMeta {
    * speaker baked into the model, while kokoro keeps every speaker's embedding
    * in a file beside it.
    */
-  family: 'vits' | 'kokoro';
+  family: 'vits' | 'kokoro' | 'kitten';
   /** A human name. A listener chooses a voice, not a dataset. */
   name: string;
   accent: 'US' | 'GB';
@@ -32,6 +32,12 @@ export interface VoiceMeta {
   lexiconUrl?: string;
   /** Which speaker to use out of a model that holds many. */
   speakerId?: number;
+  /**
+   * Which download this voice comes from. Several voices can share one: a model
+   * holding many speakers is fetched once and offered as a voice per speaker.
+   * Defaults to the voice's own id.
+   */
+  packId?: string;
   /**
    * How this voice turns letters into sounds. Kokoro's token set has no
    * r-coloured vowels, so espeak's American English hands it phonemes it cannot
@@ -78,6 +84,53 @@ export const VOICES: VoiceMeta[] = [
  * for a voice that cannot keep up. A smaller quantisation would have to be
  * about ten times faster to become usable, which quantisation does not do.
  */
+
+const KITTEN = 'https://huggingface.co/csukuangfj/kitten-nano-en-v0_2-fp16/resolve/main';
+
+/**
+ * Kitten nano: 23MB against Lyra's 63MB, Apache-2.0, and eight speakers in 8KB
+ * of embeddings beside the model -- so one download is eight voices, and they
+ * share it rather than fetching the same model eight times.
+ *
+ * Measured here at a real-time factor of 0.31 to 0.37: slower than Lyra's 0.15
+ * but far inside what a listener can outrun, and with none of the dropped
+ * phonemes that made Kokoro unusable.
+ *
+ * The names are KittenML's own, in the order its voice list gives, which is
+ * taken to be the order of the speaker ids. If a voice does not sound like its
+ * name, that assumption is where to look.
+ */
+const KITTEN_VOICES: Array<[string, 'female' | 'male']> = [
+  ['Bella', 'female'],
+  ['Jasper', 'male'],
+  ['Luna', 'female'],
+  ['Bruno', 'male'],
+  ['Rosie', 'female'],
+  ['Hugo', 'male'],
+  ['Kiki', 'female'],
+  ['Leo', 'male'],
+];
+
+KITTEN_VOICES.forEach(([name, gender], speakerId) => {
+  VOICES.push({
+    id: `kitten-nano-${speakerId}`,
+    packId: 'kitten-nano-v0_2',
+    family: 'kitten',
+    name,
+    accent: 'US',
+    gender,
+    sizeBytes: 23_000_000,
+    modelUrl: `${KITTEN}/model.fp16.onnx`,
+    tokensUrl: `${KITTEN}/tokens.txt`,
+    voicesUrl: `${KITTEN}/voices.bin`,
+    modelSha256: '',
+    speakerId,
+    // It reads slowly by nature; corrected here rather than left to the
+    // listener to notice and fix.
+    defaultRate: 1.15,
+    licence: 'Apache-2.0',
+  });
+});
 
 export const findVoice = (id: string): VoiceMeta | undefined =>
   VOICES.find((voice) => voice.id === id);

@@ -117,6 +117,21 @@ describe('voiceStore', () => {
     expect(store.isInstalled(kokoro)).toBe(true);
   });
 
+  it('lets several voices share one download', async () => {
+    // A model that holds many speakers is downloaded once and appears as one
+    // voice per speaker. Keying files by the voice id would fetch the same
+    // model again for every speaker in it.
+    const first: VoiceMeta = { ...voice, id: 'pack-a', packId: 'pack', speakerId: 0 };
+    const second: VoiceMeta = { ...voice, id: 'pack-b', packId: 'pack', speakerId: 1 };
+    const files = fakeFiles();
+    const store = createVoiceStore({ files, download: downloader(files), root: '/v' });
+
+    await store.install(first);
+
+    expect(store.paths(second).model).toBe(store.paths(first).model);
+    expect(store.isInstalled(second)).toBe(true);
+  });
+
   it('removing a voice makes it uninstalled again', async () => {
     const files = fakeFiles();
     const store = createVoiceStore({ files, download: downloader(files), root: '/v' });

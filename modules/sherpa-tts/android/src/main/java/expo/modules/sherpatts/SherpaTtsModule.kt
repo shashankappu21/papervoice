@@ -3,6 +3,7 @@ package expo.modules.sherpatts
 import com.k2fsa.sherpa.onnx.GeneratedAudio
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
+import com.k2fsa.sherpa.onnx.OfflineTtsKittenModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
@@ -96,6 +97,41 @@ class SherpaTtsModule : Module() {
             // language; the English-only ones do without it.
             lexicon = lexicon,
             lang = lang,
+          ),
+          numThreads = numThreads,
+          debug = false,
+          provider = "cpu",
+        ),
+      )
+
+      val engine = OfflineTts(assetManager = null, config = config)
+      tts = engine
+
+      mapOf(
+        "sampleRate" to engine.sampleRate(),
+        "numSpeakers" to engine.numSpeakers(),
+      )
+    }
+
+    /**
+     * Loads a Kitten voice: a small model whose speakers live in a file beside
+     * it, the same arrangement as Kokoro but a fraction of the size.
+     */
+    AsyncFunction("loadKitten") { model: String, voices: String, tokens: String, dataDir: String, numThreads: Int ->
+      tts?.release()
+      tts = null
+
+      for (path in listOf(model, voices, tokens, dataDir)) {
+        if (!File(path).exists()) throw CodedException("Not found: $path")
+      }
+
+      val config = OfflineTtsConfig(
+        model = OfflineTtsModelConfig(
+          kitten = OfflineTtsKittenModelConfig(
+            model = model,
+            voices = voices,
+            tokens = tokens,
+            dataDir = dataDir,
           ),
           numThreads = numThreads,
           debug = false,

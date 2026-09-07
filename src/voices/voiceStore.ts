@@ -42,12 +42,16 @@ export interface VoiceStore {
  * broke", with no way to see why.
  */
 export function createVoiceStore({ files, download, root }: VoiceStoreOptions): VoiceStore {
-  const paths = (voice: VoiceMeta) => ({
-    model: `${root}/${voice.id}/model.onnx`,
-    tokens: `${root}/${voice.id}/tokens.txt`,
-    voices: `${root}/${voice.id}/voices.bin`,
-    lexicon: `${root}/${voice.id}/lexicon.txt`,
-  });
+  const paths = (voice: VoiceMeta) => {
+    // Voices from one model share its files, so the download happens once.
+    const dir = `${root}/${voice.packId ?? voice.id}`;
+    return {
+      model: `${dir}/model.onnx`,
+      tokens: `${dir}/tokens.txt`,
+      voices: `${dir}/voices.bin`,
+      lexicon: `${dir}/lexicon.txt`,
+    };
+  };
 
   /** Every file this particular voice cannot speak without. */
   const required = (voice: VoiceMeta): string[] => {

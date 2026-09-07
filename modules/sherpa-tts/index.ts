@@ -34,6 +34,15 @@ interface SherpaTtsNative {
     numThreads: number,
   ): Promise<LoadResult>;
 
+  /** Loads a Kitten voice: a small model with its speakers in a file beside it. */
+  loadKitten(
+    model: string,
+    voices: string,
+    tokens: string,
+    dataDir: string,
+    numThreads: number,
+  ): Promise<LoadResult>;
+
   /**
    * Synthesises one sentence to a single WAV.
    *

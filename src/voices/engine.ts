@@ -153,7 +153,17 @@ export async function openEngine(chosenId: string | null): Promise<OpenedVoice> 
 async function neuralEngine(voice: VoiceMeta): Promise<SpeechEngine> {
   const paths = await voiceLoadPaths(voice);
 
-  if (voice.family === 'kokoro') {
+  if (voice.family === 'kitten') {
+    const loaded = await SherpaTts.loadKitten(
+      paths.model,
+      paths.voices,
+      paths.tokens,
+      paths.dataDir,
+      2,
+    );
+    // Worth knowing: it decides how many voices this one download can offer.
+    console.log(`[papervoice] ${voice.name} loaded: ${loaded.numSpeakers} speaker(s)`);
+  } else if (voice.family === 'kokoro') {
     const phonemes = voice.phonemes ?? { useEspeak: true, lang: 'en-us' };
     await SherpaTts.loadKokoro(
       paths.model,
