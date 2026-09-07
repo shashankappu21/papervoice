@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Button, FlatList, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
 import { VOICES, type VoiceMeta } from '../src/voices/catalog';
-import { voiceStore } from '../src/voices/deviceVoices';
+import { voiceStore, removeUnknownVoices } from '../src/voices/deviceVoices';
 import { listUsableSystemVoices, systemVoiceId, systemVoiceLabel } from '../src/voices/engine';
 import type { SystemVoice } from '../modules/system-tts';
 import { getSetting, setSetting, SETTING_VOICE } from '../src/db/settings';
@@ -24,6 +24,13 @@ export default function Voices() {
   const [failed, setFailed] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
+    // A voice withdrawn from the catalog has no button left to remove it, so
+    // its files are cleaned up here rather than kept for ever.
+    try {
+      removeUnknownVoices();
+    } catch {
+      // Reclaiming space is worth doing, not worth failing the screen over.
+    }
     const store = voiceStore();
     setInstalled(new Set(VOICES.filter((voice) => store.isInstalled(voice)).map((v) => v.id)));
     getSetting(SETTING_VOICE).then(setSelected, () => undefined);

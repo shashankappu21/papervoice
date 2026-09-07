@@ -1,7 +1,7 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { SherpaTts } from '../../modules/sherpa-tts';
 import { createVoiceStore, type VoiceStore } from './voiceStore';
-import type { VoiceMeta } from './catalog';
+import { VOICES, type VoiceMeta } from './catalog';
 
 /**
  * The voice store as it runs on the device.
@@ -67,4 +67,27 @@ export async function espeakDataDir(): Promise<string> {
 export async function voiceLoadPaths(voice: VoiceMeta) {
   const paths = voiceStore().paths(voice);
   return { ...paths, dataDir: await espeakDataDir() };
+}
+
+/**
+ * Deletes voices the app no longer offers.
+ *
+ * A voice dropped from the catalog leaves its files behind with nothing in the
+ * app that can reach them -- in Kokoro's case 167MB of a voice that turned out
+ * to be too slow to use. Reclaiming that should not require reinstalling.
+ */
+export function removeUnknownVoices(): number {
+  const dir = new Directory(Paths.document, 'voices');
+  if (!dir.exists) return 0;
+
+  const known = new Set(VOICES.map((voice) => voice.id));
+  let removed = 0;
+
+  for (const entry of dir.list()) {
+    if (entry instanceof Directory && !known.has(entry.name)) {
+      entry.delete();
+      removed += 1;
+    }
+  }
+  return removed;
 }

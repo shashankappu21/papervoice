@@ -114,6 +114,12 @@ export function usePlayback(
           const result = await speaking.speak(sentence, outPath, recentRtf.current);
           recentRtf.current = result.rtf;
           setRtf(result.rtf);
+          // Logged as well as shown: comparing voices means comparing runs of
+          // numbers over real sentences, not glancing at whichever was last.
+          console.log(
+            `[papervoice] rtf ${result.rtf.toFixed(3)} | ${result.durationSec.toFixed(1)}s audio` +
+              ` | ${sentence.text.length} chars | ${speaking.label}`,
+          );
           consecutiveFailures.current = 0;
           return result;
         },

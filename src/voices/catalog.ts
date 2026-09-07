@@ -63,35 +63,21 @@ export const VOICES: VoiceMeta[] = [
   },
 ];
 
-const KOKORO = 'https://huggingface.co/csukuangfj/kokoro-int8-multi-lang-v1_1/resolve/main';
-
-/**
- * Kokoro, quantised to int8. The full-precision build is 345MB, which the brief
- * bans outright for live synthesis on a phone; this one is 114MB of model plus
- * 53MB of speaker embeddings, and whether it is fast enough here is exactly
- * what measuring it will say.
+/*
+ * Kokoro was tried here and removed. Measured on a realme RMX3031, the int8
+ * build ran at a real-time factor of 1.63 to 2.35 -- roughly twice as long to
+ * make speech as to play it, so synthesis can never get ahead of a listener and
+ * every sentence is a wait. One 227-character sentence took about 19 seconds of
+ * synthesis for 12 seconds of audio; Lyra does the same work in under two.
+ *
+ * It also drops phonemes: Kokoro's token set has no r-coloured vowels, so
+ * espeak's American English hands it sounds it cannot represent and they are
+ * skipped, which is heard on ordinary words.
+ *
+ * The download was 167MB -- a 114MB model plus 53MB of speaker embeddings --
+ * for a voice that cannot keep up. A smaller quantisation would have to be
+ * about ten times faster to become usable, which quantisation does not do.
  */
-VOICES.push({
-  id: 'kokoro-int8-v1_1',
-  family: 'kokoro',
-  name: 'Kokoro',
-  accent: 'US',
-  gender: 'female',
-  sizeBytes: 114_000_000 + 53_000_000,
-  modelUrl: `${KOKORO}/model.int8.onnx`,
-  tokensUrl: `${KOKORO}/tokens.txt`,
-  voicesUrl: `${KOKORO}/voices.bin`,
-  lexiconUrl: `${KOKORO}/lexicon-us-en.txt`,
-  // Checked after downloading rather than trusted: filled in once measured.
-  modelSha256: '',
-  speakerId: 0,
-  // Both, which is what sherpa requires: the lexicon gives the pronunciations
-  // this model was trained on, and espeak covers whatever the lexicon lacks.
-  // Turning espeak off is rejected outright -- the config will not build.
-  phonemes: { useEspeak: true, lang: 'en-us' },
-  defaultRate: 1,
-  licence: 'Apache-2.0',
-});
 
 export const findVoice = (id: string): VoiceMeta | undefined =>
   VOICES.find((voice) => voice.id === id);
