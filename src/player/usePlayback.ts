@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { Directory, Paths } from 'expo-file-system';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { SherpaTts } from '../../modules/sherpa-tts';
 import { createSynthQueue } from '../tts/synthQueue';
-import { openEngine, type SpeechEngine } from '../voices/engine';
+import { openEngine, listAvailableVoices, type AvailableVoice, type SpeechEngine } from '../voices/engine';
 import { getSetting, setSetting, SETTING_RATE, SETTING_VOICE } from '../db/settings';
 import type { Sentence } from '../extraction/types';
 
@@ -39,6 +40,11 @@ export interface Playback {
   error: string | null;
   /** Playback speed, where 1 is the voice's own pace. */
   rate: number;
+  /** Voices that can read right now, for choosing between without leaving. */
+  voices: AvailableVoice[];
+  /** The one currently loaded, or null before anything is. */
+  voiceId: string | null;
+  selectVoice(id: string): Promise<void>;
   play(from?: number): Promise<void>;
   pause(): void;
   jumpTo(index: number): Promise<void>;
@@ -68,10 +74,14 @@ export function usePlayback(
   const [error, setError] = useState<string | null>(null);
   const [rate, setRateState] = useState(1);
   const rateRef = useRef(1);
+  const [voices, setVoices] = useState<AvailableVoice[]>([]);
+  const [voiceId, setVoiceId] = useState<string | null>(null);
 
   const player = useRef<AudioPlayer | null>(null);
   const voiceLoaded = useRef(false);
   const engine = useRef<SpeechEngine | null>(null);
+  /** Which voice the loaded engine belongs to, so a change can be noticed. */
+  const loadedVoiceId = useRef<string | null>(null);
   /** The load in flight, so concurrent callers wait on one rather than racing. */
   const voiceLoading = useRef<Promise<void> | null>(null);
   const recentRtf = useRef<number | undefined>(undefined);
@@ -189,20 +199,38 @@ export function usePlayback(
       // is no longer there and fail on every sentence.
       voiceLoaded.current = false;
       voiceLoading.current = null;
+      loadedVoiceId.current = null;
       void SherpaTts.unload();
     },
     [queue],
   );
 
+  /**
+   * Loads the chosen voice, or reloads it when the choice has changed.
+   *
+   * The choice is read every time rather than once: an engine cached for the
+   * life of the screen meant picking a different voice did nothing at all until
+   * the app was restarted.
+   */
   const ensureVoice = useCallback((): Promise<void> => {
-    if (voiceLoaded.current) return Promise.resolve();
     if (voiceLoading.current) return voiceLoading.current;
 
     setLoadingVoice(true);
     const loading = (async () => {
+      const chosen = (await getSetting(SETTING_VOICE)) ?? null;
+      if (voiceLoaded.current && loadedVoiceId.current === chosen) return;
+
+      // Release the engine that is going, or two of them hold a model each.
+      if (voiceLoaded.current) {
+        voiceLoaded.current = false;
+        engine.current = null;
+        await SherpaTts.unload().catch(() => undefined);
+      }
+
       // Whatever was chosen, or the phone's own voice: reading should not wait
       // on a download that may never have happened.
-      engine.current = await openEngine(await getSetting(SETTING_VOICE));
+      engine.current = await openEngine(chosen);
+      loadedVoiceId.current = chosen;
     })()
       .then(() => {
         voiceLoaded.current = true;
@@ -230,12 +258,84 @@ export function usePlayback(
     }, () => undefined);
   }, []);
 
+  useEffect(() => {
+    listAvailableVoices().then(setVoices, () => setVoices([]));
+  }, []);
+
+  /**
+   * Changes voice without leaving the page or losing the place.
+   *
+   * Everything already synthesised was spoken by the voice being replaced, so
+   * it is thrown away and made again: half a chapter in one voice and half in
+   * another is worse than a moment's wait.
+   */
+  const selectVoice = async (id: string) => {
+    const wasPlaying = playing;
+    player.current?.pause();
+    setPlaying(false);
+    awaiting.current = null;
+    setBuffering(false);
+
+    try {
+      setError(null);
+      await setSetting(SETTING_VOICE, id);
+      await ensureVoice();
+      await queue.start(index.current);
+
+      if (wasPlaying) {
+        const path = queue.pathFor(index.current);
+        if (path) startTrack(path);
+        else {
+          awaiting.current = index.current;
+          setBuffering(true);
+        }
+      }
+    } catch (cause) {
+      setError(`Voice unavailable: ${String(cause)}`);
+    }
+  };
+
   // Load the voice as soon as there is something to read. It takes seconds, and
   // doing it on the first press makes the app look broken while it waits.
   useEffect(() => {
     if (sentences.length === 0) return;
     ensureVoice().catch((cause: unknown) => setError(`Voice unavailable: ${String(cause)}`));
   }, [sentences.length, ensureVoice]);
+
+  /**
+   * Picks up a voice chosen while this screen was away.
+   *
+   * Everything already synthesised was spoken by the previous voice, so it is
+   * thrown away and made again: half a chapter in one voice and half in another
+   * is worse than a moment's wait.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+
+      void (async () => {
+        const chosen = (await getSetting(SETTING_VOICE)) ?? null;
+        if (cancelled || !voiceLoaded.current || chosen === loadedVoiceId.current) return;
+
+        player.current?.pause();
+        setPlaying(false);
+        awaiting.current = null;
+        setBuffering(false);
+
+        try {
+          await ensureVoice();
+          if (cancelled) return;
+          await queue.start(index.current);
+        } catch (cause) {
+          if (!cancelled) setError(`Voice unavailable: ${String(cause)}`);
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [ensureVoice, queue]),
+  );
 
   const play = async (from = index.current) => {
     try {
@@ -303,6 +403,9 @@ export function usePlayback(
     loadingVoice,
     error,
     rate,
+    voices,
+    voiceId,
+    selectVoice,
     play,
     pause,
     jumpTo,

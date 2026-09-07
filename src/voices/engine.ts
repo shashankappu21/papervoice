@@ -1,6 +1,6 @@
 import { SherpaTts } from '../../modules/sherpa-tts';
 import { SystemTts, type SystemVoice } from '../../modules/system-tts';
-import { findVoice, type VoiceMeta } from './catalog';
+import { VOICES, findVoice, type VoiceMeta } from './catalog';
 import { voiceStore, voiceLoadPaths } from './deviceVoices';
 import type { Sentence } from '../extraction/types';
 import { speakable } from '../tts/speakable';
@@ -70,6 +70,37 @@ export function systemVoiceLabel(voice: SystemVoice): string {
   }
 }
 
+export interface AvailableVoice {
+  id: string;
+  label: string;
+  detail: string;
+}
+
+/**
+ * Everything that can read right now: the voices downloaded, and the ones the
+ * phone came with. Nothing here needs a connection, so the list is the same
+ * offline as on.
+ */
+export async function listAvailableVoices(): Promise<AvailableVoice[]> {
+  const store = voiceStore();
+  const downloaded = VOICES.filter((voice) => store.isInstalled(voice)).map((voice) => ({
+    id: voice.id,
+    label: voice.name,
+    detail: `${voice.accent} · ${voice.gender} · natural`,
+  }));
+
+  const { usable } = await listUsableSystemVoices();
+  const system = usable.map((voice) => ({
+    id: systemVoiceId(voice),
+    label: systemVoiceLabel(voice),
+    detail: 'system voice',
+  }));
+
+  // Downloaded voices first: someone who took the trouble to install one is
+  // unlikely to be looking for the one that was already there.
+  return [...downloaded, ...system];
+}
+
 /** Prepares whichever engine the chosen voice belongs to. */
 export async function openEngine(chosenId: string | null): Promise<SpeechEngine> {
   if (chosenId && isSystemVoice(chosenId)) {
@@ -79,7 +110,7 @@ export async function openEngine(chosenId: string | null): Promise<SpeechEngine>
   const store = voiceStore();
   const voice =
     (chosenId ? findVoice(chosenId) : undefined) ??
-    (await import('./catalog')).VOICES.find((candidate) => store.isInstalled(candidate));
+    VOICES.find((candidate) => store.isInstalled(candidate));
 
   if (voice && store.isInstalled(voice)) return neuralEngine(voice);
 

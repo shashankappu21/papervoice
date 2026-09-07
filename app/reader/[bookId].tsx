@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Button, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { getBook, readSentences, touchBook, type Book } from '../../src/db/books';
 import { findMainContentStart } from '../../src/extraction/mainContent';
@@ -51,6 +51,9 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   useSavedPosition(book.id, playback.currentIndex);
 
   const [skipTo] = useState(() => findMainContentStart(sentences));
+  const [choosingVoice, setChoosingVoice] = useState(false);
+
+  const currentVoice = playback.voices.find((voice) => voice.id === playback.voiceId);
 
   const message =
     playback.error ??
@@ -99,6 +102,12 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
           <Button title="−" onPress={() => playback.setRate(playback.rate - RATE_RANGE.step)} />
           <Text style={styles.rate}>{playback.rate.toFixed(1)}×</Text>
           <Button title="+" onPress={() => playback.setRate(playback.rate + RATE_RANGE.step)} />
+
+          <Pressable style={styles.voicePicker} onPress={() => setChoosingVoice(true)}>
+            <Text style={styles.voiceName} numberOfLines={1}>
+              {currentVoice?.label ?? 'Voice'} ▾
+            </Text>
+          </Pressable>
           {message && (
             <Text style={styles.status} numberOfLines={2}>
               {message}
@@ -106,6 +115,45 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
           )}
         </View>
       </View>
+
+      <Modal
+        visible={choosingVoice}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setChoosingVoice(false)}
+      >
+        <Pressable style={styles.backdrop} onPress={() => setChoosingVoice(false)}>
+          <Pressable style={styles.sheet} onPress={() => undefined}>
+            <Text style={styles.sheetTitle}>Read with</Text>
+            <ScrollView>
+              {playback.voices.map((voice) => (
+                <Pressable
+                  key={voice.id}
+                  style={styles.option}
+                  onPress={() => {
+                    setChoosingVoice(false);
+                    // Changing voice re-reads from here in the new voice; what
+                    // was already made was spoken by the old one.
+                    void playback.selectVoice(voice.id);
+                  }}
+                >
+                  <Text
+                    style={[styles.optionName, voice.id === playback.voiceId && styles.optionChosen]}
+                  >
+                    {voice.label}
+                  </Text>
+                  <Text style={styles.optionDetail}>{voice.detail}</Text>
+                </Pressable>
+              ))}
+              {playback.voices.length === 0 && (
+                <Text style={styles.optionDetail}>
+                  No voice is available yet. Download one from the library's Voices screen.
+                </Text>
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -121,6 +169,15 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   meta: { fontSize: 13, color: '#777', marginLeft: 'auto' },
   rate: { fontSize: 15, fontVariant: ['tabular-nums'], minWidth: 44, textAlign: 'center' },
+  voicePicker: { marginLeft: 'auto', paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#cfcfcf', borderRadius: 6, maxWidth: 150 },
+  voiceName: { fontSize: 13, color: '#333' },
+  backdrop: { flex: 1, backgroundColor: '#00000055', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 14, borderTopRightRadius: 14, paddingVertical: 12, maxHeight: '60%' },
+  sheetTitle: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 20, paddingBottom: 8 },
+  option: { paddingHorizontal: 20, paddingVertical: 12 },
+  optionName: { fontSize: 16, color: '#222' },
+  optionChosen: { fontWeight: '700', color: '#2f95dc' },
+  optionDetail: { fontSize: 12, color: '#888', paddingHorizontal: 20, marginTop: 2 },
   // flexShrink lets a long message wrap rather than run off the screen: an
   // error nobody can read is an error nobody can act on.
   status: { fontSize: 13, color: '#444', marginLeft: 'auto', flexShrink: 1, textAlign: 'right' },
