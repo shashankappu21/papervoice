@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 import { readSentences, touchBook, type Book } from '../db/books';
 import type { Sentence } from '../extraction/types';
 import { usePlayback, type Playback } from './usePlayback';
+import { useSavedPosition } from './useSavedPosition';
 
 const NO_SENTENCES: Sentence[] = [];
 
@@ -31,6 +32,11 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const playback = usePlayback(sentences, book?.title ?? '', book?.position ?? 0);
   const { pause } = playback;
+
+  // Saved here rather than in the reader. A book can be listened to entirely
+  // from the bar above the tabs, and the reader being closed is no reason for
+  // the place to stop being recorded.
+  useSavedPosition(book?.id ?? null, playback.currentIndex);
 
   const open = useCallback(
     (next: Book) => {

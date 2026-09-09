@@ -96,6 +96,23 @@ export function usePlayback(
   const index = useRef(initialIndex);
   const consecutiveFailures = useRef(0);
 
+  /**
+   * A new document arrives with its own place to start.
+   *
+   * `initialIndex` reaches the state and the ref above only on the first
+   * render, which was right while this hook was mounted once per book. It now
+   * outlives them -- it is mounted at launch, before any book is open -- so
+   * without this a book resumed from the library would begin at zero however
+   * far it had been read.
+   */
+  const loaded = useRef(sentences);
+  useEffect(() => {
+    if (loaded.current === sentences) return;
+    loaded.current = sentences;
+    index.current = initialIndex;
+    setCurrentIndex(initialIndex);
+  }, [sentences, initialIndex]);
+
   const cacheDir = useMemo(() => {
     const dir = new Directory(Paths.cache, 'synth');
     if (!dir.exists) dir.create({ intermediates: true });

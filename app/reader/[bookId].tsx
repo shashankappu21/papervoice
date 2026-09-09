@@ -7,7 +7,6 @@ import { getBook, type Book } from '../../src/db/books';
 import { findMainContentStart } from '../../src/extraction/mainContent';
 import type { Sentence } from '../../src/extraction/types';
 import { useReading } from '../../src/player/PlaybackProvider';
-import { useSavedPosition } from '../../src/player/useSavedPosition';
 import { estimateSeconds, wordDuration } from '../../src/player/listeningTime';
 import { SentenceList } from '../../src/ui/SentenceList';
 import { Player } from '../../src/ui/Player';
@@ -53,8 +52,8 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   const { colors, space, font } = useTheme();
   const insets = useSafeAreaInsets();
   const { fontSize } = useFontSize();
+  // The position is saved by the provider, which outlives this screen.
   const { playback } = useReading();
-  useSavedPosition(book.id, playback.currentIndex);
 
   const [skipTo] = useState(() => findMainContentStart(sentences));
   const [choosingVoice, setChoosingVoice] = useState(false);
