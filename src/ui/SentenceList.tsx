@@ -109,6 +109,15 @@ export function SentenceList({
   });
   const chasing = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /*
+   * The caller rebuilds this on every render -- it closes over playback, which
+   * changes with every sentence -- and depending on it directly restarted the
+   * scroll each time, which is most of what was seen as the page moving on its
+   * own. Held in a ref so the chase below can have no dependencies at all.
+   */
+  const located = useRef(onLocated);
+  located.current = onLocated;
+
   /**
    * Goes to a sentence, and keeps going until it is actually there.
    *
@@ -128,12 +137,19 @@ export function SentenceList({
         const { first, last } = visible.current;
         // Already there: re-aiming would only jitter the page.
         if (index >= first && index <= last) {
-          onLocated?.();
+          located.current?.();
           return;
         }
 
         try {
-          list.current?.scrollToIndex({ index, viewPosition: VIEW_POSITION, animated });
+          list.current?.scrollToIndex({
+            index,
+            viewPosition: VIEW_POSITION,
+            // Only the first move is animated. A correction that animates is
+            // a second journey the reader can see, and two of them overlapping
+            // is the page appearing to hunt for the line.
+            animated: animated && left === ATTEMPTS,
+          });
         } catch {
           // The list has not measured itself yet. The retry below is the fix.
         }
@@ -144,7 +160,7 @@ export function SentenceList({
         } else {
           // Out of attempts. Say it is located anyway rather than leaving the
           // reader waiting on a sentence that is a few pixels off.
-          onLocated?.();
+          located.current?.();
         }
       };
 
@@ -153,7 +169,7 @@ export function SentenceList({
         if (chasing.current) clearTimeout(chasing.current);
       };
     },
-    [onLocated],
+    [],
   );
 
   // Opening a book puts the reader back where they stopped. The audio already
@@ -212,6 +228,13 @@ export function SentenceList({
       // Opens directly at the saved place instead of scrolling there after
       // mounting, which is the difference between arriving and travelling.
       initialScrollIndex={opensAt.current}
+      /*
+       * Rows are measured as they render, which changes the offsets of
+       * everything below them. Without this, correcting a height shifts the
+       * page under the reader -- and the chase then re-aims at a line that
+       * has moved, which is what made it hunt up and down.
+       */
+      maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
       viewabilityConfig={VIEWABILITY}
       onViewableItemsChanged={onViewable.current}
       getItemLayout={(_data, index) => ({

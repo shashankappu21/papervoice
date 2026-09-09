@@ -89,7 +89,9 @@ export function createHeightIndex(
       // offsets of everything below it.
       if (index < 0 || index >= count) return;
       if (!Number.isFinite(height) || height <= 0) return;
-      if (measured[index] === height) return;
+      // Sub-pixel differences on a re-render are not news. Taking them would
+      // mark the offsets dirty and move the page for nothing.
+      if (measured[index] > 0 && Math.abs(measured[index] - height) < 0.5) return;
 
       const text = sentences[index]?.text ?? '';
       if (measured[index] === 0 && text.length > 0) {

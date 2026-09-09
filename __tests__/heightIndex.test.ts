@@ -37,6 +37,13 @@ describe('what has been measured', () => {
     expect(index.offsetOf(2)).toBe(before + 100);
   });
 
+  it('ignores a re-measurement that is the same row to within a pixel', () => {
+    const index = createHeightIndex(book(3), 18, 360);
+    index.set(1, 60);
+    index.set(1, 60.3);
+    expect(index.heightOf(1)).toBe(60);
+  });
+
   it('ignores a nonsense measurement', () => {
     const index = createHeightIndex(book(3), 18, 360);
     const estimate = index.heightOf(1);
