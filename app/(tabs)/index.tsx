@@ -6,6 +6,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { listBooks, type Book } from '../../src/db/books';
 import { bookIdsIn, listGroups, type Group } from '../../src/db/groups';
 import { BookMenu } from '../../src/ui/BookMenu';
+import { NewGroupSheet } from '../../src/ui/NewGroupSheet';
+import { GroupBooksSheet } from '../../src/ui/GroupBooksSheet';
 import { CoverBackfill } from '../../src/import/CoverBackfill';
 import { BookCover } from '../../src/ui/BookCover';
 import { useTheme } from '../../src/ui/ThemeProvider';
@@ -25,6 +27,8 @@ export default function Library() {
   const [inGroup, setInGroup] = useState<Set<number> | null>(null);
   const [menuFor, setMenuFor] = useState<Book | null>(null);
   const [backfilling, setBackfilling] = useState(true);
+  const [naming, setNaming] = useState(false);
+  const [editing, setEditing] = useState<Group | null>(null);
 
   // Progress changes while reading, so the list is refreshed on the way back
   // rather than only when it is first built.
@@ -89,7 +93,7 @@ export default function Library() {
         contentContainerStyle={{ paddingBottom: space.xxxl }}
         ListHeaderComponent={
           <View>
-            {groups.length > 0 && (
+            {books.length > 0 && (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -99,15 +103,21 @@ export default function Library() {
                   paddingBottom: space.md,
                 }}
               >
-                <GroupChip label="All" on={chosen === null} onPress={() => setGroup(null)} />
+                {groups.length > 0 && (
+                  <GroupChip label="All" on={chosen === null} onPress={() => setGroup(null)} />
+                )}
                 {groups.map((candidate) => (
                   <GroupChip
                     key={candidate.id}
                     label={`${candidate.name} · ${candidate.count}`}
                     on={chosen === candidate.id}
                     onPress={() => setGroup(chosen === candidate.id ? null : candidate.id)}
+                    // Tapping the group you are already in opens it, which is
+                    // where books are added and where it can be deleted.
+                    onLongPress={() => setEditing(candidate)}
                   />
                 ))}
+                <GroupChip label="+ New group" on={false} onPress={() => setNaming(true)} />
               </ScrollView>
             )}
 
@@ -190,6 +200,40 @@ export default function Library() {
           </View>
         }
         ListEmptyComponent={
+          chosen !== null ? (
+            <View style={{ padding: space.xxxl, alignItems: 'center' }}>
+              <Ionicons name="albums-outline" size={44} color={colors.textMuted} />
+              <Text
+                style={{
+                  color: colors.text,
+                  fontSize: font.lg,
+                  fontWeight: '700',
+                  marginTop: space.md,
+                }}
+              >
+                Nothing in here yet
+              </Text>
+              <Pressable
+                onPress={() =>
+                  setEditing(groups.find((candidate) => candidate.id === chosen) ?? null)
+                }
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  chipStyles.chip,
+                  {
+                    backgroundColor: colors.accent,
+                    borderRadius: radius.pill,
+                    marginTop: space.lg,
+                    opacity: pressed ? 0.75 : 1,
+                  },
+                ]}
+              >
+                <Text style={{ color: colors.accentOn, fontSize: font.md, fontWeight: '700' }}>
+                  Add books
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
           <View style={{ padding: space.xxxl, alignItems: 'center' }}>
             <Ionicons name="book-outline" size={48} color={colors.textMuted} />
             <Text
@@ -214,6 +258,7 @@ export default function Library() {
               Import a PDF and it will be read to you — entirely on this phone.
             </Text>
           </View>
+          )
         }
         renderItem={({ item }) => {
           const percent = Math.round((item.position / Math.max(1, item.sentenceCount)) * 100);
@@ -260,6 +305,28 @@ export default function Library() {
 
       <BookMenu book={menuFor} onClose={() => setMenuFor(null)} onChanged={reload} />
 
+      <NewGroupSheet
+        visible={naming}
+        onClose={() => setNaming(false)}
+        onCreated={(id) => {
+          reload();
+          setGroup(id);
+          // Straight into filling it: a group with no books in it is not
+          // finished, and this is the moment someone means to add them.
+          void listGroups().then((all) => {
+            setEditing(all.find((candidate) => candidate.id === id) ?? null);
+          });
+        }}
+      />
+
+      <GroupBooksSheet
+        group={editing}
+        books={books}
+        onClose={() => setEditing(null)}
+        onChanged={reload}
+        onDeleted={() => setGroup(null)}
+      />
+
       {/* Runs once per launch and stops as soon as every book has a picture. */}
       {backfilling && (
         <CoverBackfill
@@ -277,15 +344,18 @@ function GroupChip({
   label,
   on,
   onPress,
+  onLongPress,
 }: {
   label: string;
   on: boolean;
   onPress: () => void;
+  onLongPress?: () => void;
 }) {
   const { colors, radius, font } = useTheme();
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityState={{ selected: on }}
       style={({ pressed }) => [
