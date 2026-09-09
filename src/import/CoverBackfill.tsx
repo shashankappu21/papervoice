@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ExtractorWebView } from '../extraction/ExtractorWebView';
-import { booksWithoutCovers, setBookCover, type Book } from '../db/books';
+import { booksNeedingDetails, setBookCover, setBookOutline, type Book } from '../db/books';
 
 /**
- * Gives books imported before covers existed a picture.
+ * Gives older books the details later versions record at import.
  *
  * One at a time and quietly. Only page one is read, so this is a fraction of
  * the work an import does -- but a library of twenty books would still be
@@ -15,7 +15,7 @@ export function CoverBackfill({ onDone }: { onDone: () => void }) {
   const [at, setAt] = useState(0);
 
   useEffect(() => {
-    booksWithoutCovers().then(setQueue, () => setQueue([]));
+    booksNeedingDetails().then(setQueue, () => setQueue([]));
   }, []);
 
   const book = queue?.[at] ?? null;
@@ -37,9 +37,13 @@ export function CoverBackfill({ onDone }: { onDone: () => void }) {
       key={book.id}
       uri={book.uri}
       mode="cover"
-      onCover={(cover) => {
-        if (cover) void setBookCover(book.id, cover).then(next, next);
-        else next();
+      onCover={(cover, outline) => {
+        // The outline is written even when empty: null means never looked
+        // for, and without the distinction every book without one would be
+        // re-opened on every launch.
+        const work = [setBookOutline(book.id, outline)];
+        if (cover) work.push(setBookCover(book.id, cover).then(() => undefined));
+        void Promise.all(work).then(next, next);
       }}
       onDone={next}
       onError={next}

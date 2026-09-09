@@ -45,6 +45,8 @@ export interface ExtractedDoc {
    * error worth failing an import over -- a book without a cover still reads.
    */
   cover?: string | null;
+  /** The document's own contents, empty when it records none. */
+  outline?: import('./sections').OutlineEntry[];
 }
 
 /**

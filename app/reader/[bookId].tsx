@@ -5,6 +5,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBook, type Book } from '../../src/db/books';
 import { findMainContentStart } from '../../src/extraction/mainContent';
+import { buildSections } from '../../src/extraction/sections';
 import type { Sentence } from '../../src/extraction/types';
 import { useReading } from '../../src/player/PlaybackProvider';
 import { estimateSeconds, wordDuration } from '../../src/player/listeningTime';
@@ -12,6 +13,7 @@ import { SentenceList } from '../../src/ui/SentenceList';
 import { Player } from '../../src/ui/Player';
 import { VoicePicker } from '../../src/ui/VoicePicker';
 import { SpeedSheet } from '../../src/ui/SpeedSheet';
+import { SectionsSheet } from '../../src/ui/SectionsSheet';
 import { useFontSize, useTheme } from '../../src/ui/ThemeProvider';
 
 export default function ReaderScreen() {
@@ -58,6 +60,14 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   const [skipTo] = useState(() => findMainContentStart(sentences));
   const [choosingVoice, setChoosingVoice] = useState(false);
   const [choosingSpeed, setChoosingSpeed] = useState(false);
+  const [showingSections, setShowingSections] = useState(false);
+
+  // Walks the whole book, so it is computed when the book changes rather than
+  // on every sentence.
+  const sections = useMemo(
+    () => buildSections(sentences, book.outline),
+    [sentences, book.outline],
+  );
 
   const at = playback.currentIndex;
 
@@ -109,7 +119,7 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
         >
           {book.title}
         </Text>
-        {skipTo !== null && at < skipTo && !playback.playing ? (
+        {skipTo !== null && at < skipTo && !playback.playing && (
           <Pressable
             onPress={() => void playback.jumpTo(skipTo)}
             accessibilityRole="button"
@@ -118,6 +128,19 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
             style={styles.headerButton}
           >
             <Ionicons name="return-down-forward" size={22} color={colors.accent} />
+          </Pressable>
+        )}
+        {/* Only where there is something to navigate. A book with no contents
+            and no headings gets no button rather than an empty list. */}
+        {sections.length > 0 ? (
+          <Pressable
+            onPress={() => setShowingSections(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Contents"
+            hitSlop={10}
+            style={styles.headerButton}
+          >
+            <Ionicons name="list" size={24} color={colors.text} />
           </Pressable>
         ) : (
           <View style={styles.headerButton} />
@@ -189,6 +212,14 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
           // already made was spoken by the old one.
           void playback.selectVoice(id);
         }}
+      />
+
+      <SectionsSheet
+        visible={showingSections}
+        sections={sections}
+        currentIndex={at}
+        onClose={() => setShowingSections(false)}
+        onJump={(index) => void playback.jumpTo(index)}
       />
 
       <SpeedSheet

@@ -5,6 +5,7 @@ import { buildSentences } from './sentences';
 import { EXTRACTOR_HTML } from './extractorHtml';
 import { stagePdfJs } from './pdfjsAssets';
 import type { ExtractedDoc, TextItem } from './types';
+import type { OutlineEntry } from './sections';
 
 interface Props {
   /** `file://` URI of the PDF to extract. */
@@ -16,7 +17,7 @@ interface Props {
    * covers existed a picture, without re-reading every page of them.
    */
   mode?: 'full' | 'cover';
-  onCover?: (cover: string | null) => void;
+  onCover?: (cover: string | null, outline: OutlineEntry[]) => void;
   onError: (message: string) => void;
 }
 
@@ -24,7 +25,7 @@ type Message =
   | { type: 'ready' }
   | { type: 'progress'; page: number; total: number }
   | { type: 'error'; message: string }
-  | { type: 'cover'; cover: string | null }
+  | { type: 'cover'; cover: string | null; outline?: OutlineEntry[] }
   | {
       type: 'items';
       items: TextItem[];
@@ -32,6 +33,7 @@ type Message =
       pageCount: number;
       /** Page one as base64 JPEG, or null when it could not be drawn. */
       cover: string | null;
+      outline?: OutlineEntry[];
     };
 
 /**
@@ -103,13 +105,14 @@ export function ExtractorWebView({
         onError(msg.message);
         return;
       case 'cover':
-        onCover?.(msg.cover);
+        onCover?.(msg.cover, msg.outline ?? []);
         return;
       case 'items':
         onDone({
           sentences: buildSentences(msg.items, msg.pageHeight),
           pageCount: msg.pageCount,
           cover: msg.cover,
+          outline: msg.outline ?? [],
         });
         return;
     }

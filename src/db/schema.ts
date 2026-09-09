@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bumped whenever the statements below change. The version lives in the
  * database itself, so an app that skipped a release still migrates in order.
  */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 /**
  * Creates or upgrades the library.
@@ -72,6 +72,12 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
         PRIMARY KEY (book_id, group_id)
       );
     `);
+  }
+
+  if (version < 5) {
+    // A contents page is a few kilobytes at most, so it lives in the row
+    // rather than in a file of its own like the sentences do.
+    await db.execAsync(`ALTER TABLE books ADD COLUMN outline TEXT`);
   }
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);

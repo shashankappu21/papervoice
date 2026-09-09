@@ -56,6 +56,51 @@ async function drawCover(pdf) {
   return data;
 }
 
+/**
+ * The document's own table of contents, if it has one.
+ *
+ * This is what Adobe and Chrome show in their sidebars. Each entry names a
+ * destination rather than a page, so every one has to be resolved -- and any
+ * that will not resolve is skipped rather than allowed to fail the import.
+ */
+async function readOutline(pdf) {
+  var outline = await pdf.getOutline();
+  if (!outline || outline.length === 0) return [];
+
+  var entries = [];
+
+  async function pageOf(item) {
+    try {
+      var dest = item.dest;
+      if (typeof dest === 'string') dest = await pdf.getDestination(dest);
+      if (!dest || !dest[0]) return null;
+      // An explicit destination holds a page reference; a named one resolves
+      // to the same shape above.
+      return (await pdf.getPageIndex(dest[0])) + 1;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function walk(items, depth) {
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var page = await pageOf(item);
+      if (page !== null && item.title) {
+        entries.push({ title: String(item.title), page: page, depth: depth });
+      }
+      // Two levels is a contents page; deeper is a reference work, and a
+      // sheet nobody can scroll.
+      if (item.items && item.items.length > 0 && depth < 1) {
+        await walk(item.items, depth + 1);
+      }
+    }
+  }
+
+  await walk(outline, 0);
+  return entries;
+}
+
 function coverWith(pdfjsLib) {
   return async function (base64) {
     try {
@@ -63,9 +108,13 @@ function coverWith(pdfjsLib) {
       var bytes = new Uint8Array(binary.length);
       for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       var pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
-      post({ type: 'cover', cover: await drawCover(pdf) });
+      var cover = null;
+      var outline = [];
+      try { cover = await drawCover(pdf); } catch (e) { cover = null; }
+      try { outline = await readOutline(pdf); } catch (e) { outline = []; }
+      post({ type: 'cover', cover: cover, outline: outline });
     } catch (e) {
-      post({ type: 'cover', cover: null });
+      post({ type: 'cover', cover: null, outline: [] });
     }
   };
 }
@@ -81,11 +130,17 @@ function extractWith(pdfjsLib) {
       var items = [];
       var pageHeight = 792;
       var cover = null;
+      var outline = [];
       try {
         cover = await drawCover(pdf);
       } catch (e) {
         // A cover is decoration. Losing it must never lose the book.
         cover = null;
+      }
+      try {
+        outline = await readOutline(pdf);
+      } catch (e) {
+        outline = [];
       }
 
       for (var p = 1; p <= pdf.numPages; p++) {
@@ -124,6 +179,7 @@ function extractWith(pdfjsLib) {
         pageHeight: pageHeight,
         pageCount: pdf.numPages,
         cover: cover,
+        outline: outline,
       });
     } catch (e) {
       post({ type: 'error', message: describe(e) });

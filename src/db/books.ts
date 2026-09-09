@@ -1,6 +1,7 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { database } from './connection';
 import type { ExtractedDoc, Sentence } from '../extraction/types';
+import type { OutlineEntry } from '../extraction/sections';
 
 export interface Book {
   id: number;
@@ -16,6 +17,12 @@ export interface Book {
   position: number;
   /** Page one, drawn at import. Null for books added before covers existed. */
   coverPath: string | null;
+  /**
+   * The document's own contents. Null when it has not been looked for yet,
+   * empty when it was looked for and the file records none -- a distinction
+   * that stops the search being repeated on every book that lacks one.
+   */
+  outline: OutlineEntry[] | null;
 }
 
 function booksDirectory(): Directory {
@@ -65,8 +72,8 @@ export async function addBook(
 
   const db = await database();
   const result = await db.runAsync(
-    `INSERT INTO books (title, uri, sentences_path, page_count, sentence_count, added_at, last_opened_at, cover_path)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO books (title, uri, sentences_path, page_count, sentence_count, added_at, last_opened_at, cover_path, outline)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     title,
     pdf.uri,
     sentences.uri,
@@ -75,6 +82,7 @@ export async function addBook(
     stamp,
     stamp,
     coverPath,
+    JSON.stringify(doc.outline ?? []),
   );
 
   return {
@@ -88,6 +96,7 @@ export async function addBook(
     lastOpenedAt: stamp,
     position: 0,
     coverPath,
+    outline: doc.outline ?? [],
   };
 }
 
@@ -102,6 +111,7 @@ interface BookRow {
   last_opened_at: number | null;
   sentence_index: number | null;
   cover_path: string | null;
+  outline: string | null;
 }
 
 const toBook = (row: BookRow): Book => ({
@@ -115,7 +125,20 @@ const toBook = (row: BookRow): Book => ({
   lastOpenedAt: row.last_opened_at,
   position: row.sentence_index ?? 0,
   coverPath: row.cover_path,
+  outline: readOutline(row.outline),
 });
+
+/** A stored contents page, or null when the column has never been written. */
+function readOutline(stored: string | null): OutlineEntry[] | null {
+  if (stored === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(stored);
+    return Array.isArray(parsed) ? (parsed as OutlineEntry[]) : [];
+  } catch {
+    // Unreadable is the same as absent, and the headings still work.
+    return [];
+  }
+}
 
 const SELECT = `
   SELECT b.*, p.sentence_index
@@ -189,10 +212,26 @@ export async function setBookCover(bookId: number, cover: string): Promise<strin
   }
 }
 
-/** Books that have no picture yet, oldest first. */
-export async function booksWithoutCovers(): Promise<Book[]> {
+/** Records a contents page, including the fact that a book has none. */
+export async function setBookOutline(
+  bookId: number,
+  outline: OutlineEntry[],
+): Promise<void> {
   const db = await database();
-  const rows = await db.getAllAsync<BookRow>(`${SELECT} WHERE b.cover_path IS NULL`);
+  await db.runAsync('UPDATE books SET outline = ? WHERE id = ?', JSON.stringify(outline), bookId);
+}
+
+/**
+ * Books still missing a picture or a contents page.
+ *
+ * Both are read in one pass, so a book that needs either is opened once
+ * rather than twice.
+ */
+export async function booksNeedingDetails(): Promise<Book[]> {
+  const db = await database();
+  const rows = await db.getAllAsync<BookRow>(
+    `${SELECT} WHERE b.cover_path IS NULL OR b.outline IS NULL`,
+  );
   return rows.map(toBook);
 }
 
