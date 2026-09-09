@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
 import { deleteBook, type Book } from '../db/books';
 import { createGroup, groupsOf, listGroups, setBookGroup, type Group } from '../db/groups';
+import { useKeyboardHeight } from './useKeyboardHeight';
 
 interface Props {
   book: Book | null;
@@ -26,6 +27,7 @@ interface Props {
 export function BookMenu({ book, onClose, onChanged }: Props) {
   const { colors, space, radius, font } = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
   const [groups, setGroups] = useState<Group[]>([]);
   const [member, setMember] = useState<Set<number>>(new Set());
   const [naming, setNaming] = useState(false);
@@ -98,7 +100,11 @@ export function BookMenu({ book, onClose, onChanged }: Props) {
               borderTopLeftRadius: radius.xl,
               borderTopRightRadius: radius.xl,
               paddingTop: space.md,
-              paddingBottom: insets.bottom + space.lg,
+              paddingBottom: keyboard > 0 ? space.sm : insets.bottom + space.lg,
+              marginBottom: keyboard,
+              // With the keyboard up there is far less room, and the sheet
+              // must give way rather than push the field off the screen.
+              maxHeight: keyboard > 0 ? '54%' : '80%',
             },
           ]}
         >
@@ -244,7 +250,7 @@ export function BookMenu({ book, onClose, onChanged }: Props) {
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
-  sheet: { maxHeight: '80%' },
+  sheet: {},
   grip: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
   title: { fontWeight: '700' },
   section: { fontWeight: '700', letterSpacing: 0.5, marginTop: 18, marginBottom: 4 },

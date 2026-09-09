@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
 import { createGroup } from '../db/groups';
+import { useKeyboardHeight } from './useKeyboardHeight';
 
 interface Props {
   visible: boolean;
@@ -15,6 +16,7 @@ interface Props {
 export function NewGroupSheet({ visible, onClose, onCreated }: Props) {
   const { colors, space, radius, font } = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
   const [name, setName] = useState('');
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -50,7 +52,10 @@ export function NewGroupSheet({ visible, onClose, onCreated }: Props) {
               borderTopRightRadius: radius.xl,
               padding: space.xl,
               paddingTop: space.md,
-              paddingBottom: insets.bottom + space.xl,
+              // The keyboard hides the navigation bar, so its inset stops
+              // applying the moment the keyboard is up.
+              paddingBottom: keyboard > 0 ? space.xl : insets.bottom + space.xl,
+              marginBottom: keyboard,
             },
           ]}
         >
