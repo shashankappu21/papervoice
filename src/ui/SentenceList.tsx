@@ -19,6 +19,11 @@ interface Props {
   fontSize: number;
   /** True while reading: autoscroll only follows a voice that is speaking. */
   following: boolean;
+  /**
+   * A request to bring the spoken sentence into view and say when it is there.
+   * Distinct from following: this is a jump, not the page keeping pace.
+   */
+  locating?: boolean;
   /** Fired when the spoken sentence is actually on screen, not merely aimed at. */
   onLocated?: () => void;
 }
@@ -64,6 +69,7 @@ export function SentenceList({
   onJump,
   fontSize,
   following,
+  locating = false,
   onLocated,
 }: Props) {
   const { colors } = useTheme();
@@ -119,58 +125,79 @@ export function SentenceList({
   located.current = onLocated;
 
   /**
-   * Goes to a sentence, and keeps going until it is actually there.
+   * Keeps the spoken line where it belongs while reading.
    *
-   * Estimated heights get the list to roughly the right place in one move,
-   * but not exactly: the rows really are laid out at their own heights, so
-   * aiming at an estimated offset lands near the target rather than on it.
-   * Re-aiming works because the attempt that missed rendered the rows around
-   * where it landed, which is what makes the next estimate better.
+   * Always moves, even when the sentence is already somewhere on screen.
+   * Stopping early because it was technically visible is what made the
+   * highlight sink to the bottom of the page and then jump: following means
+   * holding the line in the same place, not merely keeping it in the window.
+   *
+   * No verification here. Consecutive sentences have been rendered and so are
+   * measured, which makes this exact.
    */
-  const goTo = useCallback(
-    (index: number, animated: boolean) => {
+  const follow = useCallback((index: number) => {
+    try {
+      list.current?.scrollToIndex({ index, viewPosition: VIEW_POSITION, animated: true });
+    } catch {
+      // Not measured yet. The next sentence will carry the page along.
+    }
+  }, []);
+
+  /**
+   * Goes to a sentence somewhere else, and checks that it arrived.
+   *
+   * For a jump the target has never been rendered, so its height is estimated
+   * and the first move lands near rather than on it. Re-aiming works because
+   * the attempt that missed rendered the rows around where it landed, which is
+   * what makes the next estimate better.
+   */
+  const chase = useCallback((index: number, animated: boolean) => {
+    if (chasing.current) clearTimeout(chasing.current);
+
+    let left = ATTEMPTS;
+
+    const attempt = () => {
+      const { first, last } = visible.current;
+      if (index >= first && index <= last) {
+        located.current?.();
+        return;
+      }
+
+      try {
+        list.current?.scrollToIndex({
+          index,
+          viewPosition: VIEW_POSITION,
+          // Only the first move is animated. An animated correction is a
+          // second journey the reader can see, and two overlapping is what
+          // hunting looks like.
+          animated: animated && left === ATTEMPTS,
+        });
+      } catch {
+        // The list has not measured itself yet. The retry below is the fix.
+      }
+
+      left -= 1;
+      if (left > 0) {
+        chasing.current = setTimeout(attempt, SETTLE_MS);
+      } else {
+        // Out of attempts. Say it is located rather than leaving the reader
+        // waiting on a sentence that is a few pixels off.
+        located.current?.();
+      }
+    };
+
+    attempt();
+    return () => {
       if (chasing.current) clearTimeout(chasing.current);
+    };
+  }, []);
 
-      let left = ATTEMPTS;
-
-      const attempt = () => {
-        const { first, last } = visible.current;
-        // Already there: re-aiming would only jitter the page.
-        if (index >= first && index <= last) {
-          located.current?.();
-          return;
-        }
-
-        try {
-          list.current?.scrollToIndex({
-            index,
-            viewPosition: VIEW_POSITION,
-            // Only the first move is animated. A correction that animates is
-            // a second journey the reader can see, and two of them overlapping
-            // is the page appearing to hunt for the line.
-            animated: animated && left === ATTEMPTS,
-          });
-        } catch {
-          // The list has not measured itself yet. The retry below is the fix.
-        }
-
-        left -= 1;
-        if (left > 0) {
-          chasing.current = setTimeout(attempt, SETTLE_MS);
-        } else {
-          // Out of attempts. Say it is located anyway rather than leaving the
-          // reader waiting on a sentence that is a few pixels off.
-          located.current?.();
-        }
-      };
-
-      attempt();
-      return () => {
-        if (chasing.current) clearTimeout(chasing.current);
-      };
-    },
-    [],
-  );
+  // Asked to find the line before the voice starts.
+  useEffect(() => {
+    if (!locating) return;
+    setAutoScroll(true);
+    return chase(currentIndex, false);
+  }, [locating, currentIndex, chase]);
 
   // Opening a book puts the reader back where they stopped. The audio already
   // resumes there; without this the page did not, so a reader returning to a
@@ -180,8 +207,8 @@ export function SentenceList({
     opened.current = true;
     if (currentIndex === 0) return;
     // No animation: this is where the book opens, not somewhere it travels to.
-    return goTo(currentIndex, false);
-  }, [sentences.length, currentIndex, goTo]);
+    return chase(currentIndex, false);
+  }, [sentences.length, currentIndex, chase]);
 
   /**
    * Pressing play means "follow the voice again".
@@ -197,8 +224,8 @@ export function SentenceList({
 
   useEffect(() => {
     if (!autoScroll || !following) return;
-    return goTo(currentIndex, true);
-  }, [currentIndex, autoScroll, following, goTo]);
+    follow(currentIndex);
+  }, [currentIndex, autoScroll, following, follow]);
 
   const handlePress = (index: number) => {
     const now = Date.now();

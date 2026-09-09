@@ -197,7 +197,11 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
           currentIndex={at}
           onJump={(to) => void playback.jumpTo(to)}
           fontSize={fontSize}
-          following={playback.playing || locating}
+          // Following is the page keeping pace with the voice; locating is a
+          // one-off request to find the line before the voice starts. They
+          // were the same flag, which is why one broke the other.
+          following={playback.playing}
+          locating={locating}
           onLocated={located}
         />
       </View>
