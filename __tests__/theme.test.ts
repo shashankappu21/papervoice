@@ -77,6 +77,8 @@ describe('resolveTheme', () => {
   it('falls back to light when the system reports nothing', () => {
     expect(resolveTheme('system', null)).toBe('light');
     expect(resolveTheme(null, undefined)).toBe('light');
+    // React Native says this on platforms with no preference to report.
+    expect(resolveTheme(null, 'unspecified')).toBe('light');
   });
 });
 

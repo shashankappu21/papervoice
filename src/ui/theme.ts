@@ -103,7 +103,12 @@ const NAMES: ThemeName[] = ['light', 'paper', 'dark'];
  */
 export function resolveTheme(
   setting: string | null,
-  system: 'light' | 'dark' | null | undefined,
+  /**
+   * Widened past 'light' | 'dark' on purpose: React Native reports
+   * 'unspecified' on some platforms, and a phone that will not say what it
+   * prefers should still get a readable app rather than a type error.
+   */
+  system: string | null | undefined,
 ): ThemeName {
   if (setting && (NAMES as string[]).includes(setting)) return setting as ThemeName;
   return system === 'dark' ? 'dark' : 'light';

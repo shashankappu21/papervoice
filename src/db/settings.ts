@@ -29,3 +29,5 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 export const SETTING_RATE = 'playback.rate';
 export const SETTING_VOICE = 'playback.voice';
+export const SETTING_THEME = 'reader.theme';
+export const SETTING_FONT_SIZE = 'reader.fontSize';
