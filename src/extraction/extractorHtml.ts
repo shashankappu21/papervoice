@@ -40,6 +40,31 @@ function extractWith(pdfjsLib) {
       var pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
       var items = [];
       var pageHeight = 792;
+      var cover = null;
+
+      // Page one, drawn as it looks. For a book that is the jacket; for a
+      // scanned document it is the scan; for a bare text PDF it is the title
+      // page. All three are the right picture, and none needs a special case.
+      try {
+        var first = await pdf.getPage(1);
+        var natural = first.getViewport({ scale: 1 });
+        var scale = Math.min(2, 420 / natural.width);
+        var viewport = first.getViewport({ scale: scale });
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.round(viewport.width);
+        canvas.height = Math.round(viewport.height);
+        var context = canvas.getContext('2d');
+        // White behind it: a PDF page has no background of its own, and
+        // without this every cover comes out with black where the paper is.
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        await first.render({ canvasContext: context, viewport: viewport }).promise;
+        cover = canvas.toDataURL('image/jpeg', 0.72).split(',')[1];
+        first.cleanup();
+      } catch (e) {
+        // A cover is decoration. Losing it must never lose the book.
+        cover = null;
+      }
 
       for (var p = 1; p <= pdf.numPages; p++) {
         var page = await pdf.getPage(p);
@@ -71,7 +96,13 @@ function extractWith(pdfjsLib) {
         post({ type: 'progress', page: p, total: pdf.numPages });
       }
 
-      post({ type: 'items', items: items, pageHeight: pageHeight, pageCount: pdf.numPages });
+      post({
+        type: 'items',
+        items: items,
+        pageHeight: pageHeight,
+        pageCount: pdf.numPages,
+        cover: cover,
+      });
     } catch (e) {
       post({ type: 'error', message: describe(e) });
     }

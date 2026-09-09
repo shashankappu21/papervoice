@@ -1,14 +1,16 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from './ThemeProvider';
 
 /**
- * A book, before we have its real cover.
+ * A book's picture.
  *
- * Rendering page one of the PDF is the right answer and is coming; until then
- * a plain grey rectangle would make the library look broken rather than
- * unfinished. So the placeholder is derived from the title -- a colour and its
- * first letters -- which gives each book something to recognise it by, and
- * looks deliberate rather than absent.
+ * Page one, drawn during extraction. For a book that is the jacket, for a scan
+ * it is the scan, and for a bare text PDF it is the title page -- all three are
+ * the right picture, so none of them needs a special case.
+ *
+ * Books imported before covers existed have none, and a grey rectangle would
+ * make the library look broken rather than old. Those fall back to a colour and
+ * initials taken from the title, which at least looks deliberate.
  */
 
 const SPINES = [
@@ -30,10 +32,13 @@ export function BookCover({
   title,
   width,
   height,
+  uri,
 }: {
   title: string;
   width: number;
   height: number;
+  /** Page one, when it was drawn at import. */
+  uri?: string | null;
 }) {
   const { radius, colors } = useTheme();
   const [top] = spineFor(title);
@@ -46,6 +51,22 @@ export function BookCover({
     .slice(0, 2)
     .map((word) => word.charAt(0).toUpperCase())
     .join('');
+
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        accessibilityIgnoresInvertColors
+        style={[
+          styles.cover,
+          { width, height, borderRadius: radius.md, borderColor: colors.divider },
+        ]}
+        // The page is a portrait of unknown proportions; cover fills the frame
+        // and crops rather than leaving bars down the sides.
+        resizeMode="cover"
+      />
+    );
+  }
 
   return (
     <View

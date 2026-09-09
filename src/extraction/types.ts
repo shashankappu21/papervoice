@@ -40,6 +40,11 @@ export interface Sentence {
 export interface ExtractedDoc {
   sentences: Sentence[];
   pageCount: number;
+  /**
+   * Page one as base64 JPEG. Null when it could not be drawn, which is not an
+   * error worth failing an import over -- a book without a cover still reads.
+   */
+  cover?: string | null;
 }
 
 /**

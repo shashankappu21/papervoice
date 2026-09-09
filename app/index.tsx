@@ -3,9 +3,7 @@ import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import * as DocumentPicker from 'expo-document-picker';
-import { ExtractorWebView } from '../src/extraction/ExtractorWebView';
-import { addBook, listBooks, type Book } from '../src/db/books';
+import { listBooks, type Book } from '../src/db/books';
 import { BookCover } from '../src/ui/BookCover';
 import { useTheme } from '../src/ui/ThemeProvider';
 
@@ -18,7 +16,6 @@ export default function Library() {
   const { colors, space, radius, font } = useTheme();
   const insets = useSafeAreaInsets();
   const [books, setBooks] = useState<Book[]>([]);
-  const [importing, setImporting] = useState<{ uri: string; title: string } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
   // Progress changes while reading, so the list is refreshed on the way back
@@ -28,18 +25,6 @@ export default function Library() {
       listBooks().then(setBooks, (cause: unknown) => setStatus(String(cause)));
     }, []),
   );
-
-  const pick = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: 'application/pdf',
-      copyToCacheDirectory: true,
-    });
-    if (result.canceled) return;
-
-    const asset = result.assets[0];
-    setStatus('Reading the document…');
-    setImporting({ uri: asset.uri, title: asset.name.replace(/\.pdf$/i, '') });
-  };
 
   const open = (book: Book) =>
     router.push({ pathname: '/reader/[bookId]', params: { bookId: book.id } });
@@ -58,20 +43,13 @@ export default function Library() {
           Library
         </Text>
         <Pressable
-          onPress={() => void pick()}
-          disabled={importing !== null}
+          onPress={() => router.push('/settings')}
           accessibilityRole="button"
-          accessibilityLabel="Import a PDF"
-          style={({ pressed }) => [
-            styles.add,
-            {
-              backgroundColor: colors.accent,
-              borderRadius: radius.pill,
-              opacity: importing ? 0.4 : pressed ? 0.75 : 1,
-            },
-          ]}
+          accessibilityLabel="Settings"
+          hitSlop={10}
+          style={({ pressed }) => [styles.add, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <Ionicons name="add" size={28} color={colors.accentOn} />
+          <Ionicons name="settings-outline" size={24} color={colors.text} />
         </Pressable>
       </View>
 
@@ -113,7 +91,7 @@ export default function Library() {
                         },
                       ]}
                     >
-                      <BookCover title={book.title} width={124} height={166} />
+                      <BookCover title={book.title} uri={book.coverPath} width={124} height={166} />
                       <Text
                         numberOfLines={2}
                         style={{
@@ -199,7 +177,7 @@ export default function Library() {
               ]}
               onPress={() => open(item)}
             >
-              <BookCover title={item.title} width={52} height={70} />
+              <BookCover title={item.title} uri={item.coverPath} width={52} height={70} />
               <View style={styles.rowText}>
                 <Text
                   numberOfLines={2}
@@ -218,34 +196,6 @@ export default function Library() {
         }}
       />
 
-      {status && (
-        <View style={[styles.status, { backgroundColor: colors.surface, padding: space.lg }]}>
-          <Text style={{ color: colors.text, fontSize: font.sm }}>{status}</Text>
-        </View>
-      )}
-
-      {importing && (
-        <ExtractorWebView
-          uri={importing.uri}
-          onProgress={(page, total) => setStatus(`Reading page ${page} of ${total}…`)}
-          onDone={(doc) => {
-            const { uri, title } = importing;
-            setImporting(null);
-            setStatus('Saving…');
-            addBook(uri, title, doc).then(
-              (book) => {
-                setStatus(null);
-                router.push({ pathname: '/reader/[bookId]', params: { bookId: book.id } });
-              },
-              (cause: unknown) => setStatus(`Could not save: ${String(cause)}`),
-            );
-          }}
-          onError={(message) => {
-            setImporting(null);
-            setStatus(`Could not read that PDF: ${message}`);
-          }}
-        />
-      )}
     </View>
   );
 }
@@ -261,5 +211,4 @@ const styles = StyleSheet.create({
   fill: { height: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   rowText: { flex: 1 },
-  status: { position: 'absolute', left: 0, right: 0, bottom: 0 },
 });

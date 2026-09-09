@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeProvider';
 import { VoiceAvatar } from './VoiceAvatar';
@@ -22,6 +23,7 @@ interface Props {
  */
 export function VoicePicker({ visible, voices, chosenId, onClose, onChoose }: Props) {
   const { colors, space, radius, font } = useTheme();
+  const insets = useSafeAreaInsets();
   const slide = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -37,11 +39,14 @@ export function VoicePicker({ visible, voices, chosenId, onClose, onChoose }: Pr
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Animated.View
-          style={{
-            transform: [
-              { translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) },
-            ],
-          }}
+          style={[
+            styles.lift,
+            {
+              transform: [
+                { translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [420, 0] }) },
+              ],
+            },
+          ]}
         >
           <Pressable
             style={[
@@ -66,7 +71,10 @@ export function VoicePicker({ visible, voices, chosenId, onClose, onChoose }: Pr
               Read with
             </Text>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: space.xxxl }}>
+            <ScrollView
+              style={styles.list}
+              contentContainerStyle={{ paddingBottom: insets.bottom + space.lg }}
+            >
               {voices.map((voice) => {
                 const chosen = voice.id === chosenId;
                 return (
@@ -129,7 +137,16 @@ export function VoicePicker({ visible, voices, chosenId, onClose, onChoose }: Pr
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
-  sheet: { maxHeight: '72%' },
+  /*
+   * The height limit lives here, on a view whose parent fills the screen, not
+   * on the sheet itself. A percentage resolves against a parent with a definite
+   * height; the sheet's parent had none, so the limit was measured against
+   * nothing and the sheet stopped short of the bottom edge -- leaving the
+   * player visible through the gap.
+   */
+  lift: { maxHeight: '78%' },
+  sheet: { flexShrink: 1 },
+  list: { flexShrink: 1 },
   grip: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
   title: { fontWeight: '700', paddingBottom: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14 },

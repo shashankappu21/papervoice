@@ -9,6 +9,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeProvider';
 import {
@@ -39,6 +40,7 @@ const KNOB = 28;
  */
 export function SpeedSheet({ visible, rate, onChange, onClose }: Props) {
   const { colors, space, radius, font } = useTheme();
+  const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
   const slide = useRef(new Animated.Value(0)).current;
 
@@ -103,6 +105,7 @@ export function SpeedSheet({ visible, rate, onChange, onClose }: Props) {
                 borderTopRightRadius: radius.xl,
                 padding: space.xl,
                 paddingTop: space.md,
+                paddingBottom: insets.bottom + space.xl,
               },
             ]}
           >

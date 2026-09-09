@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bumped whenever the statements below change. The version lives in the
  * database itself, so an app that skipped a release still migrates in order.
  */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 /**
  * Creates or upgrades the library.
@@ -47,6 +47,13 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
         value TEXT NOT NULL
       );
     `);
+  }
+
+  if (version < 3) {
+    // Books imported before this have no cover and never will: the picture is
+    // drawn during extraction, and re-running that for the whole library on
+    // upgrade would be a long wait for decoration. They keep the placeholder.
+    await db.execAsync(`ALTER TABLE books ADD COLUMN cover_path TEXT`);
   }
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);

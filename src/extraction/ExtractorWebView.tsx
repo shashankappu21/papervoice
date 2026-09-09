@@ -18,7 +18,14 @@ type Message =
   | { type: 'ready' }
   | { type: 'progress'; page: number; total: number }
   | { type: 'error'; message: string }
-  | { type: 'items'; items: TextItem[]; pageHeight: number; pageCount: number };
+  | {
+      type: 'items';
+      items: TextItem[];
+      pageHeight: number;
+      pageCount: number;
+      /** Page one as base64 JPEG, or null when it could not be drawn. */
+      cover: string | null;
+    };
 
 /**
  * Renders a zero-sized WebView that runs pdf.js over one PDF and reports the
@@ -84,6 +91,7 @@ export function ExtractorWebView({ uri, onProgress, onDone, onError }: Props) {
         onDone({
           sentences: buildSentences(msg.items, msg.pageHeight),
           pageCount: msg.pageCount,
+          cover: msg.cover,
         });
         return;
     }

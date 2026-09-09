@@ -14,6 +14,8 @@ export interface Book {
   lastOpenedAt: number | null;
   /** Where the reader left off, or 0 for a book never opened. */
   position: number;
+  /** Page one, drawn at import. Null for books added before covers existed. */
+  coverPath: string | null;
 }
 
 function booksDirectory(): Directory {
@@ -40,6 +42,21 @@ export async function addBook(
   const pdf = new File(dir, `${stamp}.pdf`);
   await new File(pickedUri).copy(pdf);
 
+  // Written before the row, so a book is never listed pointing at a picture
+  // that is not there yet.
+  let coverPath: string | null = null;
+  if (doc.cover) {
+    try {
+      const cover = new File(dir, `${stamp}.cover.jpg`);
+      cover.create({ overwrite: true });
+      cover.write(Uint8Array.from(atob(doc.cover), (c) => c.charCodeAt(0)));
+      coverPath = cover.uri;
+    } catch {
+      // Decoration. A book that imports without its cover is still a book.
+      coverPath = null;
+    }
+  }
+
   const sentences = new File(dir, `${stamp}.sentences.json`);
   // overwrite: a file object has no idempotent flag, and create() throws on a
   // name that is already taken.
@@ -48,8 +65,8 @@ export async function addBook(
 
   const db = await database();
   const result = await db.runAsync(
-    `INSERT INTO books (title, uri, sentences_path, page_count, sentence_count, added_at, last_opened_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO books (title, uri, sentences_path, page_count, sentence_count, added_at, last_opened_at, cover_path)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     title,
     pdf.uri,
     sentences.uri,
@@ -57,6 +74,7 @@ export async function addBook(
     doc.sentences.length,
     stamp,
     stamp,
+    coverPath,
   );
 
   return {
@@ -69,6 +87,7 @@ export async function addBook(
     addedAt: stamp,
     lastOpenedAt: stamp,
     position: 0,
+    coverPath,
   };
 }
 
@@ -82,6 +101,7 @@ interface BookRow {
   added_at: number;
   last_opened_at: number | null;
   sentence_index: number | null;
+  cover_path: string | null;
 }
 
 const toBook = (row: BookRow): Book => ({
@@ -94,6 +114,7 @@ const toBook = (row: BookRow): Book => ({
   addedAt: row.added_at,
   lastOpenedAt: row.last_opened_at,
   position: row.sentence_index ?? 0,
+  coverPath: row.cover_path,
 });
 
 const SELECT = `
