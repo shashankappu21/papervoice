@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import type { Sentence } from '../extraction/types';
 import { useTheme } from './ThemeProvider';
+import { measureSentences } from './sentenceHeights';
 
 interface Props {
   sentences: Sentence[];
@@ -29,9 +37,44 @@ const VIEW_POSITION = 0.35;
  */
 export function SentenceList({ sentences, currentIndex, onJump, fontSize, following }: Props) {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
   const list = useRef<FlatList<Sentence>>(null);
   const lastTap = useRef<{ index: number; at: number }>({ index: -1, at: 0 });
   const [autoScroll, setAutoScroll] = useState(true);
+
+  /*
+   * Where every row sits, so the list can jump straight to one.
+   *
+   * Without this a FlatList reaches a row by rendering every row before it,
+   * which for a long book meant several seconds to open at a saved place or
+   * to follow a chapter. Recomputed only when the book or the type size
+   * changes, since it walks the whole document.
+   */
+  const layout = useMemo(
+    () => measureSentences(sentences, fontSize, width),
+    [sentences, fontSize, width],
+  );
+
+  /**
+   * Goes to a sentence, then goes again.
+   *
+   * The first jump uses estimated heights and lands within a screen or so.
+   * The second runs once the real rows have been laid out, and is what puts
+   * the sentence exactly where it belongs.
+   */
+  const goTo = useCallback((index: number, animated: boolean) => {
+    const scroll = () => {
+      try {
+        list.current?.scrollToIndex({ index, viewPosition: VIEW_POSITION, animated });
+      } catch {
+        // A list that has not measured itself yet rejects the request; the
+        // correction below is the retry.
+      }
+    };
+    scroll();
+    const correction = setTimeout(() => scroll(), 120);
+    return () => clearTimeout(correction);
+  }, []);
   const opened = useRef(false);
   const wasFollowing = useRef(following);
 
@@ -42,13 +85,9 @@ export function SentenceList({ sentences, currentIndex, onJump, fontSize, follow
     if (opened.current || sentences.length === 0) return;
     opened.current = true;
     if (currentIndex === 0) return;
-    list.current?.scrollToIndex({
-      index: currentIndex,
-      viewPosition: VIEW_POSITION,
-      // No animation: this is where the book opens, not somewhere it travels to.
-      animated: false,
-    });
-  }, [sentences.length, currentIndex]);
+    // No animation: this is where the book opens, not somewhere it travels to.
+    return goTo(currentIndex, false);
+  }, [sentences.length, currentIndex, goTo]);
 
   /**
    * Pressing play means "follow the voice again".
@@ -64,12 +103,8 @@ export function SentenceList({ sentences, currentIndex, onJump, fontSize, follow
 
   useEffect(() => {
     if (!autoScroll || !following) return;
-    list.current?.scrollToIndex({
-      index: currentIndex,
-      viewPosition: VIEW_POSITION,
-      animated: true,
-    });
-  }, [currentIndex, autoScroll, following]);
+    return goTo(currentIndex, true);
+  }, [currentIndex, autoScroll, following, goTo]);
 
   const handlePress = (index: number) => {
     const now = Date.now();
@@ -94,13 +129,15 @@ export function SentenceList({ sentences, currentIndex, onJump, fontSize, follow
       // A drag is the reader taking over. Momentum scrolling is not, or every
       // autoscroll would switch itself off.
       onScrollBeginDrag={() => setAutoScroll(false)}
-      onScrollToIndexFailed={({ index, averageItemLength }) => {
-        // The row has not been measured yet. Get close, then ask again.
-        list.current?.scrollToOffset({ offset: index * averageItemLength, animated: false });
-        setTimeout(
-          () => list.current?.scrollToIndex({ index, viewPosition: VIEW_POSITION }),
-          50,
-        );
+      // Estimated, not measured: a few pixels out per row, which the second
+      // pass in goTo corrects, in exchange for jumping anywhere instantly.
+      getItemLayout={(_data, index) => ({
+        length: layout.heights[index] ?? 0,
+        offset: layout.offsets[index] ?? 0,
+        index,
+      })}
+      onScrollToIndexFailed={({ index }) => {
+        list.current?.scrollToOffset({ offset: layout.offsets[index] ?? 0, animated: false });
       }}
       renderItem={({ item }) => (
         <Pressable
