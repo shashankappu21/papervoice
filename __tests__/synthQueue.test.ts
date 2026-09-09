@@ -123,3 +123,91 @@ describe('createSynthQueue', () => {
     expect(synthesize.mock.calls.length).toBeLessThan(40);
   });
 });
+
+describe('discarding audio already heard', () => {
+  it('deletes sentences well behind the listener', async () => {
+    const removed: string[] = [];
+    const q = createSynthQueue({
+      sentences,
+      synthesize: fakeSynth(),
+      lookahead: 4,
+      cacheDir: '/c/',
+      remove: (path) => removed.push(path),
+    });
+
+    await q.start(0);
+    await q.drain();
+    q.setCurrent(20);
+    await q.drain();
+
+    // A whole book of audio is several hundred megabytes, and none of it is
+    // wanted once it has been spoken.
+    expect(removed).toContain('/c/s0.wav');
+    expect(removed).toContain('/c/s1.wav');
+  });
+
+  it('keeps the sentences just behind, so stepping back is not a re-synthesis', async () => {
+    const removed: string[] = [];
+    const q = createSynthQueue({
+      sentences,
+      synthesize: fakeSynth(),
+      lookahead: 4,
+      cacheDir: '/c/',
+      remove: (path) => removed.push(path),
+    });
+
+    await q.start(0);
+    await q.drain();
+    q.setCurrent(20);
+    await q.drain();
+
+    expect(removed).not.toContain('/c/s19.wav');
+    expect(removed).not.toContain('/c/s20.wav');
+  });
+
+  it('never deletes what is being played', async () => {
+    const removed: string[] = [];
+    const q = createSynthQueue({
+      sentences,
+      synthesize: fakeSynth(),
+      lookahead: 4,
+      cacheDir: '/c/',
+      remove: (path) => removed.push(path),
+    });
+
+    await q.start(0);
+    await q.drain();
+    for (let at = 0; at < 40; at++) {
+      q.setCurrent(at);
+      await q.drain();
+      expect(removed).not.toContain(`/c/s${at}.wav`);
+    }
+  });
+
+  it('clears what a previous book left behind when a new one starts', async () => {
+    const removed: string[] = [];
+    const q = createSynthQueue({
+      sentences,
+      synthesize: fakeSynth(),
+      lookahead: 4,
+      cacheDir: '/c/',
+      remove: (path) => removed.push(path),
+    });
+
+    await q.start(0);
+    await q.drain();
+    removed.length = 0;
+    await q.start(0);
+
+    // A shorter book would otherwise leave the tail of a longer one on disk
+    // for ever, since the names only collide as far as the shorter one runs.
+    expect(removed).toContain('/c/s0.wav');
+  });
+
+  it('works without a remover, for a caller that does not want one', async () => {
+    const q = createSynthQueue({ sentences, synthesize: fakeSynth(), lookahead: 4, cacheDir: '/c/' });
+    await q.start(0);
+    await q.drain();
+    expect(() => q.setCurrent(30)).not.toThrow();
+  });
+});

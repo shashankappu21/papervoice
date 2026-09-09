@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { PermissionsAndroid, Platform } from 'react-native';
-import { Directory, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { SherpaTts } from '../../modules/sherpa-tts';
 import { createSynthQueue } from '../tts/synthQueue';
@@ -125,6 +125,17 @@ export function usePlayback(
         sentences,
         cacheDir,
         lookahead: LOOKAHEAD,
+        remove: (path) => {
+          try {
+            // cacheDir has its scheme stripped, because the native engine
+            // writes to a plain path; File wants the uri back.
+            const file = new File(path.startsWith('file://') ? path : `file://${path}`);
+            if (file.exists) file.delete();
+          } catch {
+            // The cache is the operating system's to reclaim in the end.
+            // Failing to delete one file is not worth interrupting a book for.
+          }
+        },
         synthesize: async (sentence, outPath) => {
           const speaking = engine.current;
           if (!speaking) throw new Error('No voice is ready');
