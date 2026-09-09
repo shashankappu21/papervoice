@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,12 +9,11 @@ import type { Sentence } from '../../src/extraction/types';
 import { usePlayback } from '../../src/player/usePlayback';
 import { useSavedPosition } from '../../src/player/useSavedPosition';
 import { estimateSeconds, wordDuration } from '../../src/player/listeningTime';
-import { nextRate } from '../../src/player/rate';
 import { SentenceList } from '../../src/ui/SentenceList';
 import { Player } from '../../src/ui/Player';
 import { VoicePicker } from '../../src/ui/VoicePicker';
+import { SpeedSheet } from '../../src/ui/SpeedSheet';
 import { useFontSize, useTheme } from '../../src/ui/ThemeProvider';
-import { useAutoHide } from '../../src/ui/useAutoHide';
 
 const NO_SENTENCES: Sentence[] = [];
 
@@ -62,7 +61,7 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
 
   const [skipTo] = useState(() => findMainContentStart(sentences));
   const [choosingVoice, setChoosingVoice] = useState(false);
-  const chrome = useAutoHide(playback.playing);
+  const [choosingSpeed, setChoosingSpeed] = useState(false);
 
   const at = playback.currentIndex;
 
@@ -94,11 +93,10 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <Animated.View
-        pointerEvents={chrome.visible ? 'auto' : 'none'}
+      <View
         style={[
           styles.header,
-          { opacity: chrome.opacity, paddingHorizontal: space.md, paddingTop: insets.top + space.sm },
+          { paddingHorizontal: space.md, paddingTop: insets.top + space.sm },
         ]}
       >
         <Pressable
@@ -129,7 +127,7 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
         ) : (
           <View style={styles.headerButton} />
         )}
-      </Animated.View>
+      </View>
 
       {/*
         The page surface. Everything below it -- the player, the header, the
@@ -137,7 +135,7 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
         the real PDF page here later replaces one component rather than the
         screen.
       */}
-      <Pressable style={styles.page} onPress={chrome.reveal}>
+      <View style={styles.page}>
         <SentenceList
           sentences={sentences}
           currentIndex={at}
@@ -145,7 +143,7 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
           fontSize={fontSize}
           following={playback.playing}
         />
-      </Pressable>
+      </View>
 
       {message && (
         <Text
@@ -158,11 +156,13 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
         </Text>
       )}
 
-      <Animated.View
-        // Controls that cannot be seen must not still be pressable.
-        pointerEvents={chrome.visible ? 'auto' : 'none'}
-        style={{ opacity: chrome.opacity, paddingBottom: insets.bottom }}
-      >
+      {/*
+        The player stays put. It was fading out three seconds into playback,
+        which meant the pause button was missing at exactly the moment someone
+        reaches for it. Speechify makes that behaviour a setting and ships it
+        switched off; here it is simply gone.
+      */}
+      <View style={{ paddingBottom: insets.bottom }}>
         <Player
           playing={playback.playing}
           busy={playback.loadingVoice}
@@ -178,9 +178,9 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
           onPrevious={() => void playback.jumpTo(Math.max(0, at - 1))}
           onNext={() => void playback.jumpTo(Math.min(sentences.length - 1, at + 1))}
           onPickVoice={() => setChoosingVoice(true)}
-          onCycleRate={() => playback.setRate(nextRate(playback.rate))}
+          onChangeSpeed={() => setChoosingSpeed(true)}
         />
-      </Animated.View>
+      </View>
 
       <VoicePicker
         visible={choosingVoice}
@@ -193,6 +193,13 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
           // already made was spoken by the old one.
           void playback.selectVoice(id);
         }}
+      />
+
+      <SpeedSheet
+        visible={choosingSpeed}
+        rate={playback.rate}
+        onChange={(next) => playback.setRate(next)}
+        onClose={() => setChoosingSpeed(false)}
       />
     </View>
   );

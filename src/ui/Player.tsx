@@ -21,7 +21,7 @@ interface Props {
   onPrevious: () => void;
   onNext: () => void;
   onPickVoice: () => void;
-  onCycleRate: () => void;
+  onChangeSpeed: () => void;
 }
 
 /**
@@ -45,7 +45,7 @@ export function Player({
   onPrevious,
   onNext,
   onPickVoice,
-  onCycleRate,
+  onChangeSpeed,
 }: Props) {
   const { colors, space, radius, font } = useTheme();
   const fraction = total > 0 ? Math.min(1, (position + 1) / total) : 0;
@@ -125,9 +125,9 @@ export function Player({
         </Pressable>
 
         <Pressable
-          onPress={onCycleRate}
+          onPress={onChangeSpeed}
           accessibilityRole="button"
-          accessibilityLabel={`Speed ${rate.toFixed(1)} times. Tap to change.`}
+          accessibilityLabel={`Speed ${rate.toFixed(2)} times. Tap to change.`}
           style={({ pressed }) => [
             styles.speed,
             {

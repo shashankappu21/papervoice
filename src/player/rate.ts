@@ -1,26 +1,48 @@
-/**
- * The speeds the pill cycles through.
- *
- * A tappable pill replaces the old minus and plus buttons: two controls that
- * each moved by 0.1 meant eight taps to get from 1x to 1.8x. These are the
- * speeds people actually choose, and one tap moves between them.
- */
-export const RATE_STEPS = [0.8, 1, 1.2, 1.5, 1.8, 2.2, 2.6, 3] as const;
+/** What the engine will accept, and the granularity the slider moves in. */
+export const RATE_LIMITS = { min: 0.5, max: 3, step: 0.1 } as const;
 
 /**
- * The next speed after this one.
+ * The speeds worth one tap.
  *
- * The current rate may sit between steps -- it was saved by the old buttons, or
- * by an earlier version of this list -- so it snaps to the nearest step first
- * and moves on from there, rather than falling back to the beginning.
+ * A slider alone is fiddly for the values people actually want -- almost
+ * everyone wants exactly 1x or exactly 1.5x, and hitting those by dragging is
+ * luck. The presets make the common choices exact and leave the slider for the
+ * rest.
  */
-export function nextRate(current: number): number {
-  if (!Number.isFinite(current)) return RATE_STEPS[0];
+export const RATE_PRESETS = [0.8, 1, 1.25, 1.5, 2, 2.5] as const;
 
-  let nearest = 0;
-  for (let i = 1; i < RATE_STEPS.length; i++) {
-    if (Math.abs(RATE_STEPS[i] - current) < Math.abs(RATE_STEPS[nearest] - current)) nearest = i;
+/** Keeps a speed inside what the engine accepts, including from a corrupt store. */
+export function clampRate(rate: number): number {
+  if (!Number.isFinite(rate)) return 1;
+  return Math.min(RATE_LIMITS.max, Math.max(RATE_LIMITS.min, rate));
+}
+
+/**
+ * Snaps to the nearest tenth, and to a preset when very close to one.
+ *
+ * A drag that lands on 1.02 should read as 1x. Without this the label shows
+ * "1.0×" while the engine runs at 1.02, which is the kind of small dishonesty
+ * that makes a control feel broken.
+ */
+export function snapRate(rate: number): number {
+  const clamped = clampRate(rate);
+
+  for (const preset of RATE_PRESETS) {
+    if (Math.abs(clamped - preset) < 0.04) return preset;
   }
 
-  return RATE_STEPS[(nearest + 1) % RATE_STEPS.length];
+  return Math.round(clamped * 10) / 10;
+}
+
+/** Where a speed sits along the slider, from 0 to 1. */
+export function rateToFraction(rate: number): number {
+  const { min, max } = RATE_LIMITS;
+  return (clampRate(rate) - min) / (max - min);
+}
+
+/** The speed at a point along the slider. */
+export function fractionToRate(fraction: number): number {
+  const { min, max } = RATE_LIMITS;
+  const bounded = Math.min(1, Math.max(0, Number.isFinite(fraction) ? fraction : 0));
+  return snapRate(min + bounded * (max - min));
 }
