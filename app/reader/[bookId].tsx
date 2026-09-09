@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -62,6 +62,40 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   const [choosingSpeed, setChoosingSpeed] = useState(false);
   const [showingSections, setShowingSections] = useState(false);
 
+  /**
+   * Playing is held until the spoken line is on screen.
+   *
+   * Starting the voice while the page is still travelling means hearing a
+   * sentence that cannot be seen, which reads as the highlight lagging behind
+   * the reading rather than as the page catching up.
+   */
+  const [locating, setLocating] = useState(false);
+  const wantsToPlay = useRef(false);
+  const index = useRef(playback.currentIndex);
+
+  const startWhenFound = () => {
+    if (playback.playing) {
+      playback.pause();
+      return;
+    }
+    wantsToPlay.current = true;
+    setLocating(true);
+  };
+
+  const located = useCallback(() => {
+    setLocating(false);
+    if (!wantsToPlay.current) return;
+    wantsToPlay.current = false;
+    void playback.play(index.current);
+  }, [playback]);
+
+  // A page that will not settle must not hold the voice for ever.
+  useEffect(() => {
+    if (!locating) return;
+    const giveUp = setTimeout(located, 900);
+    return () => clearTimeout(giveUp);
+  }, [locating, located]);
+
   // Walks the whole book, so it is computed when the book changes rather than
   // on every sentence.
   const sections = useMemo(
@@ -70,6 +104,10 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   );
 
   const at = playback.currentIndex;
+
+  // Read inside `located`, which the list calls back into: the index there
+  // must be the one now, not the one captured when the callback was made.
+  index.current = at;
 
   // Recomputed only when the place or the speed changes, not on every render:
   // this walks the whole book, which for a 5,000-sentence one is real work.
@@ -157,9 +195,10 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
         <SentenceList
           sentences={sentences}
           currentIndex={at}
-          onJump={(index) => void playback.jumpTo(index)}
+          onJump={(to) => void playback.jumpTo(to)}
           fontSize={fontSize}
-          following={playback.playing}
+          following={playback.playing || locating}
+          onLocated={located}
         />
       </View>
 
@@ -184,16 +223,14 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
         <Player
           playing={playback.playing}
           busy={playback.loadingVoice}
-          loading={playback.loadingVoice || playback.buffering}
+          loading={playback.loadingVoice || playback.buffering || locating}
           position={at}
           total={sentences.length}
           elapsed={elapsed}
           remaining={remaining}
           voiceName={currentVoice?.label ?? 'Voice'}
           rate={playback.rate}
-          onPlayPause={() =>
-            playback.playing ? playback.pause() : void playback.play(at)
-          }
+          onPlayPause={startWhenFound}
           onPrevious={() => void playback.jumpTo(Math.max(0, at - 1))}
           onNext={() => void playback.jumpTo(Math.min(sentences.length - 1, at + 1))}
           onPickVoice={() => setChoosingVoice(true)}

@@ -19,13 +19,36 @@ interface Props {
   fontSize: number;
   /** True while reading: autoscroll only follows a voice that is speaking. */
   following: boolean;
+  /** Fired when the spoken sentence is actually on screen, not merely aimed at. */
+  onLocated?: () => void;
 }
 
 /** Two taps closer together than this are one gesture. */
 const DOUBLE_TAP_MS = 300;
 
-/** Where on the screen the spoken sentence sits: a little above the middle. */
-const VIEW_POSITION = 0.35;
+/** Where on the screen the spoken sentence sits. */
+const VIEW_POSITION = 0.5;
+
+/**
+ * How many times to re-aim before giving up.
+ *
+ * Row heights are estimated, so the first jump lands near rather than on the
+ * target. Each attempt renders the rows around where it landed, which corrects
+ * the estimates nearby, so the next one lands closer. Three is enough for a
+ * five-thousand-sentence book; more would be chasing rounding.
+ */
+const ATTEMPTS = 3;
+
+/** Long enough for a jump to render before it is judged to have missed. */
+const SETTLE_MS = 140;
+
+/**
+ * A row counts as seen once any of it is showing.
+ *
+ * Zero rather than a percentage: this decides whether a jump arrived, and a
+ * sentence half off the bottom has still arrived.
+ */
+const VIEWABILITY = { itemVisiblePercentThreshold: 0, minimumViewTime: 0 };
 
 /**
  * The document, reflowed as sentences, with the spoken one tinted.
@@ -35,7 +58,14 @@ const VIEW_POSITION = 0.35;
  * irritating thing a reading app can do. Following resumes when they double-tap
  * a sentence, which says where they want to be.
  */
-export function SentenceList({ sentences, currentIndex, onJump, fontSize, following }: Props) {
+export function SentenceList({
+  sentences,
+  currentIndex,
+  onJump,
+  fontSize,
+  following,
+  onLocated,
+}: Props) {
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const list = useRef<FlatList<Sentence>>(null);
@@ -55,28 +85,77 @@ export function SentenceList({ sentences, currentIndex, onJump, fontSize, follow
     [sentences, fontSize, width],
   );
 
-  /**
-   * Goes to a sentence, then goes again.
-   *
-   * The first jump uses estimated heights and lands within a screen or so.
-   * The second runs once the real rows have been laid out, and is what puts
-   * the sentence exactly where it belongs.
-   */
-  const goTo = useCallback((index: number, animated: boolean) => {
-    const scroll = () => {
-      try {
-        list.current?.scrollToIndex({ index, viewPosition: VIEW_POSITION, animated });
-      } catch {
-        // A list that has not measured itself yet rejects the request; the
-        // correction below is the retry.
-      }
-    };
-    scroll();
-    const correction = setTimeout(() => scroll(), 120);
-    return () => clearTimeout(correction);
-  }, []);
   const opened = useRef(false);
   const wasFollowing = useRef(following);
+
+  /** Where the book opens. Captured once: FlatList reads it only at mount. */
+  const opensAt = useRef(currentIndex);
+
+  /** What is on screen right now, so a jump can tell whether it arrived. */
+  const visible = useRef<{ first: number; last: number }>({
+    first: currentIndex,
+    last: currentIndex,
+  });
+
+  /*
+   * Held in a ref because FlatList refuses a changing onViewableItemsChanged,
+   * and this one only ever writes to a ref.
+   */
+  const onViewable = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+    const indices = viewableItems
+      .map((item) => item.index)
+      .filter((index): index is number => index !== null);
+    if (indices.length === 0) return;
+    visible.current = { first: Math.min(...indices), last: Math.max(...indices) };
+  });
+  const chasing = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Goes to a sentence, and keeps going until it is actually there.
+   *
+   * Estimated heights get the list to roughly the right place in one move,
+   * but not exactly: the rows really are laid out at their own heights, so
+   * aiming at an estimated offset lands near the target rather than on it.
+   * Re-aiming works because the attempt that missed rendered the rows around
+   * where it landed, which is what makes the next estimate better.
+   */
+  const goTo = useCallback(
+    (index: number, animated: boolean) => {
+      if (chasing.current) clearTimeout(chasing.current);
+
+      let left = ATTEMPTS;
+
+      const attempt = () => {
+        const { first, last } = visible.current;
+        // Already there: re-aiming would only jitter the page.
+        if (index >= first && index <= last) {
+          onLocated?.();
+          return;
+        }
+
+        try {
+          list.current?.scrollToIndex({ index, viewPosition: VIEW_POSITION, animated });
+        } catch {
+          // The list has not measured itself yet. The retry below is the fix.
+        }
+
+        left -= 1;
+        if (left > 0) {
+          chasing.current = setTimeout(attempt, SETTLE_MS);
+        } else {
+          // Out of attempts. Say it is located anyway rather than leaving the
+          // reader waiting on a sentence that is a few pixels off.
+          onLocated?.();
+        }
+      };
+
+      attempt();
+      return () => {
+        if (chasing.current) clearTimeout(chasing.current);
+      };
+    },
+    [onLocated],
+  );
 
   // Opening a book puts the reader back where they stopped. The audio already
   // resumes there; without this the page did not, so a reader returning to a
@@ -131,6 +210,11 @@ export function SentenceList({ sentences, currentIndex, onJump, fontSize, follow
       onScrollBeginDrag={() => setAutoScroll(false)}
       // Estimated, not measured: a few pixels out per row, which the second
       // pass in goTo corrects, in exchange for jumping anywhere instantly.
+      // Opens directly at the saved place instead of scrolling there after
+      // mounting, which is the difference between arriving and travelling.
+      initialScrollIndex={opensAt.current}
+      viewabilityConfig={VIEWABILITY}
+      onViewableItemsChanged={onViewable.current}
       getItemLayout={(_data, index) => ({
         length: layout.heights[index] ?? 0,
         offset: layout.offsets[index] ?? 0,
