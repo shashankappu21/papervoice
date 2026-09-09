@@ -1,15 +1,18 @@
 import { useCallback, useState } from 'react';
-import { Button, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { ExtractorWebView } from '../src/extraction/ExtractorWebView';
 import { addBook, listBooks, type Book } from '../src/db/books';
+import { Button } from '../src/ui/Button';
+import { useTheme } from '../src/ui/ThemeProvider';
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
 /** The library: what has been imported, and how far each one has been read. */
 export default function Library() {
   const router = useRouter();
+  const { colors, space, radius, font } = useTheme();
   const [books, setBooks] = useState<Book[]>([]);
   const [importing, setImporting] = useState<{ uri: string; title: string } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -35,41 +38,75 @@ export default function Library() {
   };
 
   return (
-    <View style={styles.screen}>
-      <Stack.Screen options={{ title: 'Library' }} />
-
+    <View style={[styles.screen, { backgroundColor: colors.bg }]}>
       <FlatList
         data={books}
         keyExtractor={(book) => String(book.id)}
+        contentContainerStyle={{ paddingVertical: space.md }}
         ListEmptyComponent={
-          <Text style={styles.empty}>Nothing here yet. Import a PDF to start.</Text>
+          <View style={{ padding: space.xxxl }}>
+            <Text style={{ color: colors.text, fontSize: font.lg, textAlign: 'center' }}>
+              Nothing here yet.
+            </Text>
+            <Text
+              style={{
+                color: colors.textMuted,
+                fontSize: font.md,
+                textAlign: 'center',
+                marginTop: space.sm,
+              }}
+            >
+              Import a PDF and it will be read to you.
+            </Text>
+          </View>
         }
         renderItem={({ item }) => {
           const fraction = item.position / Math.max(1, item.sentenceCount);
           return (
             <Pressable
-              style={styles.book}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}, ${Math.round(fraction * 100)} percent read`}
+              style={({ pressed }) => [
+                styles.book,
+                {
+                  backgroundColor: colors.surface,
+                  borderRadius: radius.md,
+                  marginHorizontal: space.md,
+                  marginBottom: space.md,
+                  padding: space.lg,
+                  opacity: pressed ? 0.75 : 1,
+                },
+              ]}
               onPress={() =>
                 router.push({ pathname: '/reader/[bookId]', params: { bookId: item.id } })
               }
             >
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.detail}>
+              <Text style={[styles.title, { color: colors.text, fontSize: font.lg }]}>
+                {item.title}
+              </Text>
+              <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 2 }}>
                 {plural(item.pageCount, 'page')} · {plural(item.sentenceCount, 'sentence')}
               </Text>
 
               {item.position > 0 && (
-                <View style={styles.progressRow}>
-                  <View style={styles.track}>
+                <View style={[styles.progressRow, { marginTop: space.sm }]}>
+                  <View style={[styles.track, { backgroundColor: colors.divider }]}>
                     {/*
                       A long book is barely started for its first hundred
                       sentences, and a bar that rounds to nothing looks like a
                       book never opened. The fill keeps a sliver so that having
                       started is visible at all.
                     */}
-                    <View style={[styles.fill, { width: `${Math.max(1, fraction * 100)}%` }]} />
+                    <View
+                      style={[
+                        styles.fill,
+                        { width: `${Math.max(1, fraction * 100)}%`, backgroundColor: colors.accent },
+                      ]}
+                    />
                   </View>
-                  <Text style={styles.progressText}>
+                  <Text
+                    style={[styles.progressText, { color: colors.textMuted, fontSize: font.xs }]}
+                  >
                     {item.position + 1} / {item.sentenceCount}
                   </Text>
                 </View>
@@ -79,12 +116,16 @@ export default function Library() {
         }}
       />
 
-      <View style={styles.footer}>
-        <View style={styles.footerRow}>
-          <Button title="Import a PDF" onPress={() => void pick()} disabled={importing !== null} />
-          <Button title="Voices" onPress={() => router.push('/voices')} />
-        </View>
-        {status && <Text style={styles.status}>{status}</Text>}
+      <View
+        style={[
+          styles.footer,
+          { borderTopColor: colors.divider, padding: space.md, gap: space.sm },
+        ]}
+      >
+        <Button title="Import a PDF" onPress={() => void pick()} disabled={importing !== null} />
+        {status && (
+          <Text style={{ color: colors.textMuted, fontSize: font.sm }}>{status}</Text>
+        )}
       </View>
 
       {importing && (
@@ -115,15 +156,11 @@ export default function Library() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  empty: { padding: 32, textAlign: 'center', color: '#777' },
-  book: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  title: { fontSize: 17, fontWeight: '600' },
-  detail: { fontSize: 13, color: '#777', marginTop: 2 },
-  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
-  track: { flex: 1, height: 3, backgroundColor: '#e4e4e4', borderRadius: 2, overflow: 'hidden' },
-  fill: { height: 3, backgroundColor: '#2f95dc' },
-  progressText: { fontSize: 12, color: '#999', fontVariant: ['tabular-nums'] },
-  footer: { borderTopWidth: 1, borderTopColor: '#e2e2e2', padding: 12, gap: 6 },
-  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  status: { fontSize: 13, color: '#444' },
+  book: {},
+  title: { fontWeight: '600' },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  track: { flex: 1, height: 3, borderRadius: 2, overflow: 'hidden' },
+  fill: { height: 3 },
+  progressText: { fontVariant: ['tabular-nums'] },
+  footer: { borderTopWidth: 1 },
 });
