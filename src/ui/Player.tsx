@@ -4,10 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeProvider';
 import { PLAY_SIZE } from './theme';
 import { VoiceAvatar } from './VoiceAvatar';
+import { Spinner } from './Spinner';
 
 interface Props {
   playing: boolean;
+  /** Nothing can be pressed: the engine is not ready yet. */
   busy: boolean;
+  /** Something is being waited for, shown as a ring around the play button. */
+  loading: boolean;
   /** Where the reader is, and how long the book is, in sentences. */
   position: number;
   total: number;
@@ -35,6 +39,7 @@ interface Props {
 export function Player({
   playing,
   busy,
+  loading,
   position,
   total,
   remaining,
@@ -112,7 +117,7 @@ export function Player({
           <Ionicons name="play-skip-back" size={26} color={colors.text} />
         </Pressable>
 
-        <PlayButton playing={playing} busy={busy} onPress={onPlayPause} />
+        <PlayButton playing={playing} busy={busy} loading={loading} onPress={onPlayPause} />
 
         <Pressable
           onPress={onNext}
@@ -150,10 +155,14 @@ export function Player({
 function PlayButton({
   playing,
   busy,
+  loading,
   onPress,
 }: {
   playing: boolean;
+  /** Nothing can be pressed: the engine is not ready yet. */
   busy: boolean;
+  /** Something is being waited for, shown as a ring around the play button. */
+  loading: boolean;
   onPress: () => void;
 }) {
   const { colors } = useTheme();
@@ -177,24 +186,29 @@ function PlayButton({
       accessibilityLabel={playing ? 'Pause' : 'Play'}
       accessibilityState={{ disabled: busy, busy }}
     >
-      <Animated.View
-        style={[
-          styles.play,
-          {
-            backgroundColor: colors.accent,
-            transform: [{ scale }],
-            opacity: busy ? 0.5 : 1,
-          },
-        ]}
-      >
-        <Ionicons
-          name={playing ? 'pause' : 'play'}
-          size={30}
-          color={colors.accentOn}
-          // Optical centring: a triangle looks off-centre in a circle when it
-          // is mathematically centred.
-          style={playing ? undefined : { marginLeft: 4 }}
-        />
+      <Animated.View style={[styles.playWrap, { transform: [{ scale }] }]}>
+        {/* Around the button rather than inside it: the icon stays put and
+            keeps saying what pressing will do, while the ring says to wait. */}
+        {loading && (
+          <View style={styles.ring}>
+            <Spinner size={PLAY_SIZE + 10} color={colors.accent} width={3} />
+          </View>
+        )}
+        <View
+          style={[
+            styles.play,
+            { backgroundColor: colors.accent, opacity: busy ? 0.5 : 1 },
+          ]}
+        >
+          <Ionicons
+            name={playing ? 'pause' : 'play'}
+            size={30}
+            color={colors.accentOn}
+            // Optical centring: a triangle looks off-centre in a circle when it
+            // is mathematically centred.
+            style={playing ? undefined : { marginLeft: 4 }}
+          />
+        </View>
       </Animated.View>
     </Pressable>
   );
@@ -206,6 +220,8 @@ const styles = StyleSheet.create({
   numbers: { flexDirection: 'row', justifyContent: 'space-between' },
   number: { fontVariant: ['tabular-nums'] },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  playWrap: { alignItems: 'center', justifyContent: 'center' },
+  ring: { position: 'absolute' },
   play: {
     width: PLAY_SIZE,
     height: PLAY_SIZE,

@@ -73,9 +73,9 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
 
   const currentVoice = playback.voices.find((voice) => voice.id === playback.voiceId);
 
-  const message =
-    playback.error ??
-    (playback.loadingVoice ? 'Loading the voice…' : playback.buffering ? 'Synthesising…' : null);
+  // Only failures are worth words. Waiting is said by the ring turning around
+  // the play button, which is where someone is already looking.
+  const message = playback.error;
 
   // Leaving no longer stops the voice. The bar above the tabs keeps the book
   // playing and reachable, which is why it exists.
@@ -161,6 +161,7 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
         <Player
           playing={playback.playing}
           busy={playback.loadingVoice}
+          loading={playback.loadingVoice || playback.buffering}
           position={at}
           total={sentences.length}
           elapsed={elapsed}

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from './ThemeProvider';
 import { BookCover } from './BookCover';
+import { Spinner } from './Spinner';
 import { useReading } from '../player/PlaybackProvider';
 import { estimateSeconds, wordDuration } from '../player/listeningTime';
 
@@ -94,6 +95,11 @@ export function MiniPlayer() {
             },
           ]}
         >
+          {(playback.loadingVoice || playback.buffering) && (
+            <View style={styles.ring}>
+              <Spinner size={48} color={colors.accent} width={2} />
+            </View>
+          )}
           <Ionicons
             name={playback.playing ? 'pause' : 'play'}
             size={20}
@@ -120,6 +126,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   text: { flex: 1 },
   play: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  ring: { position: 'absolute' },
   track: { height: 2 },
   fill: { height: 2 },
 });
