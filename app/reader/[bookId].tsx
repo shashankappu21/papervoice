@@ -3,10 +3,10 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getBook, readSentences, touchBook, type Book } from '../../src/db/books';
+import { getBook, type Book } from '../../src/db/books';
 import { findMainContentStart } from '../../src/extraction/mainContent';
 import type { Sentence } from '../../src/extraction/types';
-import { usePlayback } from '../../src/player/usePlayback';
+import { useReading } from '../../src/player/PlaybackProvider';
 import { useSavedPosition } from '../../src/player/useSavedPosition';
 import { estimateSeconds, wordDuration } from '../../src/player/listeningTime';
 import { SentenceList } from '../../src/ui/SentenceList';
@@ -15,14 +15,11 @@ import { VoicePicker } from '../../src/ui/VoicePicker';
 import { SpeedSheet } from '../../src/ui/SpeedSheet';
 import { useFontSize, useTheme } from '../../src/ui/ThemeProvider';
 
-const NO_SENTENCES: Sentence[] = [];
-
 export default function ReaderScreen() {
   const { bookId } = useLocalSearchParams<{ bookId: string }>();
   const id = Number(bookId);
+  const { open, book, sentences } = useReading();
 
-  const [book, setBook] = useState<Book | null>(null);
-  const [sentences, setSentences] = useState<Sentence[]>(NO_SENTENCES);
   const [failed, setFailed] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,19 +31,19 @@ export default function ReaderScreen() {
           setFailed('That book is no longer in the library.');
           return;
         }
-        setSentences(readSentences(found));
-        setBook(found);
-        void touchBook(found.id);
+        // The provider owns the reading; opening the same book twice is a
+        // no-op there, so returning to the reader does not restart it.
+        open(found);
       },
       (cause: unknown) => !cancelled && setFailed(String(cause)),
     );
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, open]);
 
   if (failed) return <Centered>{failed}</Centered>;
-  if (!book) return <Centered><ActivityIndicator /></Centered>;
+  if (!book || book.id !== id) return <Centered><ActivityIndicator /></Centered>;
 
   return <Reader book={book} sentences={sentences} />;
 }
@@ -56,7 +53,7 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   const { colors, space, font } = useTheme();
   const insets = useSafeAreaInsets();
   const { fontSize } = useFontSize();
-  const playback = usePlayback(sentences, book.title, book.position);
+  const { playback } = useReading();
   useSavedPosition(book.id, playback.currentIndex);
 
   const [skipTo] = useState(() => findMainContentStart(sentences));
@@ -81,12 +78,11 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
     playback.error ??
     (playback.loadingVoice ? 'Loading the voice…' : playback.buffering ? 'Synthesising…' : null);
 
+  // Leaving no longer stops the voice. The bar above the tabs keeps the book
+  // playing and reachable, which is why it exists.
   const leave = () => {
-    // Leaving stops the voice: a book read from the library screen would have
-    // no text to follow and no way to be paused.
-    playback.pause();
     if (router.canGoBack()) router.back();
-    else router.replace('/');
+    else router.replace('/index');
   };
 
   return (

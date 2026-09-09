@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFontSize, useTheme, useThemeSetting } from '../src/ui/ThemeProvider';
 import { FONT_SIZE_RANGE, type ThemeSetting } from '../src/ui/theme';
@@ -13,6 +14,7 @@ const THEME_CHOICES: Array<{ value: ThemeSetting; label: string; icon: 'phone-po
 ];
 
 export default function Settings() {
+  const router = useRouter();
   const { colors, space, font, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const { setting, setSetting } = useThemeSetting();
@@ -30,9 +32,20 @@ export default function Settings() {
         paddingBottom: space.xxxl,
       }}
     >
-      <Text style={[styles.heading, { color: colors.text, fontSize: font.display }]}>
-        Settings
-      </Text>
+      <View style={styles.head}>
+        <Text style={[styles.heading, { color: colors.text, fontSize: font.display }]}>
+          Settings
+        </Text>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Close settings"
+          hitSlop={10}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+        >
+          <Ionicons name="close" size={28} color={colors.text} />
+        </Pressable>
+      </View>
 
       <Text style={[styles.section, { color: colors.textMuted, fontSize: font.xs }]}>
         APPEARANCE
@@ -156,7 +169,8 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
-  heading: { fontWeight: '800', letterSpacing: -0.5, marginBottom: 24 },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+  heading: { fontWeight: '800', letterSpacing: -0.5 },
   section: { fontWeight: '700', letterSpacing: 0.5, marginBottom: 10 },
   themes: { flexDirection: 'row' },
   theme: { flex: 1, minHeight: 72, alignItems: 'center', justifyContent: 'center' },

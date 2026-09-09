@@ -3,9 +3,9 @@ import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { listBooks, type Book } from '../src/db/books';
-import { BookCover } from '../src/ui/BookCover';
-import { useTheme } from '../src/ui/ThemeProvider';
+import { listBooks, type Book } from '../../src/db/books';
+import { BookCover } from '../../src/ui/BookCover';
+import { useTheme } from '../../src/ui/ThemeProvider';
 
 /** Books further along than this have been genuinely started. */
 const STARTED = 0;

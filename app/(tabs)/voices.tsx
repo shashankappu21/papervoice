@@ -3,13 +3,13 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { OFFERED_VOICES, type VoiceMeta } from '../src/voices/catalog';
-import { voiceStore, removeUnknownVoices } from '../src/voices/deviceVoices';
-import { listUsableSystemVoices, systemVoiceId, systemVoiceLabel } from '../src/voices/engine';
-import type { SystemVoice } from '../modules/system-tts';
-import { getSetting, setSetting, SETTING_VOICE } from '../src/db/settings';
-import { useTheme } from '../src/ui/ThemeProvider';
-import { VoiceAvatar } from '../src/ui/VoiceAvatar';
+import { OFFERED_VOICES, type VoiceMeta } from '../../src/voices/catalog';
+import { voiceStore, removeUnknownVoices } from '../../src/voices/deviceVoices';
+import { listUsableSystemVoices, systemVoiceId, systemVoiceLabel } from '../../src/voices/engine';
+import type { SystemVoice } from '../../modules/system-tts';
+import { getSetting, setSetting, SETTING_VOICE } from '../../src/db/settings';
+import { useTheme } from '../../src/ui/ThemeProvider';
+import { VoiceAvatar } from '../../src/ui/VoiceAvatar';
 
 const megabytes = (bytes: number) => `${Math.round(bytes / 1_000_000)} MB`;
 
