@@ -1,18 +1,22 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { ExtractorWebView } from '../src/extraction/ExtractorWebView';
 import { addBook, listBooks, type Book } from '../src/db/books';
-import { Button } from '../src/ui/Button';
+import { BookCover } from '../src/ui/BookCover';
 import { useTheme } from '../src/ui/ThemeProvider';
 
-const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+/** Books further along than this have been genuinely started. */
+const STARTED = 0;
 
 /** The library: what has been imported, and how far each one has been read. */
 export default function Library() {
   const router = useRouter();
   const { colors, space, radius, font } = useTheme();
+  const insets = useSafeAreaInsets();
   const [books, setBooks] = useState<Book[]>([]);
   const [importing, setImporting] = useState<{ uri: string; title: string } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -33,20 +37,138 @@ export default function Library() {
     if (result.canceled) return;
 
     const asset = result.assets[0];
-    setStatus('Reading the document...');
+    setStatus('Reading the document…');
     setImporting({ uri: asset.uri, title: asset.name.replace(/\.pdf$/i, '') });
   };
 
+  const open = (book: Book) =>
+    router.push({ pathname: '/reader/[bookId]', params: { bookId: book.id } });
+
+  const started = books.filter((book) => book.position > STARTED);
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
+      <View
+        style={[
+          styles.head,
+          { paddingHorizontal: space.xl, paddingTop: insets.top + space.sm },
+        ]}
+      >
+        <Text style={[styles.heading, { color: colors.text, fontSize: font.display }]}>
+          Library
+        </Text>
+        <Pressable
+          onPress={() => void pick()}
+          disabled={importing !== null}
+          accessibilityRole="button"
+          accessibilityLabel="Import a PDF"
+          style={({ pressed }) => [
+            styles.add,
+            {
+              backgroundColor: colors.accent,
+              borderRadius: radius.pill,
+              opacity: importing ? 0.4 : pressed ? 0.75 : 1,
+            },
+          ]}
+        >
+          <Ionicons name="add" size={28} color={colors.accentOn} />
+        </Pressable>
+      </View>
+
       <FlatList
         data={books}
         keyExtractor={(book) => String(book.id)}
-        contentContainerStyle={{ paddingVertical: space.md }}
+        contentContainerStyle={{ paddingBottom: space.xxxl }}
+        ListHeaderComponent={
+          started.length > 0 ? (
+            <View>
+              <Text
+                style={[
+                  styles.section,
+                  { color: colors.text, fontSize: font.xl, paddingHorizontal: space.xl },
+                ]}
+              >
+                Continue listening
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: space.xl, gap: space.md }}
+              >
+                {started.map((book) => {
+                  const fraction = book.position / Math.max(1, book.sentenceCount);
+                  return (
+                    <Pressable
+                      key={book.id}
+                      onPress={() => open(book)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${book.title}, ${Math.round(fraction * 100)} percent read`}
+                      style={({ pressed }) => [
+                        styles.card,
+                        {
+                          backgroundColor: colors.surface,
+                          borderRadius: radius.lg,
+                          padding: space.md,
+                          opacity: pressed ? 0.8 : 1,
+                        },
+                      ]}
+                    >
+                      <BookCover title={book.title} width={124} height={166} />
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          color: colors.text,
+                          fontSize: font.md,
+                          fontWeight: '700',
+                          marginTop: space.sm,
+                        }}
+                      >
+                        {book.title}
+                      </Text>
+                      <View style={[styles.track, { backgroundColor: colors.divider }]}>
+                        <View
+                          style={[
+                            styles.fill,
+                            {
+                              width: `${Math.max(2, fraction * 100)}%`,
+                              backgroundColor: colors.accent,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              <Text
+                style={[
+                  styles.section,
+                  {
+                    color: colors.text,
+                    fontSize: font.xl,
+                    paddingHorizontal: space.xl,
+                    marginTop: space.xxl,
+                  },
+                ]}
+              >
+                All books
+              </Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
-          <View style={{ padding: space.xxxl }}>
-            <Text style={{ color: colors.text, fontSize: font.lg, textAlign: 'center' }}>
-              Nothing here yet.
+          <View style={{ padding: space.xxxl, alignItems: 'center' }}>
+            <Ionicons name="book-outline" size={48} color={colors.textMuted} />
+            <Text
+              style={{
+                color: colors.text,
+                fontSize: font.xl,
+                fontWeight: '700',
+                marginTop: space.lg,
+              }}
+            >
+              Nothing here yet
             </Text>
             <Text
               style={{
@@ -54,88 +176,62 @@ export default function Library() {
                 fontSize: font.md,
                 textAlign: 'center',
                 marginTop: space.sm,
+                lineHeight: 21,
               }}
             >
-              Import a PDF and it will be read to you.
+              Import a PDF and it will be read to you — entirely on this phone.
             </Text>
           </View>
         }
         renderItem={({ item }) => {
-          const fraction = item.position / Math.max(1, item.sentenceCount);
+          const percent = Math.round((item.position / Math.max(1, item.sentenceCount)) * 100);
           return (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${item.title}, ${Math.round(fraction * 100)} percent read`}
+              accessibilityLabel={`${item.title}, ${percent} percent read`}
               style={({ pressed }) => [
-                styles.book,
+                styles.row,
                 {
-                  backgroundColor: colors.surface,
-                  borderRadius: radius.md,
-                  marginHorizontal: space.md,
-                  marginBottom: space.md,
-                  padding: space.lg,
-                  opacity: pressed ? 0.75 : 1,
+                  paddingHorizontal: space.xl,
+                  paddingVertical: space.md,
+                  backgroundColor: pressed ? colors.surface : 'transparent',
                 },
               ]}
-              onPress={() =>
-                router.push({ pathname: '/reader/[bookId]', params: { bookId: item.id } })
-              }
+              onPress={() => open(item)}
             >
-              <Text style={[styles.title, { color: colors.text, fontSize: font.lg }]}>
-                {item.title}
-              </Text>
-              <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 2 }}>
-                {plural(item.pageCount, 'page')} · {plural(item.sentenceCount, 'sentence')}
-              </Text>
-
-              {item.position > 0 && (
-                <View style={[styles.progressRow, { marginTop: space.sm }]}>
-                  <View style={[styles.track, { backgroundColor: colors.divider }]}>
-                    {/*
-                      A long book is barely started for its first hundred
-                      sentences, and a bar that rounds to nothing looks like a
-                      book never opened. The fill keeps a sliver so that having
-                      started is visible at all.
-                    */}
-                    <View
-                      style={[
-                        styles.fill,
-                        { width: `${Math.max(1, fraction * 100)}%`, backgroundColor: colors.accent },
-                      ]}
-                    />
-                  </View>
-                  <Text
-                    style={[styles.progressText, { color: colors.textMuted, fontSize: font.xs }]}
-                  >
-                    {item.position + 1} / {item.sentenceCount}
-                  </Text>
-                </View>
-              )}
+              <BookCover title={item.title} width={52} height={70} />
+              <View style={styles.rowText}>
+                <Text
+                  numberOfLines={2}
+                  style={{ color: colors.text, fontSize: font.lg, fontWeight: '600' }}
+                >
+                  {item.title}
+                </Text>
+                <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 3 }}>
+                  {item.position > 0 ? `${percent}% · ` : ''}
+                  {item.pageCount} pages
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </Pressable>
           );
         }}
       />
 
-      <View
-        style={[
-          styles.footer,
-          { borderTopColor: colors.divider, padding: space.md, gap: space.sm },
-        ]}
-      >
-        <Button title="Import a PDF" onPress={() => void pick()} disabled={importing !== null} />
-        {status && (
-          <Text style={{ color: colors.textMuted, fontSize: font.sm }}>{status}</Text>
-        )}
-      </View>
+      {status && (
+        <View style={[styles.status, { backgroundColor: colors.surface, padding: space.lg }]}>
+          <Text style={{ color: colors.text, fontSize: font.sm }}>{status}</Text>
+        </View>
+      )}
 
       {importing && (
         <ExtractorWebView
           uri={importing.uri}
-          onProgress={(page, total) => setStatus(`Reading page ${page} of ${total}...`)}
+          onProgress={(page, total) => setStatus(`Reading page ${page} of ${total}…`)}
           onDone={(doc) => {
             const { uri, title } = importing;
             setImporting(null);
-            setStatus('Saving...');
+            setStatus('Saving…');
             addBook(uri, title, doc).then(
               (book) => {
                 setStatus(null);
@@ -156,11 +252,14 @@ export default function Library() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  book: {},
-  title: { fontWeight: '600' },
-  progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  track: { flex: 1, height: 3, borderRadius: 2, overflow: 'hidden' },
-  fill: { height: 3 },
-  progressText: { fontVariant: ['tabular-nums'] },
-  footer: { borderTopWidth: 1 },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heading: { fontWeight: '800', letterSpacing: -0.5 },
+  add: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  section: { fontWeight: '700', paddingBottom: 12, paddingTop: 8 },
+  card: { width: 148 },
+  track: { height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 8 },
+  fill: { height: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  rowText: { flex: 1 },
+  status: { position: 'absolute', left: 0, right: 0, bottom: 0 },
 });

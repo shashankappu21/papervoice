@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBook, readSentences, touchBook, type Book } from '../../src/db/books';
 import { findMainContentStart } from '../../src/extraction/mainContent';
 import type { Sentence } from '../../src/extraction/types';
@@ -54,6 +55,7 @@ export default function ReaderScreen() {
 function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   const router = useRouter();
   const { colors, space, font } = useTheme();
+  const insets = useSafeAreaInsets();
   const { fontSize } = useFontSize();
   const playback = usePlayback(sentences, book.title, book.position);
   useSavedPosition(book.id, playback.currentIndex);
@@ -96,7 +98,7 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
         pointerEvents={chrome.visible ? 'auto' : 'none'}
         style={[
           styles.header,
-          { opacity: chrome.opacity, paddingHorizontal: space.md, paddingTop: space.xxxl },
+          { opacity: chrome.opacity, paddingHorizontal: space.md, paddingTop: insets.top + space.sm },
         ]}
       >
         <Pressable
@@ -159,7 +161,7 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
       <Animated.View
         // Controls that cannot be seen must not still be pressable.
         pointerEvents={chrome.visible ? 'auto' : 'none'}
-        style={{ opacity: chrome.opacity }}
+        style={{ opacity: chrome.opacity, paddingBottom: insets.bottom }}
       >
         <Player
           playing={playback.playing}

@@ -29,37 +29,54 @@ function Chrome() {
   return (
     <Tabs
       screenOptions={{
+        // Each screen sets its own large title, so a second small one in a
+        // navigation bar would be the same word twice.
+        headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: { backgroundColor: colors.bg, borderTopColor: colors.divider },
-        headerStyle: { backgroundColor: colors.bg },
-        headerTintColor: colors.text,
-        headerShadowVisible: false,
+        tabBarStyle: {
+          backgroundColor: colors.bg,
+          borderTopColor: colors.divider,
+          height: 62,
+          paddingTop: 6,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        sceneStyle: { backgroundColor: colors.bg },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Library',
-          tabBarIcon: ({ color, size }) => <Ionicons name="book" size={size} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'library' : 'library-outline'} size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="voices"
         options={{
           title: 'Voices',
-          tabBarIcon: ({ color, size }) => <Ionicons name="mic" size={size} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'mic' : 'mic-outline'} size={24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={24} color={color} />
+          ),
         }}
       />
       {/* Reading takes the whole screen: no tab bar under a page of prose. */}
-      <Tabs.Screen name="reader/[bookId]" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen
+        name="reader/[bookId]"
+        options={{ href: null, tabBarStyle: { display: 'none' } }}
+      />
     </Tabs>
   );
 }
