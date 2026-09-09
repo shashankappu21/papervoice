@@ -85,3 +85,53 @@ place(tinted(mark, INDIGO), 512, CLEAR, 0.60).save('assets/splash-icon.png')
 place(mark, 64, INDIGO, 0.62).save('assets/favicon.png')
 
 print('wrote icon, adaptive foreground/background/monochrome, splash and favicon')
+
+
+# --- The Android resources the launcher actually reads ---------------------
+#
+# assets/icon.png is only the source. Expo turns it into these during
+# `expo prebuild`, so changing the source and building without prebuilding
+# ships the previous icon -- which is exactly what happened once.
+#
+# Writing them here instead of prebuilding keeps the native build cache, which
+# is worth about forty minutes.
+
+RES = 'android/app/src/main/res'
+
+# A launcher icon is 48dp; an adaptive layer is 108dp, of which only the middle
+# 72dp is guaranteed to be visible -- the rest is what the launcher crops for
+# its own shape, and for the parallax it applies when the icon moves.
+DENSITIES = {'mdpi': 1, 'hdpi': 1.5, 'xhdpi': 2, 'xxhdpi': 3, 'xxxhdpi': 4}
+
+# Inside the 108dp layer the mark takes this much, leaving the safe margin.
+ADAPTIVE_MARK = 0.42
+LEGACY_MARK = 0.62
+
+import os
+
+for density, factor in DENSITIES.items():
+    folder = os.path.join(RES, f'mipmap-{density}')
+    if not os.path.isdir(folder):
+        continue
+
+    legacy = round(48 * factor)
+    layer = round(108 * factor)
+
+    # The square and round legacy icons, for launchers older than adaptive ones.
+    for name in ('ic_launcher', 'ic_launcher_round'):
+        place(mark, legacy, INDIGO, LEGACY_MARK).save(
+            os.path.join(folder, f'{name}.webp'), lossless=True
+        )
+
+    place(mark, layer, CLEAR, ADAPTIVE_MARK).save(
+        os.path.join(folder, 'ic_launcher_foreground.webp'), lossless=True
+    )
+    Image.new('RGBA', (layer, layer), INDIGO).save(
+        os.path.join(folder, 'ic_launcher_background.webp'), lossless=True
+    )
+    # Themed icons are tinted by the system; only the shape is used.
+    place(mark, layer, CLEAR, ADAPTIVE_MARK).save(
+        os.path.join(folder, 'ic_launcher_monochrome.webp'), lossless=True
+    )
+
+print(f'wrote launcher resources for {", ".join(DENSITIES)}')

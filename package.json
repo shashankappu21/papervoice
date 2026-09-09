@@ -41,7 +41,8 @@
     "inspect": "vite-node scripts/inspect.ts --",
     "setup:tts": "node scripts/fetchSherpa.mjs",
     "push:voice": "node scripts/pushVoice.mjs",
-    "setup:espeak": "node scripts/fetchEspeak.mjs"
+    "setup:espeak": "node scripts/fetchEspeak.mjs",
+    "apk": "node scripts/buildApk.mjs"
   },
   "private": true
 }
