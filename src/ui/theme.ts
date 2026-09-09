@@ -31,8 +31,27 @@ export interface Colors {
 }
 
 export const SPACE = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
-export const RADIUS = { sm: 6, md: 10, lg: 14 } as const;
-export const FONT = { xs: 12, sm: 13, md: 15, lg: 17, xl: 20, xxl: 24 } as const;
+
+/**
+ * Corners are large on purpose. A card at 6px reads as a box with a border;
+ * the same card at 24px reads as an object, which is most of why a modern
+ * player feels different from a form.
+ */
+export const RADIUS = { sm: 8, md: 14, lg: 20, xl: 28, pill: 999 } as const;
+
+export const FONT = {
+  xs: 12,
+  sm: 13,
+  md: 15,
+  lg: 17,
+  xl: 20,
+  xxl: 24,
+  /** Screen titles, which are set large and heavy rather than small and grey. */
+  display: 32,
+} as const;
+
+/** The play control, which is the largest thing on the player and meant to be. */
+export const PLAY_SIZE = 68;
 
 /** The least a control may measure, in points, before it is hard to hit. */
 export const TAP_TARGET = 44;
@@ -48,40 +67,43 @@ export interface Theme {
 const COLORS: Record<ThemeName, Colors> = {
   light: {
     bg: '#ffffff',
-    surface: '#f1f5f9',
-    text: '#0f172a',
-    textMuted: '#475569',
-    divider: '#e2e8f0',
-    border: '#64748b',
-    accent: '#0e7490',
+    surface: '#f4f4f6',
+    text: '#0f0f14',
+    textMuted: '#52525b',
+    divider: '#e6e6ea',
+    border: '#6b6b76',
+    accent: '#4f46e5',
     accentOn: '#ffffff',
-    highlight: '#cffafe',
+    highlight: '#dfe0fb',
     danger: '#b91c1c',
   },
   paper: {
     bg: '#faf7f0',
-    surface: '#f5eee1',
+    surface: '#f2ece0',
     text: '#1c1917',
     textMuted: '#57534e',
     divider: '#e7dfd0',
     border: '#78716c',
-    accent: '#0e7490',
+    accent: '#4f46e5',
     accentOn: '#ffffff',
-    highlight: '#fcecc4',
+    // Warm, because a cream page with a blue highlight looks like a mistake.
+    highlight: '#fde68a',
     danger: '#b91c1c',
   },
   dark: {
-    bg: '#121212',
-    surface: '#1e1e1e',
-    text: '#e7e5e4',
-    textMuted: '#a8a29e',
-    divider: '#2f2f2f',
-    border: '#8a8a8a',
-    // Nothing readable on white is readable on black, so the accent is paired
-    // rather than shared: #0e7490 is 5.36:1 on white and 3.50:1 here.
-    accent: '#67e8f9',
-    accentOn: '#0f172a',
-    highlight: '#164e63',
+    // Near black rather than grey: it makes the accent and the page glow, and
+    // it is what a reading app is actually used against at night.
+    bg: '#0d0d0f',
+    surface: '#1c1c20',
+    text: '#f4f4f5',
+    textMuted: '#a1a1aa',
+    divider: '#27272c',
+    border: '#83838f',
+    // Indigo cannot survive on near-black -- #4f46e5 is 3.09:1 there -- so the
+    // dark theme takes the pale end of the same family instead.
+    accent: '#a5b4fc',
+    accentOn: '#0d0d0f',
+    highlight: '#312e81',
     danger: '#fca5a5',
   },
 };

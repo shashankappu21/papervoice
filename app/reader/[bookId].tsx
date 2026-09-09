@@ -1,23 +1,17 @@
-import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Animated,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { getBook, readSentences, touchBook, type Book } from '../../src/db/books';
 import { findMainContentStart } from '../../src/extraction/mainContent';
 import type { Sentence } from '../../src/extraction/types';
-import { usePlayback, RATE_RANGE } from '../../src/player/usePlayback';
+import { usePlayback } from '../../src/player/usePlayback';
 import { useSavedPosition } from '../../src/player/useSavedPosition';
+import { estimateSeconds, wordDuration } from '../../src/player/listeningTime';
+import { nextRate } from '../../src/player/rate';
 import { SentenceList } from '../../src/ui/SentenceList';
-import { IconButton } from '../../src/ui/IconButton';
+import { Player } from '../../src/ui/Player';
+import { VoicePicker } from '../../src/ui/VoicePicker';
 import { useFontSize, useTheme } from '../../src/ui/ThemeProvider';
 import { useAutoHide } from '../../src/ui/useAutoHide';
 
@@ -59,7 +53,7 @@ export default function ReaderScreen() {
 
 function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   const router = useRouter();
-  const { colors, space, font, radius } = useTheme();
+  const { colors, space, font } = useTheme();
   const { fontSize } = useFontSize();
   const playback = usePlayback(sentences, book.title, book.position);
   useSavedPosition(book.id, playback.currentIndex);
@@ -68,11 +62,23 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   const [choosingVoice, setChoosingVoice] = useState(false);
   const chrome = useAutoHide(playback.playing);
 
+  const at = playback.currentIndex;
+
+  // Recomputed only when the place or the speed changes, not on every render:
+  // this walks the whole book, which for a 5,000-sentence one is real work.
+  const { elapsed, remaining } = useMemo(
+    () => ({
+      elapsed: wordDuration(estimateSeconds(sentences.slice(0, at), playback.rate)) || '0m',
+      remaining: `${wordDuration(estimateSeconds(sentences.slice(at), playback.rate)) || '0m'} left`,
+    }),
+    [sentences, at, playback.rate],
+  );
+
   const currentVoice = playback.voices.find((voice) => voice.id === playback.voiceId);
 
   const message =
     playback.error ??
-    (playback.loadingVoice ? 'Loading the voice...' : playback.buffering ? 'Synthesising...' : null);
+    (playback.loadingVoice ? 'Loading the voice…' : playback.buffering ? 'Synthesising…' : null);
 
   const leave = () => {
     // Leaving stops the voice: a book read from the library screen would have
@@ -84,169 +90,108 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
-      <Stack.Screen options={{ title: book.title }} />
+      <Stack.Screen options={{ headerShown: false }} />
 
-      {/* A tap anywhere on the page brings the controls back. */}
+      <Animated.View
+        pointerEvents={chrome.visible ? 'auto' : 'none'}
+        style={[
+          styles.header,
+          { opacity: chrome.opacity, paddingHorizontal: space.md, paddingTop: space.xxxl },
+        ]}
+      >
+        <Pressable
+          onPress={leave}
+          accessibilityRole="button"
+          accessibilityLabel="Back to library"
+          hitSlop={10}
+          style={styles.headerButton}
+        >
+          <Ionicons name="chevron-down" size={26} color={colors.text} />
+        </Pressable>
+        <Text
+          numberOfLines={1}
+          style={[styles.headerTitle, { color: colors.textMuted, fontSize: font.sm }]}
+        >
+          {book.title}
+        </Text>
+        {skipTo !== null && at < skipTo && !playback.playing ? (
+          <Pressable
+            onPress={() => void playback.jumpTo(skipTo)}
+            accessibilityRole="button"
+            accessibilityLabel="Skip the front matter"
+            hitSlop={10}
+            style={styles.headerButton}
+          >
+            <Ionicons name="return-down-forward" size={22} color={colors.accent} />
+          </Pressable>
+        ) : (
+          <View style={styles.headerButton} />
+        )}
+      </Animated.View>
+
+      {/*
+        The page surface. Everything below it -- the player, the header, the
+        saved position -- talks to `playback` rather than to this, so rendering
+        the real PDF page here later replaces one component rather than the
+        screen.
+      */}
       <Pressable style={styles.page} onPress={chrome.reveal}>
         <SentenceList
           sentences={sentences}
-          currentIndex={playback.currentIndex}
+          currentIndex={at}
           onJump={(index) => void playback.jumpTo(index)}
           fontSize={fontSize}
           following={playback.playing}
         />
       </Pressable>
 
+      {message && (
+        <Text
+          style={[
+            styles.message,
+            { color: colors.textMuted, fontSize: font.sm, paddingHorizontal: space.xl },
+          ]}
+        >
+          {message}
+        </Text>
+      )}
+
       <Animated.View
         // Controls that cannot be seen must not still be pressable.
         pointerEvents={chrome.visible ? 'auto' : 'none'}
-        style={[
-          styles.controls,
-          {
-            opacity: chrome.opacity,
-            borderTopColor: colors.divider,
-            backgroundColor: colors.bg,
-            padding: space.md,
-            gap: space.sm,
-          },
-        ]}
+        style={{ opacity: chrome.opacity }}
       >
-        <View style={styles.row}>
-          <IconButton name="chevron-back" label="Back to library" onPress={leave} />
-          <IconButton
-            name={playback.playing ? 'pause' : 'play'}
-            label={playback.playing ? 'Pause' : 'Play'}
-            size={30}
-            color={colors.accent}
-            disabled={playback.loadingVoice}
-            onPress={() =>
-              playback.playing ? playback.pause() : void playback.play(playback.currentIndex)
-            }
-          />
-          {skipTo !== null && playback.currentIndex < skipTo && !playback.playing && (
-            <IconButton
-              name="play-skip-forward"
-              label="Skip to chapter one"
-              onPress={() => void playback.jumpTo(skipTo)}
-            />
-          )}
-          <Text style={[styles.meta, { color: colors.textMuted, fontSize: font.sm }]}>
-            {playback.currentIndex + 1} / {sentences.length}
-          </Text>
-        </View>
-
-        <View style={styles.row}>
-          <IconButton
-            name="remove"
-            label="Read slower"
-            size={20}
-            onPress={() => playback.setRate(playback.rate - RATE_RANGE.step)}
-          />
-          <Text style={[styles.rate, { color: colors.text, fontSize: font.md }]}>
-            {playback.rate.toFixed(1)}×
-          </Text>
-          <IconButton
-            name="add"
-            label="Read faster"
-            size={20}
-            onPress={() => playback.setRate(playback.rate + RATE_RANGE.step)}
-          />
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Voice: ${currentVoice?.label ?? 'none chosen'}`}
-            style={[
-              styles.voicePicker,
-              { borderColor: colors.border, borderRadius: radius.sm },
-            ]}
-            onPress={() => setChoosingVoice(true)}
-          >
-            <Text
-              style={{ color: colors.text, fontSize: font.sm }}
-              numberOfLines={1}
-            >
-              {currentVoice?.label ?? (playback.loadingVoice ? 'Loading…' : 'Voice')}
-              {playback.rtf !== null ? ` · ${playback.rtf.toFixed(2)}×` : ''}
-            </Text>
-            <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
-          </Pressable>
-        </View>
-
-        {/* Its own row: squeezed beside the controls, a message long enough to
-            explain anything was cut off mid-word. */}
-        {message && (
-          <Text style={{ color: colors.text, fontSize: font.sm, lineHeight: 18 }}>{message}</Text>
-        )}
+        <Player
+          playing={playback.playing}
+          busy={playback.loadingVoice}
+          position={at}
+          total={sentences.length}
+          elapsed={elapsed}
+          remaining={remaining}
+          voiceName={currentVoice?.label ?? 'Voice'}
+          rate={playback.rate}
+          onPlayPause={() =>
+            playback.playing ? playback.pause() : void playback.play(at)
+          }
+          onPrevious={() => void playback.jumpTo(Math.max(0, at - 1))}
+          onNext={() => void playback.jumpTo(Math.min(sentences.length - 1, at + 1))}
+          onPickVoice={() => setChoosingVoice(true)}
+          onCycleRate={() => playback.setRate(nextRate(playback.rate))}
+        />
       </Animated.View>
 
-      <Modal
+      <VoicePicker
         visible={choosingVoice}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setChoosingVoice(false)}
-      >
-        <Pressable style={styles.backdrop} onPress={() => setChoosingVoice(false)}>
-          <Pressable
-            style={[styles.sheet, { backgroundColor: colors.bg }]}
-            onPress={() => undefined}
-          >
-            <Text style={[styles.sheetTitle, { color: colors.textMuted, fontSize: font.sm }]}>
-              READ WITH
-            </Text>
-            <ScrollView>
-              {playback.voices.map((voice) => {
-                const chosen = voice.id === playback.voiceId;
-                return (
-                  <Pressable
-                    key={voice.id}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: chosen }}
-                    style={[styles.option, chosen && { backgroundColor: colors.surface }]}
-                    onPress={() => {
-                      setChoosingVoice(false);
-                      // Changing voice re-reads from here in the new voice; what
-                      // was already made was spoken by the old one.
-                      void playback.selectVoice(voice.id);
-                    }}
-                  >
-                    <View style={styles.optionRow}>
-                      {/* A tick rather than colour alone, which is invisible to
-                          a reader who cannot distinguish it. */}
-                      <View style={styles.tick}>
-                        {chosen && (
-                          <Ionicons name="checkmark" size={18} color={colors.accent} />
-                        )}
-                      </View>
-                      <View style={styles.optionText}>
-                        <Text
-                          style={{
-                            color: chosen ? colors.accent : colors.text,
-                            fontSize: font.lg,
-                            fontWeight: chosen ? '700' : '400',
-                          }}
-                        >
-                          {voice.label}
-                        </Text>
-                        <Text style={{ color: colors.textMuted, fontSize: font.xs, marginTop: 2 }}>
-                          {voice.detail}
-                          {chosen ? ' · reading now' : ''}
-                        </Text>
-                      </View>
-                    </View>
-                  </Pressable>
-                );
-              })}
-              {playback.voices.length === 0 && (
-                <Text
-                  style={{ color: colors.textMuted, fontSize: font.sm, padding: space.lg }}
-                >
-                  No voice is available yet. Download one from the Voices tab.
-                </Text>
-              )}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        voices={playback.voices}
+        chosenId={playback.voiceId}
+        onClose={() => setChoosingVoice(false)}
+        onChoose={(id) => {
+          setChoosingVoice(false);
+          // Changing voice re-reads from here in the new voice; what was
+          // already made was spoken by the old one.
+          void playback.selectVoice(id);
+        }}
+      />
     </View>
   );
 }
@@ -263,31 +208,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   page: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  controls: { borderTopWidth: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  meta: { marginLeft: 'auto', fontVariant: ['tabular-nums'] },
-  rate: { fontVariant: ['tabular-nums'], minWidth: 44, textAlign: 'center' },
-  voicePicker: {
-    marginLeft: 'auto',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-    maxWidth: 190,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    minHeight: 44,
-  },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: 14, borderTopRightRadius: 14, paddingVertical: 12, maxHeight: '60%' },
-  sheetTitle: {
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    paddingHorizontal: 20,
-    paddingBottom: 8,
-  },
-  option: { paddingHorizontal: 16, paddingVertical: 12 },
-  optionRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  optionText: { flex: 1 },
-  tick: { width: 18, alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingBottom: 8 },
+  headerButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { flex: 1, textAlign: 'center', fontWeight: '600' },
+  message: { paddingBottom: 6 },
 });
