@@ -30,6 +30,46 @@ function blobUrl(source) {
   return URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
 }
 
+/**
+ * Page one, drawn as it looks.
+ *
+ * For a book that is the jacket, for a scan it is the scan, and for a bare
+ * text PDF it is the title page. All three are the right picture, so none of
+ * them needs a special case.
+ */
+async function drawCover(pdf) {
+  var first = await pdf.getPage(1);
+  var natural = first.getViewport({ scale: 1 });
+  var scale = Math.min(2, 420 / natural.width);
+  var viewport = first.getViewport({ scale: scale });
+  var canvas = document.createElement('canvas');
+  canvas.width = Math.round(viewport.width);
+  canvas.height = Math.round(viewport.height);
+  var context = canvas.getContext('2d');
+  // White behind it: a PDF page has no background of its own, and without
+  // this every cover comes out with black where the paper should be.
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  await first.render({ canvasContext: context, viewport: viewport }).promise;
+  var data = canvas.toDataURL('image/jpeg', 0.72).split(',')[1];
+  first.cleanup();
+  return data;
+}
+
+function coverWith(pdfjsLib) {
+  return async function (base64) {
+    try {
+      var binary = atob(base64);
+      var bytes = new Uint8Array(binary.length);
+      for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      var pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+      post({ type: 'cover', cover: await drawCover(pdf) });
+    } catch (e) {
+      post({ type: 'cover', cover: null });
+    }
+  };
+}
+
 function extractWith(pdfjsLib) {
   return async function (base64) {
     try {
@@ -41,26 +81,8 @@ function extractWith(pdfjsLib) {
       var items = [];
       var pageHeight = 792;
       var cover = null;
-
-      // Page one, drawn as it looks. For a book that is the jacket; for a
-      // scanned document it is the scan; for a bare text PDF it is the title
-      // page. All three are the right picture, and none needs a special case.
       try {
-        var first = await pdf.getPage(1);
-        var natural = first.getViewport({ scale: 1 });
-        var scale = Math.min(2, 420 / natural.width);
-        var viewport = first.getViewport({ scale: scale });
-        var canvas = document.createElement('canvas');
-        canvas.width = Math.round(viewport.width);
-        canvas.height = Math.round(viewport.height);
-        var context = canvas.getContext('2d');
-        // White behind it: a PDF page has no background of its own, and
-        // without this every cover comes out with black where the paper is.
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        await first.render({ canvasContext: context, viewport: viewport }).promise;
-        cover = canvas.toDataURL('image/jpeg', 0.72).split(',')[1];
-        first.cleanup();
+        cover = await drawCover(pdf);
       } catch (e) {
         // A cover is decoration. Losing it must never lose the book.
         cover = null;
@@ -122,6 +144,7 @@ function extractWith(pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
     }
     window.extract = extractWith(pdfjsLib);
+    window.renderCover = coverWith(pdfjsLib);
     post({ type: 'ready' });
   } catch (e) {
     post({ type: 'error', message: 'pdf.js failed to load: ' + describe(e) });

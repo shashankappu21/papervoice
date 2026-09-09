@@ -1,9 +1,12 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { listBooks, type Book } from '../../src/db/books';
+import { bookIdsIn, listGroups, type Group } from '../../src/db/groups';
+import { BookMenu } from '../../src/ui/BookMenu';
+import { CoverBackfill } from '../../src/import/CoverBackfill';
 import { BookCover } from '../../src/ui/BookCover';
 import { useTheme } from '../../src/ui/ThemeProvider';
 
@@ -17,19 +20,46 @@ export default function Library() {
   const insets = useSafeAreaInsets();
   const [books, setBooks] = useState<Book[]>([]);
   const [status, setStatus] = useState<string | null>(null);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [group, setGroup] = useState<number | null>(null);
+  const [inGroup, setInGroup] = useState<Set<number> | null>(null);
+  const [menuFor, setMenuFor] = useState<Book | null>(null);
+  const [backfilling, setBackfilling] = useState(true);
 
   // Progress changes while reading, so the list is refreshed on the way back
   // rather than only when it is first built.
-  useFocusEffect(
-    useCallback(() => {
-      listBooks().then(setBooks, (cause: unknown) => setStatus(String(cause)));
-    }, []),
-  );
+  const reload = useCallback(() => {
+    listBooks().then(setBooks, (cause: unknown) => setStatus(String(cause)));
+    listGroups().then(setGroups, () => setGroups([]));
+  }, []);
+
+  useFocusEffect(reload);
+
+  // Which books are in the chosen group. Kept beside the books rather than
+  // queried with them, so switching group does not re-read the whole library.
+  useEffect(() => {
+    if (group === null) {
+      setInGroup(null);
+      return;
+    }
+    let cancelled = false;
+    bookIdsIn(group).then(
+      (ids) => !cancelled && setInGroup(new Set(ids)),
+      () => !cancelled && setInGroup(new Set()),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [group, books]);
 
   const open = (book: Book) =>
     router.push({ pathname: '/reader/[bookId]', params: { bookId: book.id } });
 
-  const started = books.filter((book) => book.position > STARTED);
+  // A group that has been deleted elsewhere should not leave the library
+  // filtered by something no longer in the list.
+  const chosen = groups.some((candidate) => candidate.id === group) ? group : null;
+  const shown = chosen === null ? books : books.filter((book) => inGroup?.has(book.id) ?? false);
+  const started = shown.filter((book) => book.position > STARTED);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -54,11 +84,34 @@ export default function Library() {
       </View>
 
       <FlatList
-        data={books}
+        data={shown}
         keyExtractor={(book) => String(book.id)}
         contentContainerStyle={{ paddingBottom: space.xxxl }}
         ListHeaderComponent={
-          started.length > 0 ? (
+          <View>
+            {groups.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{
+                  paddingHorizontal: space.xl,
+                  gap: space.sm,
+                  paddingBottom: space.md,
+                }}
+              >
+                <GroupChip label="All" on={chosen === null} onPress={() => setGroup(null)} />
+                {groups.map((candidate) => (
+                  <GroupChip
+                    key={candidate.id}
+                    label={`${candidate.name} · ${candidate.count}`}
+                    on={chosen === candidate.id}
+                    onPress={() => setGroup(chosen === candidate.id ? null : candidate.id)}
+                  />
+                ))}
+              </ScrollView>
+            )}
+
+            {started.length > 0 && (
             <View>
               <Text
                 style={[
@@ -133,7 +186,8 @@ export default function Library() {
                 All books
               </Text>
             </View>
-          ) : null
+            )}
+          </View>
         }
         ListEmptyComponent={
           <View style={{ padding: space.xxxl, alignItems: 'center' }}>
@@ -190,15 +244,75 @@ export default function Library() {
                   {item.pageCount} pages
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              <Pressable
+                onPress={() => setMenuFor(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`More options for ${item.title}`}
+                hitSlop={12}
+                style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+              >
+                <Ionicons name="ellipsis-horizontal" size={22} color={colors.textMuted} />
+              </Pressable>
             </Pressable>
           );
         }}
       />
 
+      <BookMenu book={menuFor} onClose={() => setMenuFor(null)} onChanged={reload} />
+
+      {/* Runs once per launch and stops as soon as every book has a picture. */}
+      {backfilling && (
+        <CoverBackfill
+          onDone={() => {
+            setBackfilling(false);
+            reload();
+          }}
+        />
+      )}
     </View>
   );
 }
+
+function GroupChip({
+  label,
+  on,
+  onPress,
+}: {
+  label: string;
+  on: boolean;
+  onPress: () => void;
+}) {
+  const { colors, radius, font } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      style={({ pressed }) => [
+        chipStyles.chip,
+        {
+          backgroundColor: on ? colors.accent : colors.surface,
+          borderRadius: radius.pill,
+          opacity: pressed ? 0.7 : 1,
+        },
+      ]}
+    >
+      <Text
+        style={{
+          color: on ? colors.accentOn : colors.text,
+          fontSize: font.sm,
+          fontWeight: '600',
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+const chipStyles = StyleSheet.create({
+  chip: { minHeight: 36, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
+});
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },

@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bumped whenever the statements below change. The version lives in the
  * database itself, so an app that skipped a release still migrates in order.
  */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 /**
  * Creates or upgrades the library.
@@ -54,6 +54,24 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
     // drawn during extraction, and re-running that for the whole library on
     // upgrade would be a long wait for decoration. They keep the placeholder.
     await db.execAsync(`ALTER TABLE books ADD COLUMN cover_path TEXT`);
+  }
+
+  if (version < 4) {
+    // A book can sit in several groups, or none. The join table is what makes
+    // "none" the natural default rather than a group everything starts in.
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS book_groups (
+        book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        PRIMARY KEY (book_id, group_id)
+      );
+    `);
   }
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);

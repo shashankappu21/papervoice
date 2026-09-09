@@ -167,6 +167,35 @@ export async function touchBook(bookId: number): Promise<void> {
   await db.runAsync('UPDATE books SET last_opened_at = ? WHERE id = ?', Date.now(), bookId);
 }
 
+/**
+ * Gives a book a cover it did not have.
+ *
+ * Books imported before covers existed have none. Re-reading every page of
+ * them on upgrade would be a long wait for decoration, so the picture is drawn
+ * later, once, and only page one is read.
+ */
+export async function setBookCover(bookId: number, cover: string): Promise<string | null> {
+  try {
+    const file = new File(booksDirectory(), `${bookId}.cover.jpg`);
+    file.create({ overwrite: true });
+    file.write(Uint8Array.from(atob(cover), (c) => c.charCodeAt(0)));
+
+    const db = await database();
+    await db.runAsync('UPDATE books SET cover_path = ? WHERE id = ?', file.uri, bookId);
+    return file.uri;
+  } catch {
+    // Decoration, again. A book without a picture still reads.
+    return null;
+  }
+}
+
+/** Books that have no picture yet, oldest first. */
+export async function booksWithoutCovers(): Promise<Book[]> {
+  const db = await database();
+  const rows = await db.getAllAsync<BookRow>(`${SELECT} WHERE b.cover_path IS NULL`);
+  return rows.map(toBook);
+}
+
 export async function deleteBook(bookId: number): Promise<void> {
   const book = await getBook(bookId);
   const db = await database();
@@ -175,7 +204,8 @@ export async function deleteBook(bookId: number): Promise<void> {
 
   // The row is gone either way; a file left behind would only waste space.
   if (book) {
-    for (const path of [book.uri, book.sentencesPath]) {
+    for (const path of [book.uri, book.sentencesPath, book.coverPath ?? '']) {
+      if (!path) continue;
       const file = new File(path);
       if (file.exists) file.delete();
     }

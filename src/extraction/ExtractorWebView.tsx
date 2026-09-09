@@ -11,6 +11,12 @@ interface Props {
   uri: string;
   onProgress?: (page: number, total: number) => void;
   onDone: (doc: ExtractedDoc) => void;
+  /**
+   * 'cover' draws page one and stops. Used to give books imported before
+   * covers existed a picture, without re-reading every page of them.
+   */
+  mode?: 'full' | 'cover';
+  onCover?: (cover: string | null) => void;
   onError: (message: string) => void;
 }
 
@@ -18,6 +24,7 @@ type Message =
   | { type: 'ready' }
   | { type: 'progress'; page: number; total: number }
   | { type: 'error'; message: string }
+  | { type: 'cover'; cover: string | null }
   | {
       type: 'items';
       items: TextItem[];
@@ -32,7 +39,14 @@ type Message =
  * sentences back. Nothing is displayed; mount it while an import is in flight
  * and unmount it when `onDone` or `onError` fires.
  */
-export function ExtractorWebView({ uri, onProgress, onDone, onError }: Props) {
+export function ExtractorWebView({
+  uri,
+  onProgress,
+  onDone,
+  onError,
+  mode = 'full',
+  onCover,
+}: Props) {
   const ref = useRef<WebView>(null);
   const started = useRef(false);
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
@@ -57,9 +71,10 @@ export function ExtractorWebView({ uri, onProgress, onDone, onError }: Props) {
   const start = async () => {
     try {
       const base64 = await new File(uri).base64();
+      const call = mode === 'cover' ? 'window.renderCover' : 'window.extract';
       // One eval carries the whole document; comfortably within the limit for
       // the book-sized PDFs this app imports.
-      ref.current?.injectJavaScript(`window.extract(${JSON.stringify(base64)}); true;`);
+      ref.current?.injectJavaScript(`${call}(${JSON.stringify(base64)}); true;`);
     } catch (error) {
       onError(`Could not read the PDF: ${String(error)}`);
     }
@@ -86,6 +101,9 @@ export function ExtractorWebView({ uri, onProgress, onDone, onError }: Props) {
         return;
       case 'error':
         onError(msg.message);
+        return;
+      case 'cover':
+        onCover?.(msg.cover);
         return;
       case 'items':
         onDone({
