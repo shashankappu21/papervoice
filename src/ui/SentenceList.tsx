@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import type { Sentence } from '../extraction/types';
 import { useTheme } from './ThemeProvider';
-import { measureSentences } from './sentenceHeights';
+import { createHeightIndex } from './heightIndex';
 
 interface Props {
   sentences: Sentence[];
@@ -73,15 +73,14 @@ export function SentenceList({
   const [autoScroll, setAutoScroll] = useState(true);
 
   /*
-   * Where every row sits, so the list can jump straight to one.
+   * Where every row is.
    *
-   * Without this a FlatList reaches a row by rendering every row before it,
-   * which for a long book meant several seconds to open at a saved place or
-   * to follow a chapter. Recomputed only when the book or the type size
-   * changes, since it walks the whole document.
+   * Rebuilt only when the book or the type size changes; each row feeds it its
+   * true height as it is laid out, so the list stops guessing about anywhere
+   * the reader has been.
    */
-  const layout = useMemo(
-    () => measureSentences(sentences, fontSize, width),
+  const heights = useMemo(
+    () => createHeightIndex(sentences, fontSize, width),
     [sentences, fontSize, width],
   );
 
@@ -216,16 +215,20 @@ export function SentenceList({
       viewabilityConfig={VIEWABILITY}
       onViewableItemsChanged={onViewable.current}
       getItemLayout={(_data, index) => ({
-        length: layout.heights[index] ?? 0,
-        offset: layout.offsets[index] ?? 0,
+        length: heights.heightOf(index),
+        offset: heights.offsetOf(index),
         index,
       })}
       onScrollToIndexFailed={({ index }) => {
-        list.current?.scrollToOffset({ offset: layout.offsets[index] ?? 0, animated: false });
+        list.current?.scrollToOffset({ offset: heights.offsetOf(index), animated: false });
       }}
       renderItem={({ item }) => (
         <Pressable
           onPress={() => handlePress(item.index)}
+          // Every row reports its real height. This is what turns the list
+          // from something that aims at a sentence into something that knows
+          // where the sentence is.
+          onLayout={(event) => heights.set(item.index, event.nativeEvent.layout.height)}
           accessibilityRole="button"
           accessibilityState={{ selected: item.index === currentIndex }}
         >
