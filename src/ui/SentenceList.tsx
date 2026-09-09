@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Sentence } from '../extraction/types';
+import { useTheme } from './ThemeProvider';
 
 interface Props {
   sentences: Sentence[];
@@ -27,6 +28,7 @@ const VIEW_POSITION = 0.35;
  * a sentence, which says where they want to be.
  */
 export function SentenceList({ sentences, currentIndex, onJump, fontSize, following }: Props) {
+  const { colors } = useTheme();
   const list = useRef<FlatList<Sentence>>(null);
   const lastTap = useRef<{ index: number; at: number }>({ index: -1, at: 0 });
   const [autoScroll, setAutoScroll] = useState(true);
@@ -101,17 +103,29 @@ export function SentenceList({ sentences, currentIndex, onJump, fontSize, follow
         );
       }}
       renderItem={({ item }) => (
-        <Pressable onPress={() => handlePress(item.index)}>
-          <View style={item.index === currentIndex ? styles.speaking : undefined}>
+        <Pressable
+          onPress={() => handlePress(item.index)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: item.index === currentIndex }}
+        >
+          <View
+            style={
+              item.index === currentIndex ? { backgroundColor: colors.highlight } : undefined
+            }
+          >
             <Text
               style={[
                 styles.sentence,
-                { fontSize, lineHeight: fontSize * 1.6 },
+                { fontSize, lineHeight: fontSize * 1.6, color: colors.text },
                 item.kind === 'heading' && styles.heading,
-                item.kind === 'note' && styles.note,
+                item.kind === 'note' && { color: colors.textMuted },
                 // Headers and footers are on the page but never spoken, and are
-                // shown faintly so the page still reads as the page.
-                (item.kind === 'header' || item.kind === 'footer') && styles.furniture,
+                // shown faintly so the page still reads as the page. Muted now
+                // carries real contrast, so italics is what still marks them.
+                (item.kind === 'header' || item.kind === 'footer') && {
+                  color: colors.textMuted,
+                  fontStyle: 'italic' as const,
+                },
               ]}
             >
               {item.text}
@@ -124,9 +138,6 @@ export function SentenceList({ sentences, currentIndex, onJump, fontSize, follow
 }
 
 const styles = StyleSheet.create({
-  sentence: { paddingHorizontal: 20, paddingVertical: 2, color: '#222' },
-  speaking: { backgroundColor: '#ffe9a8' },
+  sentence: { paddingHorizontal: 20, paddingVertical: 2 },
   heading: { fontWeight: '700' },
-  note: { color: '#666' },
-  furniture: { color: '#aaa', fontStyle: 'italic' },
 });
