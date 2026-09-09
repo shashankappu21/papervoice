@@ -62,25 +62,181 @@ export interface VoiceMeta {
   hidden?: boolean;
   /** What the licence permits, shown rather than buried. */
   licence: string;
+  /**
+   * True where the licence forbids commercial use. These are legitimate in a
+   * free app and would have to go if one were ever sold, so they are marked
+   * rather than remembered -- dropping them later is then a filter, not an
+   * archaeology exercise across ten entries.
+   */
+  nonCommercial?: boolean;
 }
 
 const SHERPA = 'https://huggingface.co/csukuangfj';
 
-export const VOICES: VoiceMeta[] = [
+/**
+ * Piper's English voices, of which far fewer are usable than the list suggests.
+ *
+ * Most of them say "Finetuned from U.S. English lessac voice" on their model
+ * card, and lessac is Blizzard 2013 -- licensed for research only. A second
+ * group descends from Ryan, which is non-commercial. The dataset licence does
+ * not rescue them: sam is Apache-2.0 data and joe is CC0 data, both trained on
+ * top of lessac. What matters is what the weights descend from, so amy, alan,
+ * alba, aru, vctk, jenny_dioco, kusal, arctic, sam, joe, mike, libritts_r,
+ * northern_english_male, kathleen and danny are all absent on purpose.
+ *
+ * What is left, almost entirely, is Bryce Beattie's work: voices trained from
+ * scratch on public-domain LibriVox recordings, with the lineage written down.
+ */
+const PIPER: Array<{
+  key: string;
+  /**
+   * Overrides the id derived from the key. Only Lyra needs one: it shipped
+   * before the ids carried a language prefix, and changing an id now would
+   * orphan the 63MB already downloaded under the old name -- and then delete
+   * it, since a directory no voice claims is treated as unknown.
+   */
+  id?: string;
+  name: string;
+  accent: 'US' | 'GB';
+  gender: 'female' | 'male';
+  sizeBytes: number;
+  sha256: string;
+  licence: string;
+  nonCommercial?: boolean;
+}> = [
+  // Public domain, trained from scratch. Safe under any licence we ever pick.
   {
+    key: 'en_US-ljspeech-medium',
     id: 'ljspeech-medium',
-    family: 'vits',
     name: 'Lyra',
     accent: 'US',
     gender: 'female',
     sizeBytes: 63_531_507,
-    modelUrl: `${SHERPA}/vits-piper-en_US-ljspeech-medium/resolve/main/en_US-ljspeech-medium.onnx`,
-    tokensUrl: `${SHERPA}/vits-piper-en_US-ljspeech-medium/resolve/main/tokens.txt`,
-    modelSha256: '8ceba58a4b540d4e7e7e24ad079cf0d92762a4fd334e059f12940787c6c37b3d',
-    defaultRate: 1,
+    sha256: '8ceba58a4b540d4e7e7e24ad079cf0d92762a4fd334e059f12940787c6c37b3d',
     licence: 'LJ Speech, public domain',
   },
+  {
+    key: 'en_US-kristin-medium',
+    name: 'Kristin',
+    accent: 'US',
+    gender: 'female',
+    sizeBytes: 63_531_507,
+    sha256: 'f9a5c375c70ddc33ccdb3969c76a4d7cc5255ac08119a312b0034a1d07041be6',
+    licence: 'LibriVox, public domain',
+  },
+  {
+    key: 'en_US-norman-medium',
+    name: 'Norman',
+    accent: 'US',
+    gender: 'male',
+    sizeBytes: 63_531_507,
+    sha256: 'fa06b6b8b280e176b17f8424e05ca12d0223eeac9a31c87230937fe7120fbe2a',
+    licence: 'LibriVox, public domain',
+  },
+  {
+    // Finetuned from Kristin, which was trained from scratch -- so the whole
+    // chain stays public domain. Worth stating, because for most Piper voices
+    // it is exactly this line that disqualifies them.
+    key: 'en_US-john-medium',
+    name: 'John',
+    accent: 'US',
+    gender: 'male',
+    sizeBytes: 63_531_507,
+    sha256: '7ab60237f77e06c8f32b811080b7ad82d23bc5bacc4bba2c35e58aeae6833364',
+    licence: 'LibriVox, public domain',
+  },
+  {
+    key: 'en_GB-cori-medium',
+    name: 'Cori',
+    accent: 'GB',
+    gender: 'female',
+    sizeBytes: 63_531_507,
+    sha256: '8b0d3cdd77f2878e0aa2048103eabb4d01b334783f99629f042bcf703aeba487',
+    licence: 'Public domain',
+  },
+
+  // Non-commercial. Fine while the app is free and open; the first thing to go
+  // if it is ever sold.
+  {
+    key: 'en_US-ryan-medium',
+    name: 'Ryan',
+    accent: 'US',
+    gender: 'male',
+    sizeBytes: 63_201_425,
+    sha256: '8a4063318faeda9bf67f89d25b29cc4bd5fde8832422aa451a5d5d2647553081',
+    licence: 'CC BY-NC-SA 4.0',
+    nonCommercial: true,
+  },
+  {
+    // The HiFi Captain voices are published without names of their own.
+    key: 'en_US-hfc_female-medium',
+    name: 'Grace',
+    accent: 'US',
+    gender: 'female',
+    sizeBytes: 63_201_425,
+    sha256: '6d8b3711715f17f29b9f0ded97571924ead9a06e300bfdf3680b014a51ddc9e5',
+    licence: 'CC BY-NC-SA 4.0',
+    nonCommercial: true,
+  },
+  {
+    key: 'en_US-hfc_male-medium',
+    name: 'Walter',
+    accent: 'US',
+    gender: 'male',
+    sizeBytes: 63_201_425,
+    sha256: '2dba095f50970dddc4f6da704b25a9767f334011b369df2ef496690ab71ea23c',
+    licence: 'CC BY-NC-SA 4.0',
+    nonCommercial: true,
+  },
+  {
+    // One voice in two accents, so the name alone cannot tell them apart.
+    key: 'en_GB-miro-high',
+    name: 'Miro (British)',
+    accent: 'GB',
+    gender: 'male',
+    sizeBytes: 63_153_791,
+    sha256: '68c263187b6a741bc0fe6b73d51471f7b074826bcf23852b048e0ab17b4bac12',
+    licence: 'CC BY-NC-SA 4.0',
+    nonCommercial: true,
+  },
+  {
+    key: 'en_US-miro-high',
+    name: 'Miro (American)',
+    accent: 'US',
+    gender: 'male',
+    sizeBytes: 63_153_781,
+    sha256: 'b8a9c21c10e4a65880be47419a847d4d5844e9d4294ab1814ea4339be4838b92',
+    licence: 'CC BY-NC-SA 4.0',
+    nonCommercial: true,
+  },
+  {
+    key: 'en_GB-dii-high',
+    name: 'Dii',
+    accent: 'GB',
+    gender: 'female',
+    sizeBytes: 63_153_791,
+    sha256: '6cf7c3a8ff40ae45e675a548ab2b7592239218880d73ecb036332c2356b85de7',
+    licence: 'CC BY-NC-SA 4.0',
+    nonCommercial: true,
+  },
 ];
+
+export const VOICES: VoiceMeta[] = PIPER.map((voice) => ({
+  id: voice.id ?? voice.key,
+  family: 'vits',
+  name: voice.name,
+  accent: voice.accent,
+  gender: voice.gender,
+  sizeBytes: voice.sizeBytes,
+  // Every Piper voice is the same two files under a predictable name, so the
+  // URLs are derived rather than written out eleven times.
+  modelUrl: `${SHERPA}/vits-piper-${voice.key}/resolve/main/${voice.key}.onnx`,
+  tokensUrl: `${SHERPA}/vits-piper-${voice.key}/resolve/main/tokens.txt`,
+  modelSha256: voice.sha256,
+  defaultRate: 1,
+  licence: voice.licence,
+  nonCommercial: voice.nonCommercial,
+}));
 
 /*
  * Kokoro was tried here and removed. Measured on a realme RMX3031, the int8
