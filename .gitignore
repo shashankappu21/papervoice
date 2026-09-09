@@ -59,3 +59,11 @@ yarn-error.*
 
 # Phonemiser data, fetched by `npm run setup:espeak` rather than committed
 /modules/sherpa-tts/android/src/main/assets/espeak-ng-data/
+
+# The release signing key and its password. /android above already covers
+# these; they are named again because that line is the sort of thing people
+# remove when they start committing the native project, and a signing key
+# leaked once cannot be un-leaked -- nor replaced, without every existing
+# install refusing the update.
+android/papervoice-release.keystore
+android/keystore.properties

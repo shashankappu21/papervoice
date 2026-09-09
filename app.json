@@ -33,7 +33,8 @@
       "expo-router",
       "expo-audio",
       "expo-sqlite",
-      "./plugins/withDevAbi"
+      "./plugins/withDevAbi",
+      "./plugins/withReleaseSigning"
     ],
     "scheme": "papervoice",
     "experiments": {
