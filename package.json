@@ -42,7 +42,8 @@
     "setup:tts": "node scripts/fetchSherpa.mjs",
     "push:voice": "node scripts/pushVoice.mjs",
     "setup:espeak": "node scripts/fetchEspeak.mjs",
-    "apk": "node scripts/buildApk.mjs"
+    "apk": "node scripts/buildApk.mjs",
+    "samples": "tsx scripts/exportVoices.ts && python scripts/makeVoiceSamples.py"
   },
   "private": true
 }

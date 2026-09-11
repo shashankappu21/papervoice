@@ -67,3 +67,8 @@ yarn-error.*
 # install refusing the update.
 android/papervoice-release.keystore
 android/keystore.properties
+
+# Voice models downloaded to render the samples, and the catalog dump the
+# generator reads. The finished samples in assets/ are committed; these are not.
+scripts/.voices/
+scripts/voices.json

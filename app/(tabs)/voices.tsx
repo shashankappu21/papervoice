@@ -10,6 +10,9 @@ import type { SystemVoice } from '../../modules/system-tts';
 import { getSetting, setSetting, SETTING_VOICE } from '../../src/db/settings';
 import { useTheme } from '../../src/ui/ThemeProvider';
 import { VoiceAvatar } from '../../src/ui/VoiceAvatar';
+import { useSample } from '../../src/ui/useSample';
+import { useReading } from '../../src/player/PlaybackProvider';
+import { SAMPLE_SENTENCE } from '../../src/voices/samples';
 
 const megabytes = (bytes: number) => `${Math.round(bytes / 1_000_000)} MB`;
 
@@ -31,6 +34,14 @@ export default function Voices() {
   const [selected, setSelected] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ id: string; fraction: number } | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const sample = useSample();
+  const reading = useReading();
+
+  /** A sample over the top of a book being read is two voices at once. */
+  const hear = (voiceId: string) => {
+    if (reading.playback.playing) reading.playback.pause();
+    sample.play(voiceId);
+  };
   const [accent, setAccent] = useState<Accent>('all');
   const [gender, setGender] = useState<Gender>('all');
 
@@ -144,6 +155,17 @@ export default function Voices() {
               >
                 On-device voices — no internet required. It is why your books never leave your
                 phone.
+              </Text>
+              <Text
+                style={{
+                  color: colors.textMuted,
+                  fontSize: font.sm,
+                  marginTop: space.sm,
+                  fontStyle: 'italic',
+                  lineHeight: 19,
+                }}
+              >
+                Tap ▶ to hear any voice say “{SAMPLE_SENTENCE}”
               </Text>
             </View>
 
@@ -301,6 +323,32 @@ export default function Voices() {
                   )}
                 </View>
 
+                <Pressable
+                  onPress={() => hear(item.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    sample.playing === item.id
+                      ? `Stop the sample of ${item.name}`
+                      : `Hear ${item.name}`
+                  }
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.sample,
+                    {
+                      borderColor: colors.border,
+                      borderRadius: radius.pill,
+                      opacity: pressed ? 0.6 : 1,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={sample.playing === item.id ? 'stop' : 'play'}
+                    size={16}
+                    color={colors.accent}
+                    style={sample.playing === item.id ? undefined : { marginLeft: 2 }}
+                  />
+                </Pressable>
+
                 {busy ? (
                   <ActivityIndicator size="small" color={colors.accent} />
                 ) : inUse ? (
@@ -353,7 +401,8 @@ const styles = StyleSheet.create({
   section: { fontWeight: '700', letterSpacing: 0.5, marginBottom: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 },
   chip: { minHeight: 36, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 68 },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 68 },
+  sample: { width: 34, height: 34, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   cardText: { flex: 1 },
   track: { height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 8 },
   fill: { height: 4 },
