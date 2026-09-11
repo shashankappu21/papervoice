@@ -248,7 +248,13 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
           onPlayPause={startWhenFound}
           onPrevious={() => void playback.jumpTo(Math.max(0, at - 1))}
           onNext={() => void playback.jumpTo(Math.min(sentences.length - 1, at + 1))}
-          onPickVoice={() => setChoosingVoice(true)}
+          onPickVoice={() => {
+            // Asked for here rather than kept up to date in the background:
+            // this is the only moment the list is looked at, and a voice
+            // downloaded since the app started would otherwise be missing.
+            playback.refreshVoices();
+            setChoosingVoice(true);
+          }}
           onChangeSpeed={() => setChoosingSpeed(true)}
         />
       </View>

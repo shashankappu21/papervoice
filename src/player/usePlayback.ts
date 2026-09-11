@@ -51,6 +51,8 @@ export interface Playback {
   /** The one currently loaded, or null before anything is. */
   voiceId: string | null;
   selectVoice(id: string): Promise<void>;
+  /** Re-reads the installed voices, for when one has just been downloaded. */
+  refreshVoices(): void;
   play(from?: number): Promise<void>;
   pause(): void;
   jumpTo(index: number): Promise<void>;
@@ -327,9 +329,19 @@ export function usePlayback(
     await loadVoice(await getSetting(SETTING_VOICE));
   }, [loadVoice]);
 
-  useEffect(() => {
+  /**
+   * Re-reads which voices are available.
+   *
+   * The list was read once, when this was first mounted -- which is app
+   * launch, since the reading outlives every screen. A voice downloaded after
+   * that did not appear until the app was restarted, because nothing ever
+   * asked again.
+   */
+  const refreshVoices = useCallback(() => {
     listAvailableVoices().then(setVoices, () => setVoices([]));
   }, []);
+
+  useEffect(refreshVoices, [refreshVoices]);
 
   /**
    * Changes voice without leaving the page or losing the place.
@@ -482,6 +494,7 @@ export function usePlayback(
     rate,
     rtf,
     voices,
+    refreshVoices,
     voiceId,
     selectVoice,
     play,
