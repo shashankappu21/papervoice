@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/ui/ThemeProvider';
 import { useImport } from '../../src/import/ImportProvider';
@@ -29,6 +30,10 @@ export default function TabsLayout() {
   );
 }
 
+/** The bar itself, before the space Android wants underneath it. */
+const BAR_HEIGHT = 62;
+const BAR_PADDING = 8;
+
 /** Which glyph belongs to which route, and in what order they sit. */
 const TABS: Array<{ name: string; label: string; icon: 'library-outline' | 'mic-outline' }> = [
   { name: 'index', label: 'Library', icon: 'library-outline' },
@@ -42,6 +47,14 @@ interface BarProps {
 
 function Bar({ state, navigation }: BarProps) {
   const { colors } = useTheme();
+  /*
+   * Replacing the default tab bar means replacing the inset handling that came
+   * with it. Android reserves space at the bottom for its own navigation --
+   * around 48dp of buttons, or about 24dp for the gesture pill -- and without
+   * allowing for it the tabs sit underneath, which is what the gesture bar was
+   * drawing straight through.
+   */
+  const insets = useSafeAreaInsets();
 
   const cell = (name: string, label: string, icon: 'library-outline' | 'mic-outline') => {
     const route = state.routes.find((candidate) => candidate.name === name);
@@ -66,7 +79,16 @@ function Bar({ state, navigation }: BarProps) {
   return (
     <View style={{ backgroundColor: colors.bg }}>
       <MiniPlayer />
-      <View style={[styles.bar, { borderTopColor: colors.divider }]}>
+      <View
+        style={[
+          styles.bar,
+          {
+            borderTopColor: colors.divider,
+            height: BAR_HEIGHT + insets.bottom,
+            paddingBottom: BAR_PADDING + insets.bottom,
+          },
+        ]}
+      >
         {cell(TABS[0].name, TABS[0].label, TABS[0].icon)}
         <ImportButton />
         {cell(TABS[1].name, TABS[1].label, TABS[1].icon)}
@@ -119,7 +141,9 @@ function ImportButton() {
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', borderTopWidth: 1, height: 62, paddingTop: 6, paddingBottom: 8 },
+  // Height and bottom padding are set inline: both grow by whatever Android
+  // reserves for its own navigation.
+  bar: { flexDirection: 'row', borderTopWidth: 1, paddingTop: 6 },
   cell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 11, fontWeight: '600', marginTop: 2 },
   add: {
