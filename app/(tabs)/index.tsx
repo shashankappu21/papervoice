@@ -9,6 +9,8 @@ import { BookMenu } from '../../src/ui/BookMenu';
 import { NewGroupSheet } from '../../src/ui/NewGroupSheet';
 import { GroupBooksSheet } from '../../src/ui/GroupBooksSheet';
 import { CoverBackfill } from '../../src/import/CoverBackfill';
+import { useTourTarget } from '../../src/tour/useTourTarget';
+import { useOfferTour } from '../../src/tour/TourProvider';
 import { BookCover } from '../../src/ui/BookCover';
 import { useTheme } from '../../src/ui/ThemeProvider';
 
@@ -20,6 +22,10 @@ export default function Library() {
   const router = useRouter();
   const { colors, space, radius, font } = useTheme();
   const insets = useSafeAreaInsets();
+  const settingsTarget = useTourTarget('settings');
+
+  // Offered once the screen exists, so the spotlight has something to sit on.
+  useOfferTour('library');
   const [books, setBooks] = useState<Book[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -77,6 +83,8 @@ export default function Library() {
           Library
         </Text>
         <Pressable
+          ref={settingsTarget.ref}
+          onLayout={settingsTarget.onLayout}
           onPress={() => router.push('/settings')}
           accessibilityRole="button"
           accessibilityLabel="Settings"

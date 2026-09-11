@@ -7,6 +7,7 @@ import { useTheme } from '../../src/ui/ThemeProvider';
 import { useImport } from '../../src/import/ImportProvider';
 import { TabIcon } from '../../src/ui/TabIcon';
 import { MiniPlayer } from '../../src/ui/MiniPlayer';
+import { useTourTarget } from '../../src/tour/useTourTarget';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -56,6 +57,8 @@ function Bar({ state, navigation }: BarProps) {
    */
   const insets = useSafeAreaInsets();
 
+  const voicesTab = useTourTarget('voicesTab');
+
   const cell = (name: string, label: string, icon: 'library-outline' | 'mic-outline') => {
     const route = state.routes.find((candidate) => candidate.name === name);
     const focused = route ? state.routes[state.index]?.name === name : false;
@@ -64,6 +67,8 @@ function Bar({ state, navigation }: BarProps) {
     return (
       <Pressable
         key={name}
+        ref={name === 'voices' ? voicesTab.ref : undefined}
+        onLayout={name === 'voices' ? voicesTab.onLayout : undefined}
         onPress={() => navigation.navigate(name)}
         accessibilityRole="tab"
         accessibilityLabel={label}
@@ -106,6 +111,7 @@ function Bar({ state, navigation }: BarProps) {
 function ImportButton() {
   const { colors } = useTheme();
   const { start, busy } = useImport();
+  const target = useTourTarget('import');
   const scale = useRef(new Animated.Value(1)).current;
 
   const spring = (to: number) =>
@@ -114,6 +120,8 @@ function ImportButton() {
   return (
     <View style={styles.cell}>
       <Pressable
+        ref={target.ref}
+        onLayout={target.onLayout}
         onPress={start}
         onPressIn={() => spring(0.9)}
         onPressOut={() => spring(1)}

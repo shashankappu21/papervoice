@@ -15,6 +15,8 @@ import { VoicePicker } from '../../src/ui/VoicePicker';
 import { SpeedSheet } from '../../src/ui/SpeedSheet';
 import { SectionsSheet } from '../../src/ui/SectionsSheet';
 import { PageSkeleton } from '../../src/ui/PageSkeleton';
+import { useTourTarget } from '../../src/tour/useTourTarget';
+import { useOfferTour } from '../../src/tour/TourProvider';
 import { useFontSize, useTheme } from '../../src/ui/ThemeProvider';
 
 export default function ReaderScreen() {
@@ -63,6 +65,11 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   const [choosingVoice, setChoosingVoice] = useState(false);
   const [choosingSpeed, setChoosingSpeed] = useState(false);
   const [showingSections, setShowingSections] = useState(false);
+  const contentsTarget = useTourTarget('contents');
+
+  // Only once the sentences are in: a tour pointing at a page still loading
+  // has nothing under its spotlight.
+  useOfferTour('reader', sentences.length > 0);
 
   /**
    * Playing is held until the spoken line is on screen.
@@ -174,6 +181,8 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
             and no headings gets no button rather than an empty list. */}
         {sections.length > 0 ? (
           <Pressable
+            ref={contentsTarget.ref}
+            onLayout={contentsTarget.onLayout}
             onPress={() => setShowingSections(true)}
             accessibilityRole="button"
             accessibilityLabel="Contents"

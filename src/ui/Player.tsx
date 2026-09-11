@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeProvider';
 import { PLAY_SIZE } from './theme';
 import { VoiceAvatar } from './VoiceAvatar';
+import { useTourTarget } from '../tour/useTourTarget';
 import { Spinner } from './Spinner';
 
 interface Props {
@@ -53,6 +54,8 @@ export function Player({
   onChangeSpeed,
 }: Props) {
   const { colors, space, radius, font } = useTheme();
+  const voiceTarget = useTourTarget('voice');
+  const speedTarget = useTourTarget('speed');
   const fraction = total > 0 ? Math.min(1, (position + 1) / total) : 0;
 
   // The bar slides to its new length rather than jumping, so a sentence
@@ -99,6 +102,8 @@ export function Player({
 
       <View style={[styles.controls, { paddingHorizontal: space.lg, paddingTop: space.md }]}>
         <Pressable
+          ref={voiceTarget.ref}
+          onLayout={voiceTarget.onLayout}
           onPress={onPickVoice}
           accessibilityRole="button"
           accessibilityLabel={`Voice: ${voiceName}. Change voice.`}
@@ -130,6 +135,8 @@ export function Player({
         </Pressable>
 
         <Pressable
+          ref={speedTarget.ref}
+          onLayout={speedTarget.onLayout}
           onPress={onChangeSpeed}
           accessibilityRole="button"
           accessibilityLabel={`Speed ${rate.toFixed(2)} times. Tap to change.`}
@@ -166,6 +173,7 @@ function PlayButton({
   onPress: () => void;
 }) {
   const { colors } = useTheme();
+  const target = useTourTarget('play');
   const scale = useRef(new Animated.Value(1)).current;
 
   const spring = (to: number) =>
@@ -178,6 +186,8 @@ function PlayButton({
 
   return (
     <Pressable
+      ref={target.ref}
+      onLayout={target.onLayout}
       onPress={onPress}
       onPressIn={() => spring(0.92)}
       onPressOut={() => spring(1)}

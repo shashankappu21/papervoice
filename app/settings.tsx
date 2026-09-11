@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -5,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFontSize, useTheme, useThemeSetting } from '../src/ui/ThemeProvider';
 import { FONT_SIZE_RANGE, type ThemeSetting } from '../src/ui/theme';
 import { OFFERED_VOICES } from '../src/voices/catalog';
+import { useTour } from '../src/tour/TourProvider';
 
 const THEME_CHOICES: Array<{ value: ThemeSetting; label: string; icon: 'phone-portrait' | 'sunny' | 'book' | 'moon' }> = [
   { value: 'system', label: 'System', icon: 'phone-portrait' },
@@ -19,6 +21,8 @@ export default function Settings() {
   const insets = useSafeAreaInsets();
   const { setting, setSetting } = useThemeSetting();
   const { fontSize, setFontSize } = useFontSize();
+  const { replay } = useTour();
+  const [replayed, setReplayed] = useState(false);
 
   // Attribution is a licence condition of the CC BY voices, not a courtesy.
   const licences = [...new Set(OFFERED_VOICES.map((voice) => voice.licence))].sort();
@@ -126,6 +130,40 @@ export default function Settings() {
           <Ionicons name="add-circle-outline" size={30} color={colors.text} />
         </Pressable>
       </View>
+
+      <Text
+        style={[
+          styles.section,
+          { color: colors.textMuted, fontSize: font.xs, marginTop: space.xxl },
+        ]}
+      >
+        HELP
+      </Text>
+      <Pressable
+        onPress={() => {
+          // Cleared rather than started here: the tours point at controls on
+          // other screens, and one begun from Settings would spotlight things
+          // that are not on display.
+          void replay().then(() => setReplayed(true));
+        }}
+        accessibilityRole="button"
+        style={({ pressed }) => [
+          styles.note,
+          {
+            backgroundColor: colors.surface,
+            borderRadius: radius.md,
+            padding: space.lg,
+            opacity: pressed ? 0.8 : 1,
+          },
+        ]}
+      >
+        <Ionicons name="help-circle" size={20} color={colors.accent} />
+        <Text style={{ color: colors.text, fontSize: font.sm, lineHeight: 20, flex: 1 }}>
+          {replayed
+            ? 'Done — the tour starts again when you go back to the library.'
+            : 'Show me around again'}
+        </Text>
+      </Pressable>
 
       <Text
         style={[

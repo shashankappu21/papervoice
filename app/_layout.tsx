@@ -4,6 +4,8 @@ import { setAudioModeAsync } from 'expo-audio';
 import { ThemeProvider, useTheme } from '../src/ui/ThemeProvider';
 import { ImportProvider } from '../src/import/ImportProvider';
 import { PlaybackProvider } from '../src/player/PlaybackProvider';
+import { TourProvider } from '../src/tour/TourProvider';
+import { TourOverlay } from '../src/tour/TourOverlay';
 
 export default function RootLayout() {
   useEffect(() => {
@@ -25,7 +27,11 @@ export default function RootLayout() {
       */}
       <PlaybackProvider>
         <ImportProvider>
-          <Routes />
+          {/* Above the routes, so the tour can point at anything on any of them. */}
+          <TourProvider>
+            <Routes />
+            <TourOverlay />
+          </TourProvider>
         </ImportProvider>
       </PlaybackProvider>
     </ThemeProvider>
