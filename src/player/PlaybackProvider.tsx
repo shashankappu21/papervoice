@@ -30,7 +30,12 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [book, setBook] = useState<Book | null>(null);
   const [sentences, setSentences] = useState<Sentence[]>(NO_SENTENCES);
 
-  const playback = usePlayback(sentences, book?.title ?? '', book?.position ?? 0);
+  const playback = usePlayback(
+    sentences,
+    book?.title ?? '',
+    book?.position ?? 0,
+    book?.id ?? 0,
+  );
   const { pause } = playback;
 
   // Saved here rather than in the reader. A book can be listened to entirely

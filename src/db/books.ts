@@ -2,6 +2,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { database } from './connection';
 import type { ExtractedDoc, Sentence } from '../extraction/types';
 import type { OutlineEntry } from '../extraction/sections';
+import { bookDirectory } from '../tts/audioCache';
 
 export interface Book {
   id: number;
@@ -240,6 +241,16 @@ export async function deleteBook(bookId: number): Promise<void> {
   const db = await database();
   await db.runAsync('DELETE FROM positions WHERE book_id = ?', bookId);
   await db.runAsync('DELETE FROM books WHERE id = ?', bookId);
+
+  // Its synthesised audio goes too. Filed under the book's own id, so this is
+  // one folder rather than a hunt through names that say only which sentence.
+  try {
+    const synth = new Directory(Paths.cache, 'synth');
+    const mine = new Directory(bookDirectory(`${synth.uri}/`, bookId));
+    if (mine.exists) mine.delete();
+  } catch {
+    // The cache is the operating system's to reclaim in the end.
+  }
 
   // The row is gone either way; a file left behind would only waste space.
   if (book) {

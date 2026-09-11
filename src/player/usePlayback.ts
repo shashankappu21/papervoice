@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { Directory, File, Paths } from 'expo-file-system';
+import { audioPath } from '../tts/audioCache';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { SherpaTts } from '../../modules/sherpa-tts';
 import { createSynthQueue } from '../tts/synthQueue';
@@ -71,6 +72,11 @@ export function usePlayback(
   title: string,
   /** Where to pick up: a saved position, or the start of a new book. */
   initialIndex = 0,
+  /**
+   * Which book this is. Audio is filed under it, so one book's speech is never
+   * mistaken for another's and neither has to be thrown away for the other.
+   */
+  bookId = 0,
 ): Playback {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [playing, setPlaying] = useState(false);
@@ -113,32 +119,65 @@ export function usePlayback(
     setCurrentIndex(initialIndex);
   }, [sentences, initialIndex]);
 
-  const cacheDir = useMemo(() => {
+  const cacheRoot = useMemo(() => {
     const dir = new Directory(Paths.cache, 'synth');
     if (!dir.exists) dir.create({ intermediates: true });
     return `${dir.uri.replace(/^file:\/\//, '')}/`;
   }, []);
 
+  /*
+   * Read through refs, not captured: the queue is built once per book, and the
+   * voice and speed both change while it is alive. A path built from a stale
+   * closure would file this sentence's audio under the previous voice.
+   */
+  const voiceRef = useRef<string | null>(null);
+  voiceRef.current = voiceId;
+
+  /**
+   * Makes sure the folder a sentence is about to be written into exists.
+   *
+   * The native engine writes to the path it is given and will not create the
+   * way there, and audio now lives several folders deep -- book, voice, speed
+   * -- so the way there mostly does not exist yet.
+   */
+  const ensureFolder = useCallback((filePath: string) => {
+    const parent = filePath.slice(0, filePath.lastIndexOf('/'));
+    if (!parent) return;
+    const folder = new Directory(`file://${parent}`);
+    if (!folder.exists) folder.create({ intermediates: true });
+  }, []);
+
+  const pathOf = useCallback(
+    (index: number) =>
+      audioPath(cacheRoot, {
+        bookId,
+        voiceId: voiceRef.current ?? 'unset',
+        rate: rateRef.current,
+        index,
+      }),
+    [cacheRoot, bookId],
+  );
+
   const queue = useMemo(
     () =>
       createSynthQueue({
         sentences,
-        cacheDir,
+        pathOf,
         lookahead: LOOKAHEAD,
-        remove: (path) => {
+        exists: (path) => {
           try {
-            // cacheDir has its scheme stripped, because the native engine
+            // The path has its scheme stripped, because the native engine
             // writes to a plain path; File wants the uri back.
-            const file = new File(path.startsWith('file://') ? path : `file://${path}`);
-            if (file.exists) file.delete();
+            return new File(path.startsWith('file://') ? path : `file://${path}`).exists;
           } catch {
-            // The cache is the operating system's to reclaim in the end.
-            // Failing to delete one file is not worth interrupting a book for.
+            // Unreadable is the same as absent: it will simply be made again.
+            return false;
           }
         },
         synthesize: async (sentence, outPath) => {
           const speaking = engine.current;
           if (!speaking) throw new Error('No voice is ready');
+          ensureFolder(outPath);
           const result = await speaking.speak(sentence, outPath, recentRtf.current);
           recentRtf.current = result.rtf;
           setRtf(result.rtf);
@@ -175,7 +214,7 @@ export function usePlayback(
       }),
     // startTrack and advance are stable for the life of the hook.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sentences, cacheDir],
+    [sentences, pathOf, ensureFolder],
   );
 
   const startTrack = (path: string) => {

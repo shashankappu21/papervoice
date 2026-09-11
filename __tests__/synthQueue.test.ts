@@ -18,7 +18,7 @@ const fakeSynth = () =>
 describe('createSynthQueue', () => {
   it('synthesizes exactly `lookahead` sentences after start', async () => {
     const synthesize = fakeSynth();
-    const q = createSynthQueue({ sentences, synthesize, lookahead: 5, cacheDir: '/c/' });
+    const q = createSynthQueue({ sentences, synthesize, lookahead: 5, pathOf: (i: number) => `/c/s${i}.wav` });
     await q.start(0);
     await q.drain();
     expect(synthesize).toHaveBeenCalledTimes(5);
@@ -30,7 +30,7 @@ describe('createSynthQueue', () => {
       sentences,
       synthesize: fakeSynth(),
       lookahead: 3,
-      cacheDir: '/c/',
+      pathOf: (i: number) => `/c/s${i}.wav`,
       onReady: (i) => ready.push(i),
     });
     await q.start(0);
@@ -40,7 +40,7 @@ describe('createSynthQueue', () => {
 
   it('advances the window when the current index moves', async () => {
     const synthesize = fakeSynth();
-    const q = createSynthQueue({ sentences, synthesize, lookahead: 3, cacheDir: '/c/' });
+    const q = createSynthQueue({ sentences, synthesize, lookahead: 3, pathOf: (i: number) => `/c/s${i}.wav` });
     await q.start(0);
     await q.drain();
     q.setCurrent(2);
@@ -50,7 +50,7 @@ describe('createSynthQueue', () => {
 
   it('never synthesizes the same sentence twice', async () => {
     const synthesize = fakeSynth();
-    const q = createSynthQueue({ sentences, synthesize, lookahead: 3, cacheDir: '/c/' });
+    const q = createSynthQueue({ sentences, synthesize, lookahead: 3, pathOf: (i: number) => `/c/s${i}.wav` });
     await q.start(0);
     await q.drain();
     q.setCurrent(1);
@@ -61,7 +61,7 @@ describe('createSynthQueue', () => {
 
   it('starting at a new position discards pending work', async () => {
     const synthesize = fakeSynth();
-    const q = createSynthQueue({ sentences, synthesize, lookahead: 3, cacheDir: '/c/' });
+    const q = createSynthQueue({ sentences, synthesize, lookahead: 3, pathOf: (i: number) => `/c/s${i}.wav` });
     await q.start(0);
     await q.start(30);
     await q.drain();
@@ -80,7 +80,7 @@ describe('createSynthQueue', () => {
       sentences,
       synthesize,
       lookahead: 3,
-      cacheDir: '/c/',
+      pathOf: (i: number) => `/c/s${i}.wav`,
       onFailed: (i) => failed.push(i),
     });
     await q.start(0);
@@ -96,7 +96,7 @@ describe('createSynthQueue', () => {
       sentences: sentences.slice(0, 2),
       synthesize,
       lookahead: 10,
-      cacheDir: '/c/',
+      pathOf: (i: number) => `/c/s${i}.wav`,
     });
     await q.start(0);
     await q.drain();
@@ -108,7 +108,7 @@ describe('createSynthQueue', () => {
     // a longer pause than a line of prose. Voice and speed belong to the caller,
     // which closes over them, so the queue has no opinion about them.
     const synthesize = fakeSynth();
-    const q = createSynthQueue({ sentences, synthesize, lookahead: 1, cacheDir: '/c/' });
+    const q = createSynthQueue({ sentences, synthesize, lookahead: 1, pathOf: (i: number) => `/c/s${i}.wav` });
     await q.start(0);
     await q.drain();
     expect(synthesize).toHaveBeenCalledWith(sentences[0], '/c/s0.wav');
@@ -116,7 +116,7 @@ describe('createSynthQueue', () => {
 
   it('stop() halts further synthesis', async () => {
     const synthesize = fakeSynth();
-    const q = createSynthQueue({ sentences, synthesize, lookahead: 40, cacheDir: '/c/' });
+    const q = createSynthQueue({ sentences, synthesize, lookahead: 40, pathOf: (i: number) => `/c/s${i}.wav` });
     await q.start(0);
     q.stop();
     await q.drain();
@@ -124,15 +124,54 @@ describe('createSynthQueue', () => {
   });
 });
 
-describe('discarding audio already heard', () => {
-  it('deletes sentences well behind the listener', async () => {
-    const removed: string[] = [];
+describe('reusing audio that is already there', () => {
+  it('does not synthesise a sentence whose file exists', async () => {
+    const synthesize = fakeSynth();
+    const q = createSynthQueue({
+      sentences,
+      synthesize,
+      lookahead: 4,
+      pathOf: (i: number) => `/c/s${i}.wav`,
+      // Everything below 10 was made on an earlier run.
+      exists: (path: string) => Number(path.match(/s(\d+)/)?.[1]) < 10,
+    });
+
+    await q.start(0);
+    await q.drain();
+
+    // Stepping back into read territory, or resuming a book tomorrow, should
+    // cost nothing at all.
+    expect(synthesize).not.toHaveBeenCalled();
+    expect(q.pathFor(3)).toBe('/c/s3.wav');
+  });
+
+  it('starts again from a new place without discarding what it has', async () => {
+    const synthesize = fakeSynth();
+    const q = createSynthQueue({
+      sentences,
+      synthesize,
+      lookahead: 3,
+      pathOf: (i: number) => `/c/s${i}.wav`,
+    });
+
+    await q.start(10);
+    await q.drain();
+    const madeFirst = synthesize.mock.calls.length;
+
+    // Going back is what used to wipe the cache and re-synthesise everything.
+    await q.start(10);
+    await q.drain();
+
+    expect(synthesize.mock.calls.length).toBe(madeFirst);
+    expect(q.pathFor(10)).toBe('/c/s10.wav');
+  });
+
+  it('keeps what it made when the reader moves on', async () => {
     const q = createSynthQueue({
       sentences,
       synthesize: fakeSynth(),
-      lookahead: 4,
-      cacheDir: '/c/',
-      remove: (path) => removed.push(path),
+      lookahead: 3,
+      pathOf: (i: number) => `/c/s${i}.wav`,
     });
 
     await q.start(0);
@@ -140,74 +179,34 @@ describe('discarding audio already heard', () => {
     q.setCurrent(20);
     await q.drain();
 
-    // A whole book of audio is several hundred megabytes, and none of it is
-    // wanted once it has been spoken.
-    expect(removed).toContain('/c/s0.wav');
-    expect(removed).toContain('/c/s1.wav');
+    // Eviction is a matter of disk budget now, decided elsewhere, not of how
+    // far the reader has walked past a sentence.
+    expect(q.pathFor(0)).toBe('/c/s0.wav');
   });
+});
 
-  it('keeps the sentences just behind, so stepping back is not a re-synthesis', async () => {
-    const removed: string[] = [];
+describe('when the voice or the speed changes', () => {
+  it('does not hand back audio made for a different voice', async () => {
+    let voice = 'lyra';
+    const synthesize = fakeSynth();
     const q = createSynthQueue({
       sentences,
-      synthesize: fakeSynth(),
-      lookahead: 4,
-      cacheDir: '/c/',
-      remove: (path) => removed.push(path),
+      synthesize,
+      lookahead: 2,
+      pathOf: (i: number) => `/c/${voice}/s${i}.wav`,
     });
 
     await q.start(0);
     await q.drain();
-    q.setCurrent(20);
-    await q.drain();
+    expect(q.pathFor(0)).toBe('/c/lyra/s0.wav');
 
-    expect(removed).not.toContain('/c/s19.wav');
-    expect(removed).not.toContain('/c/s20.wav');
-  });
-
-  it('never deletes what is being played', async () => {
-    const removed: string[] = [];
-    const q = createSynthQueue({
-      sentences,
-      synthesize: fakeSynth(),
-      lookahead: 4,
-      cacheDir: '/c/',
-      remove: (path) => removed.push(path),
-    });
+    voice = 'kiki';
+    // The old file still exists, but it is the old voice. Playing it would be
+    // the app ignoring the voice that was just chosen.
+    expect(q.pathFor(0)).toBeUndefined();
 
     await q.start(0);
     await q.drain();
-    for (let at = 0; at < 40; at++) {
-      q.setCurrent(at);
-      await q.drain();
-      expect(removed).not.toContain(`/c/s${at}.wav`);
-    }
-  });
-
-  it('clears what a previous book left behind when a new one starts', async () => {
-    const removed: string[] = [];
-    const q = createSynthQueue({
-      sentences,
-      synthesize: fakeSynth(),
-      lookahead: 4,
-      cacheDir: '/c/',
-      remove: (path) => removed.push(path),
-    });
-
-    await q.start(0);
-    await q.drain();
-    removed.length = 0;
-    await q.start(0);
-
-    // A shorter book would otherwise leave the tail of a longer one on disk
-    // for ever, since the names only collide as far as the shorter one runs.
-    expect(removed).toContain('/c/s0.wav');
-  });
-
-  it('works without a remover, for a caller that does not want one', async () => {
-    const q = createSynthQueue({ sentences, synthesize: fakeSynth(), lookahead: 4, cacheDir: '/c/' });
-    await q.start(0);
-    await q.drain();
-    expect(() => q.setCurrent(30)).not.toThrow();
+    expect(q.pathFor(0)).toBe('/c/kiki/s0.wav');
   });
 });
