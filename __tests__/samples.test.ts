@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { OFFERED_VOICES } from '../src/voices/catalog';
+import { OFFERED_VOICES, VOICES } from '../src/voices/catalog';
 
 // Vitest cannot resolve a .opus require, and does not need to: what matters
 // here is that the two lists agree, not what the assets contain.
@@ -23,8 +23,11 @@ describe('voice samples', () => {
   });
 
   it('has none left over for voices that no longer exist', () => {
-    const offered = OFFERED_VOICES.map((v) => v.id);
-    const orphans = SAMPLED_VOICE_IDS.filter((id) => !offered.includes(id));
+    // Checked against the whole catalog, not what is offered: a hidden voice
+    // keeps its sample, because hiding is reversible and regenerating one
+    // means downloading the model again.
+    const known = VOICES.map((v) => v.id);
+    const orphans = SAMPLED_VOICE_IDS.filter((id) => !known.includes(id));
     expect(orphans).toEqual([]);
   });
 });

@@ -103,6 +103,7 @@ const PIPER: Array<{
   sha256: string;
   licence: string;
   nonCommercial?: boolean;
+  hidden?: boolean;
 }> = [
   // Public domain, trained from scratch. Safe under any licence we ever pick.
   {
@@ -125,6 +126,13 @@ const PIPER: Array<{
     licence: 'LibriVox, public domain',
   },
   {
+    /*
+     * Hidden: it mispronounces words that Kristin, on the identical pipeline,
+     * says correctly. Trained from scratch for 1200 epochs where Kristin had
+     * 2000, and its own card ends "I forgot to save the ckpt file on this one,
+     * sorry" -- so the difference is the training, not anything here.
+     */
+    hidden: true,
     key: 'en_US-norman-medium',
     name: 'Norman',
     accent: 'US',
@@ -137,6 +145,9 @@ const PIPER: Array<{
     // Finetuned from Kristin, which was trained from scratch -- so the whole
     // chain stays public domain. Worth stating, because for most Piper voices
     // it is exactly this line that disqualifies them.
+    // Hidden for the same reason as Norman: 600 epochs of finetuning on top
+    // of Kristin was not enough, and it shows in the words it gets wrong.
+    hidden: true,
     key: 'en_US-john-medium',
     name: 'John',
     accent: 'US',
@@ -236,6 +247,7 @@ export const VOICES: VoiceMeta[] = PIPER.map((voice) => ({
   defaultRate: 1,
   licence: voice.licence,
   nonCommercial: voice.nonCommercial,
+  hidden: voice.hidden,
 }));
 
 /*
@@ -271,8 +283,14 @@ const KITTEN = 'https://huggingface.co/csukuangfj/kitten-nano-en-v0_2-fp16/resol
  * order labelled every voice with the wrong gender, which is how this was
  * found. The names below are paired to the order the model actually uses.
  *
- * Speakers 1 and 6 read slowly enough to be uncomfortable even with the rate
- * correction below, so they are not offered. They stay in the catalog because
+ * None of them are offered. Every one mispronounces the same sounds -- the j
+ * in "judge", the ch in "church", r-coloured vowels -- because sherpa hands
+ * the model eSpeak's phonemes while its token map carries an alphabet eSpeak
+ * cannot produce. docs/KNOWN_ISSUES.md has the measurements. It is not fixable
+ * from here: sherpa takes text rather than phonemes, and unlike the vits
+ * config the kitten one has no lexicon field to route around it.
+ *
+ * They stay in the catalog rather than being deleted because
  * they are part of a download that is already on the phone, and because anyone
  * who had one selected should keep hearing it rather than have the app change
  * voice underneath them. Their ids are written out rather than taken from this
@@ -284,14 +302,14 @@ const KITTEN_VOICES: Array<{
   gender: 'female' | 'male';
   hidden?: boolean;
 }> = [
-  { speakerId: 0, name: 'Jasper', gender: 'male' },
+  { speakerId: 0, name: 'Jasper', gender: 'male', hidden: true },
   { speakerId: 1, name: 'Bella', gender: 'female', hidden: true },
-  { speakerId: 2, name: 'Bruno', gender: 'male' },
-  { speakerId: 3, name: 'Luna', gender: 'female' },
-  { speakerId: 4, name: 'Hugo', gender: 'male' },
-  { speakerId: 5, name: 'Rosie', gender: 'female' },
+  { speakerId: 2, name: 'Bruno', gender: 'male', hidden: true },
+  { speakerId: 3, name: 'Luna', gender: 'female', hidden: true },
+  { speakerId: 4, name: 'Hugo', gender: 'male', hidden: true },
+  { speakerId: 5, name: 'Rosie', gender: 'female', hidden: true },
   { speakerId: 6, name: 'Leo', gender: 'male', hidden: true },
-  { speakerId: 7, name: 'Kiki', gender: 'female' },
+  { speakerId: 7, name: 'Kiki', gender: 'female', hidden: true },
 ];
 
 KITTEN_VOICES.forEach(({ speakerId, name, gender, hidden }) => {
