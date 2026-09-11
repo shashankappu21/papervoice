@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { useTour } from './TourProvider';
@@ -8,6 +8,15 @@ import { captionSide, cutOut } from './spotlight';
 
 /** Room left around a highlighted control, so it is not pressed against the dark. */
 const MARGIN = 10;
+
+/**
+ * How long to wait for a control to report where it is before giving up on it.
+ *
+ * Some steps point at things that are not always there -- the contents button
+ * is absent from a book with no chapters -- and a step waiting on one of those
+ * would hold the whole tour, invisibly, for ever.
+ */
+const PATIENCE_MS = 1500;
 
 /**
  * The guided tour, drawn over whatever screen is showing.
@@ -24,8 +33,16 @@ const MARGIN = 10;
 export function TourOverlay() {
   const { tour, step, targets, next, finish } = useTour();
   const { colors, space, radius, font } = useTheme();
-  const screen = useWindowDimensions();
   const insets = useSafeAreaInsets();
+
+  /*
+   * The overlay's own height, measured rather than taken from the window.
+   * A window reports a height that leaves the system bars out under
+   * edge-to-edge layout, while controls are measured in a space that includes
+   * them -- so the two numbers disagree by exactly the amount that put the
+   * spotlight in the wrong place.
+   */
+  const [height, setHeight] = useState(0);
 
   const fade = useRef(new Animated.Value(0)).current;
   const steps = tour ? TOURS[tour] : [];
@@ -43,10 +60,18 @@ export function TourOverlay() {
     }).start();
   }, [tour, waiting, step, fade]);
 
+  // A control that never appears means a step with nothing to say. Move past
+  // it rather than leaving the tour stuck on a screen it cannot draw.
+  useEffect(() => {
+    if (!tour || !waiting) return;
+    const giveUp = setTimeout(next, PATIENCE_MS);
+    return () => clearTimeout(giveUp);
+  }, [tour, waiting, step, next]);
+
   if (!tour || !current || waiting) return null;
 
-  const [top, bottom, left, right] = cutOut(target, screen, MARGIN);
-  const side = captionSide(target, screen);
+  const panels = cutOut(target, MARGIN);
+  const side = captionSide(target, height);
   const last = step === steps.length - 1;
 
   const caption = (
@@ -114,8 +139,12 @@ export function TourOverlay() {
   return (
     // box-none: this view does not take touches, only its children do, which
     // is what leaves the hole open.
-    <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]} pointerEvents="box-none">
-      {[top, bottom, left, right].map((piece, index) => (
+    <Animated.View
+      style={[StyleSheet.absoluteFill, { opacity: fade }]}
+      pointerEvents="box-none"
+      onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
+    >
+      {panels.map((piece, index) => (
         <Pressable
           key={index}
           onPress={next}
@@ -147,8 +176,10 @@ export function TourOverlay() {
         pointerEvents="box-none"
         style={[
           styles.captionSlot,
+          // Anchored to the same edges the panels use, so the caption and the
+          // hole cannot drift apart.
           side === 'above'
-            ? { bottom: screen.height - (target?.y ?? 0) + MARGIN * 2, top: undefined }
+            ? { bottom: Math.max(0, height - (target?.y ?? 0) + MARGIN * 2) }
             : side === 'below'
               ? { top: (target?.y ?? 0) + (target?.height ?? 0) + MARGIN * 3 }
               : { top: 0, bottom: 0, justifyContent: 'center' },
