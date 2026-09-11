@@ -59,7 +59,8 @@
       "expo-audio",
       "expo-sqlite",
       "./plugins/withDevAbi",
-      "./plugins/withReleaseSigning"
+      "./plugins/withReleaseSigning",
+      "./plugins/withSlimRelease"
     ],
     "scheme": "papervoice",
     "experiments": {

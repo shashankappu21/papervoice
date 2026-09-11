@@ -43,7 +43,8 @@
     "push:voice": "node scripts/pushVoice.mjs",
     "setup:espeak": "node scripts/fetchEspeak.mjs",
     "apk": "node scripts/buildApk.mjs",
-    "samples": "tsx scripts/exportVoices.ts && python scripts/makeVoiceSamples.py"
+    "samples": "tsx scripts/exportVoices.ts && python scripts/makeVoiceSamples.py",
+    "aab": "node scripts/buildAab.mjs"
   },
   "private": true
 }
