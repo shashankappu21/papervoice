@@ -31,9 +31,8 @@ export interface Step {
    *
    * 'skip' for a step that makes no sense without it -- there is nothing to
    * say about jumping to a chapter in a book that has none. 'show' for a step
-   * worth making anyway: the group chips do not exist until there is a book to
-   * put in one, and a reader opening the app for the first time has none, yet
-   * that is exactly who most needs telling the feature is there.
+   * worth making anyway, where losing the spotlight is better than losing the
+   * words.
    */
   whenMissing?: 'skip' | 'show';
 }
@@ -56,6 +55,10 @@ export const TOURS: Record<TourId, Step[]> = {
     },
     {
       target: 'groups',
+      // The chips are on the screen whether or not anything has been imported,
+      // so this should find its target. 'show' is the belt and braces: a step
+      // about a feature someone has not met yet is worth making even if the
+      // row somehow has not laid out by the time the tour reaches it.
       whenMissing: 'show',
       title: 'Keep them in groups',
       body:

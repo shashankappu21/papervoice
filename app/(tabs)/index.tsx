@@ -102,44 +102,50 @@ export default function Library() {
         contentContainerStyle={{ paddingBottom: space.xxxl }}
         ListHeaderComponent={
           <View>
-            {books.length > 0 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
-                  paddingHorizontal: space.xl,
-                  gap: space.sm,
-                  paddingBottom: space.md,
-                }}
-              >
-                {/*
-                  Always here, even with no groups made yet. On its own the
-                  new-group chip is a button with no context; beside a selected
-                  "All" it obviously adds another of the same kind of thing, and
-                  the row reads as a set of filters rather than a stray action.
-                */}
-                <GroupChip label="All" on={chosen === null} onPress={() => setGroup(null)} />
-                {groups.map((candidate) => (
-                  <GroupChip
-                    key={candidate.id}
-                    label={`${candidate.name} · ${candidate.count}`}
-                    on={chosen === candidate.id}
-                    onPress={() => setGroup(chosen === candidate.id ? null : candidate.id)}
-                    // Tapping the group you are already in opens it, which is
-                    // where books are added and where it can be deleted.
-                    onLongPress={() => setEditing(candidate)}
-                  />
-                ))}
-                <GroupChip
-                  label="+ New group"
-                  on={false}
-                  onPress={() => setNaming(true)}
-                  innerRef={groupsTarget.ref}
-                  onLayout={groupsTarget.onLayout}
-                />
-              </ScrollView>
-            )}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingHorizontal: space.xl,
+                gap: space.sm,
+                paddingBottom: space.md,
+              }}
+            >
+              {/*
+                Always here: with no groups made yet, and with no books either.
 
+                On its own the new-group chip is a button with no context;
+                beside a selected "All" it obviously adds another of the same
+                kind of thing, and the row reads as a set of filters rather
+                than a stray action.
+
+                It used to be hidden until the first book was imported, which
+                took it away from exactly the person it is for. Someone opening
+                the app the first time has no books by definition, and that is
+                when the tour walks them past this row -- with nothing there,
+                the step about groups had nothing to point at and nothing to
+                show.
+              */}
+              <GroupChip label="All" on={chosen === null} onPress={() => setGroup(null)} />
+              {groups.map((candidate) => (
+                <GroupChip
+                  key={candidate.id}
+                  label={`${candidate.name} · ${candidate.count}`}
+                  on={chosen === candidate.id}
+                  onPress={() => setGroup(chosen === candidate.id ? null : candidate.id)}
+                  // Tapping the group you are already in opens it, which is
+                  // where books are added and where it can be deleted.
+                  onLongPress={() => setEditing(candidate)}
+                />
+              ))}
+              <GroupChip
+                label="+ New group"
+                on={false}
+                onPress={() => setNaming(true)}
+                innerRef={groupsTarget.ref}
+                onLayout={groupsTarget.onLayout}
+              />
+            </ScrollView>
             {started.length > 0 && (
             <View>
               <Text
