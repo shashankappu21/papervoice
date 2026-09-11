@@ -23,6 +23,7 @@ export default function Library() {
   const { colors, space, radius, font } = useTheme();
   const insets = useSafeAreaInsets();
   const settingsTarget = useTourTarget('settings');
+  const groupsTarget = useTourTarget('groups');
 
   // Offered once the screen exists, so the spotlight has something to sit on.
   useOfferTour('library');
@@ -111,9 +112,13 @@ export default function Library() {
                   paddingBottom: space.md,
                 }}
               >
-                {groups.length > 0 && (
-                  <GroupChip label="All" on={chosen === null} onPress={() => setGroup(null)} />
-                )}
+                {/*
+                  Always here, even with no groups made yet. On its own the
+                  new-group chip is a button with no context; beside a selected
+                  "All" it obviously adds another of the same kind of thing, and
+                  the row reads as a set of filters rather than a stray action.
+                */}
+                <GroupChip label="All" on={chosen === null} onPress={() => setGroup(null)} />
                 {groups.map((candidate) => (
                   <GroupChip
                     key={candidate.id}
@@ -125,7 +130,13 @@ export default function Library() {
                     onLongPress={() => setEditing(candidate)}
                   />
                 ))}
-                <GroupChip label="+ New group" on={false} onPress={() => setNaming(true)} />
+                <GroupChip
+                  label="+ New group"
+                  on={false}
+                  onPress={() => setNaming(true)}
+                  innerRef={groupsTarget.ref}
+                  onLayout={groupsTarget.onLayout}
+                />
               </ScrollView>
             )}
 
@@ -353,15 +364,22 @@ function GroupChip({
   on,
   onPress,
   onLongPress,
+  innerRef,
+  onLayout,
 }: {
   label: string;
   on: boolean;
   onPress: () => void;
   onLongPress?: () => void;
+  /** Set where the tour points at this chip. */
+  innerRef?: React.Ref<View>;
+  onLayout?: () => void;
 }) {
   const { colors, radius, font } = useTheme();
   return (
     <Pressable
+      ref={innerRef}
+      onLayout={onLayout}
       onPress={onPress}
       onLongPress={onLongPress}
       accessibilityRole="button"

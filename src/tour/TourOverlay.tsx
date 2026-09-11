@@ -49,8 +49,17 @@ export function TourOverlay() {
   const current = steps[step];
   const target = current?.target ? (targets[current.target] ?? null) : null;
 
+  /*
+   * Steps whose control never turned up, and which are shown anyway.
+   *
+   * Kept per step rather than as one flag: giving up on one step must not
+   * make the next one give up before it has been looked for.
+   */
+  const [abandoned, setAbandoned] = useState<Record<string, boolean>>({});
+  const gaveUp = abandoned[`${tour}:${step}`] === true;
+
   // Waiting, rather than pointing at the corner while the layout settles.
-  const waiting = Boolean(current?.target) && target === null;
+  const waiting = Boolean(current?.target) && target === null && !gaveUp;
 
   useEffect(() => {
     Animated.timing(fade, {
@@ -60,13 +69,27 @@ export function TourOverlay() {
     }).start();
   }, [tour, waiting, step, fade]);
 
-  // A control that never appears means a step with nothing to say. Move past
-  // it rather than leaving the tour stuck on a screen it cannot draw.
+  /*
+   * A control that never turns up.
+   *
+   * Some steps are meaningless without theirs and are skipped -- there is
+   * nothing to say about jumping to a chapter in a book that has none. Others
+   * are worth making regardless, and those lose their spotlight and keep their
+   * words: the group chips do not exist until there is a book to put in one,
+   * and someone opening the app for the first time is exactly who needs
+   * telling that groups are there at all.
+   */
   useEffect(() => {
     if (!tour || !waiting) return;
-    const giveUp = setTimeout(next, PATIENCE_MS);
-    return () => clearTimeout(giveUp);
-  }, [tour, waiting, step, next]);
+    const timer = setTimeout(() => {
+      if (current?.whenMissing === 'show') {
+        setAbandoned((given) => ({ ...given, [`${tour}:${step}`]: true }));
+      } else {
+        next();
+      }
+    }, PATIENCE_MS);
+    return () => clearTimeout(timer);
+  }, [tour, waiting, step, next, current?.whenMissing]);
 
   if (!tour || !current || waiting) return null;
 

@@ -13,6 +13,7 @@
 /** Where a step's spotlight goes. Registered by the screen that owns it. */
 export type TargetId =
   | 'import'
+  | 'groups'
   | 'voicesTab'
   | 'settings'
   | 'play'
@@ -25,6 +26,16 @@ export interface Step {
   target: TargetId | null;
   title: string;
   body: string;
+  /**
+   * What to do when the control is not on the screen.
+   *
+   * 'skip' for a step that makes no sense without it -- there is nothing to
+   * say about jumping to a chapter in a book that has none. 'show' for a step
+   * worth making anyway: the group chips do not exist until there is a book to
+   * put in one, and a reader opening the app for the first time has none, yet
+   * that is exactly who most needs telling the feature is there.
+   */
+  whenMissing?: 'skip' | 'show';
 }
 
 export type TourId = 'library' | 'reader';
@@ -42,6 +53,13 @@ export const TOURS: Record<TourId, Step[]> = {
       title: 'Add a book',
       body:
         'Tap the plus to bring in a PDF. You can also open one straight from your file manager and choose Papervoice.',
+    },
+    {
+      target: 'groups',
+      whenMissing: 'show',
+      title: 'Keep them in groups',
+      body:
+        'Make groups of your own — by subject, by course, by whatever you like. A book can be in several at once, or in none.',
     },
     {
       target: 'voicesTab',
@@ -75,6 +93,7 @@ export const TOURS: Record<TourId, Step[]> = {
     },
     {
       target: 'contents',
+      whenMissing: 'skip',
       title: 'Jump to a chapter',
       body:
         'Where the PDF has contents of its own, this uses them. Where it has not, it uses the headings found in the text.',
