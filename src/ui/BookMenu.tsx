@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
-import { deleteBook, type Book } from '../db/books';
+import { deleteBook, renameBook, type Book } from '../db/books';
 import { createGroup, groupsOf, listGroups, setBookGroup, type Group } from '../db/groups';
 import { useKeyboardHeight } from './useKeyboardHeight';
 import { useReading } from '../player/PlaybackProvider';
@@ -34,11 +34,15 @@ export function BookMenu({ book, onClose, onChanged }: Props) {
   const [member, setMember] = useState<Set<number>>(new Set());
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [title, setTitle] = useState('');
 
   useEffect(() => {
     if (!book) return;
     setNaming(false);
     setName('');
+    setRenaming(false);
+    setTitle(book.title);
     void listGroups().then(setGroups, () => setGroups([]));
     void groupsOf(book.id).then((ids) => setMember(new Set(ids)), () => setMember(new Set()));
   }, [book]);
@@ -66,6 +70,12 @@ export function BookMenu({ book, onClose, onChanged }: Props) {
     setNaming(false);
     setGroups(await listGroups());
     setMember((current) => new Set(current).add(id));
+    onChanged();
+  };
+
+  const rename = async () => {
+    await renameBook(book.id, title);
+    setRenaming(false);
     onChanged();
   };
 
@@ -123,15 +133,52 @@ export function BookMenu({ book, onClose, onChanged }: Props) {
         >
           <View style={[styles.grip, { backgroundColor: colors.divider }]} />
 
-          <Text
-            numberOfLines={2}
-            style={[
-              styles.title,
-              { color: colors.text, fontSize: font.lg, paddingHorizontal: space.xl },
-            ]}
-          >
-            {book.title}
-          </Text>
+          {renaming ? (
+            <View style={[styles.newRow, { paddingHorizontal: space.xl, gap: space.sm }]}>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Book title"
+                placeholderTextColor={colors.textMuted}
+                autoFocus
+                selectTextOnFocus
+                returnKeyType="done"
+                onSubmitEditing={() => void rename()}
+                style={[
+                  styles.input,
+                  {
+                    color: colors.text,
+                    backgroundColor: colors.surface,
+                    borderRadius: radius.sm,
+                    fontSize: font.md,
+                  },
+                ]}
+              />
+              <Pressable
+                onPress={() => void rename()}
+                accessibilityRole="button"
+                accessibilityLabel="Save the title"
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+              >
+                <Ionicons name="checkmark-circle" size={32} color={colors.accent} />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => setRenaming(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`${book.title}. Rename.`}
+              style={[styles.titleRow, { paddingHorizontal: space.xl, gap: space.sm }]}
+            >
+              <Text
+                numberOfLines={2}
+                style={[styles.title, { color: colors.text, fontSize: font.lg, flex: 1 }]}
+              >
+                {book.title}
+              </Text>
+              <Ionicons name="pencil" size={16} color={colors.textMuted} />
+            </Pressable>
+          )}
 
           <Text
             style={[
@@ -265,6 +312,7 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
   sheet: {},
   grip: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
+  titleRow: { flexDirection: 'row', alignItems: 'center' },
   title: { fontWeight: '700' },
   section: { fontWeight: '700', letterSpacing: 0.5, marginTop: 18, marginBottom: 4 },
   groups: { flexShrink: 1 },

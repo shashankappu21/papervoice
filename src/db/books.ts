@@ -236,6 +236,20 @@ export async function booksNeedingDetails(): Promise<Book[]> {
   return rows.map(toBook);
 }
 
+/**
+ * Renames a book.
+ *
+ * Needed because a title is sometimes a guess: a PDF opened from a file
+ * manager arrives as a uri, and some providers hand over an id rather than a
+ * name. Being able to fix it is what makes a plain fallback acceptable.
+ */
+export async function renameBook(bookId: number, title: string): Promise<void> {
+  const trimmed = title.trim();
+  if (!trimmed) return;
+  const db = await database();
+  await db.runAsync('UPDATE books SET title = ? WHERE id = ?', trimmed, bookId);
+}
+
 export async function deleteBook(bookId: number): Promise<void> {
   const book = await getBook(bookId);
   const db = await database();

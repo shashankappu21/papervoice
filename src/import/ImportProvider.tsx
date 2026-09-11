@@ -1,10 +1,13 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { File, Paths } from 'expo-file-system';
+import * as Linking from 'expo-linking';
 
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { ExtractorWebView } from '../extraction/ExtractorWebView';
 import { addBook } from '../db/books';
 import { ImportProgress } from '../ui/ImportProgress';
+import { isPdfUri, titleFromUri } from './incomingPdf';
 
 interface ImportContextValue {
   start(): void;
@@ -31,6 +34,47 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
   const [failed, setFailed] = useState<string | null>(null);
   /** Held after extraction finishes, so the card covers the save too. */
   const [saving, setSaving] = useState(false);
+  /** Uris already taken, so a re-launch does not import the same file twice. */
+  const taken = useRef(new Set<string>());
+
+  const begin = useCallback((uri: string, title: string) => {
+    setFailed(null);
+    setPages({ page: 0, total: 0 });
+    setStatus('Opening the document…');
+    setImporting({ uri, title });
+  }, []);
+
+  /**
+   * A PDF opened from somewhere else -- a file manager, a share sheet.
+   *
+   * The uri is copied into the app's own storage before anything is done with
+   * it. What Android grants along with the intent is permission to read that
+   * one uri for as long as this launch lasts; it does not survive the app
+   * being killed, and the import has to outlive that.
+   */
+  const receive = useCallback(
+    (uri: string | null) => {
+      if (!isPdfUri(uri) || !uri || taken.current.has(uri)) return;
+      taken.current.add(uri);
+
+      try {
+        const copy = new File(Paths.cache, `incoming-${Date.now()}.pdf`);
+        new File(uri).copy(copy);
+        begin(copy.uri, titleFromUri(uri));
+      } catch (cause) {
+        setFailed(`That file could not be opened: ${String(cause)}`);
+      }
+    },
+    [begin],
+  );
+
+  useEffect(() => {
+    // The launch that opened the app with a document in hand.
+    void Linking.getInitialURL().then(receive, () => undefined);
+    // And any that arrive while it is already running.
+    const listener = Linking.addEventListener('url', ({ url }) => receive(url));
+    return () => listener.remove();
+  }, [receive]);
 
   const start = () => {
     if (importing) return;
@@ -40,10 +84,7 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
     }).then((result) => {
       if (result.canceled) return;
       const asset = result.assets[0];
-      setFailed(null);
-      setPages({ page: 0, total: 0 });
-      setStatus('Opening the document…');
-      setImporting({ uri: asset.uri, title: asset.name.replace(/\.pdf$/i, '') });
+      begin(asset.uri, asset.name.replace(/\.pdf$/i, ''));
     });
   };
 
