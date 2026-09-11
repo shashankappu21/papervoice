@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { Player } from '../../src/ui/Player';
 import { VoicePicker } from '../../src/ui/VoicePicker';
 import { SpeedSheet } from '../../src/ui/SpeedSheet';
 import { SectionsSheet } from '../../src/ui/SectionsSheet';
+import { PageSkeleton } from '../../src/ui/PageSkeleton';
 import { useFontSize, useTheme } from '../../src/ui/ThemeProvider';
 
 export default function ReaderScreen() {
@@ -44,7 +45,8 @@ export default function ReaderScreen() {
   }, [id, open]);
 
   if (failed) return <Centered>{failed}</Centered>;
-  if (!book || book.id !== id) return <Centered><ActivityIndicator /></Centered>;
+  // The page being read in, rather than a spinner in the middle of nothing.
+  if (!book || book.id !== id) return <Opening />;
 
   return <Reader book={book} sentences={sentences} />;
 }
@@ -269,6 +271,19 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
         onChange={(next) => playback.setRate(next)}
         onClose={() => setChoosingSpeed(false)}
       />
+    </View>
+  );
+}
+
+/** What the reader looks like before the sentences have been read from disk. */
+function Opening() {
+  const { colors } = useTheme();
+  const { fontSize } = useFontSize();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.screen, { backgroundColor: colors.bg, paddingTop: insets.top }]}>
+      <PageSkeleton fontSize={fontSize} />
     </View>
   );
 }

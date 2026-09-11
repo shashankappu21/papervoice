@@ -1,16 +1,20 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from './ThemeProvider';
 
 /**
- * A voice, as a circle with its initial in it.
+ * A voice, as a little waveform of its own.
+ *
+ * It was an initial in a circle, which made seventeen voices look like
+ * seventeen letters -- and told a reader nothing about what they were choosing
+ * between. A waveform at least says "sound", and giving each voice its own bar
+ * heights makes them tell each other apart at a glance, which is what an
+ * avatar is for.
  *
  * Speechify puts a photographed face on every voice. Ours are open models with
- * no faces to use and no right to invent one, so the avatar is a monogram
- * whose colour is derived from the name -- which still gives each voice
- * something recognisable to aim at in a list of seventeen.
+ * no faces to use and no right to invent one.
  */
 
-/** Enough hues to stay distinguishable, all mid-tone so white sits on any of them. */
+/** Mid-tone enough that white bars sit on any of them. */
 const HUES = [
   '#4f46e5',
   '#0e7490',
@@ -22,21 +26,48 @@ const HUES = [
   '#c2410c',
 ];
 
-/** Same name, same colour, every time and on every phone. */
-function hueFor(name: string): string {
-  let total = 0;
-  for (let i = 0; i < name.length; i++) total = (total + name.charCodeAt(i) * (i + 1)) % 4096;
-  return HUES[total % HUES.length];
+/** How many bars the waveform has. Enough to differ, few enough to read small. */
+const BARS = 5;
+
+/**
+ * The same name always gives the same picture, on every phone and every run.
+ *
+ * A hash rather than an index, so adding or reordering voices in the catalog
+ * does not silently reassign every avatar.
+ */
+function seedOf(name: string): number {
+  let seed = 0;
+  for (let i = 0; i < name.length; i++) seed = (seed * 31 + name.charCodeAt(i)) % 100_000;
+  return seed;
+}
+
+function shapeOf(name: string): { colour: string; heights: number[] } {
+  const seed = seedOf(name);
+  const heights: number[] = [];
+
+  for (let bar = 0; bar < BARS; bar++) {
+    // Each bar takes a different slice of the seed, so the bars within one
+    // avatar vary rather than all following the name's length.
+    const slice = Math.floor(seed / 7 ** bar) % 100;
+    // Never below a third: a bar that nearly vanishes reads as a rendering
+    // fault rather than as a quiet moment.
+    heights.push(0.34 + (slice / 100) * 0.66);
+  }
+
+  return { colour: HUES[seed % HUES.length], heights };
 }
 
 export function VoiceAvatar({ name, size = 44 }: { name: string; size?: number }) {
   const { colors } = useTheme();
-  const initial = name.trim().charAt(0).toUpperCase() || '?';
+  const { colour, heights } = shapeOf(name);
+
+  const barWidth = Math.max(2, size * 0.08);
+  const gap = Math.max(1, size * 0.045);
 
   return (
     <View
       // Decorative: the name is already beside it, and a screen reader
-      // announcing "letter L" adds nothing.
+      // announcing a waveform adds nothing.
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={[
@@ -45,18 +76,32 @@ export function VoiceAvatar({ name, size = 44 }: { name: string; size?: number }
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: hueFor(name),
+          backgroundColor: colour,
           borderColor: colors.bg,
+          gap,
         },
       ]}
     >
-      <Text style={{ color: '#ffffff', fontSize: size * 0.42, fontWeight: '700' }}>
-        {initial}
-      </Text>
+      {heights.map((height, bar) => (
+        <View
+          key={bar}
+          style={{
+            width: barWidth,
+            height: size * 0.52 * height,
+            borderRadius: barWidth / 2,
+            backgroundColor: '#ffffff',
+          }}
+        />
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  circle: { alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
+  circle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
 });

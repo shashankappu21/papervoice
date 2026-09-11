@@ -1,10 +1,10 @@
 import { createContext, useContext, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { ExtractorWebView } from '../extraction/ExtractorWebView';
 import { addBook } from '../db/books';
-import { useTheme } from '../ui/ThemeProvider';
+import { ImportProgress } from '../ui/ImportProgress';
 
 interface ImportContextValue {
   start(): void;
@@ -24,9 +24,13 @@ const ImportContext = createContext<ImportContextValue | null>(null);
  */
 export function ImportProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { colors, space, radius, font } = useTheme();
   const [importing, setImporting] = useState<{ uri: string; title: string } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  /** Pages read and pages in total, so the wait has a shape rather than a spinner. */
+  const [pages, setPages] = useState({ page: 0, total: 0 });
+  const [failed, setFailed] = useState<string | null>(null);
+  /** Held after extraction finishes, so the card covers the save too. */
+  const [saving, setSaving] = useState(false);
 
   const start = () => {
     if (importing) return;
@@ -36,7 +40,9 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
     }).then((result) => {
       if (result.canceled) return;
       const asset = result.assets[0];
-      setStatus('Reading the document…');
+      setFailed(null);
+      setPages({ page: 0, total: 0 });
+      setStatus('Opening the document…');
       setImporting({ uri: asset.uri, title: asset.name.replace(/\.pdf$/i, '') });
     });
   };
@@ -45,42 +51,45 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
     <ImportContext.Provider value={{ start, busy: importing !== null }}>
       {children}
 
-      {status && (
-        <View
-          style={[
-            styles.status,
-            {
-              backgroundColor: colors.surface,
-              borderRadius: radius.md,
-              padding: space.lg,
-              gap: space.md,
-            },
-          ]}
-        >
-          <ActivityIndicator color={colors.accent} />
-          <Text style={{ color: colors.text, fontSize: font.sm, flex: 1 }}>{status}</Text>
-        </View>
+      {(importing || failed || saving) && (
+        <ImportProgress
+          title={importing?.title ?? ''}
+          page={pages.page}
+          total={pages.total}
+          message={failed ?? status}
+          failed={failed !== null}
+          onDismiss={() => {
+            setFailed(null);
+            setStatus(null);
+          }}
+        />
       )}
 
       {importing && (
         <ExtractorWebView
           uri={importing.uri}
-          onProgress={(page, total) => setStatus(`Reading page ${page} of ${total}…`)}
+          onProgress={(page, total) => setPages({ page, total })}
           onDone={(doc) => {
             const { uri, title } = importing;
             setImporting(null);
+            setSaving(true);
             setStatus('Saving…');
             addBook(uri, title, doc).then(
               (book) => {
+                setSaving(false);
                 setStatus(null);
                 router.push({ pathname: '/reader/[bookId]', params: { bookId: book.id } });
               },
-              (cause: unknown) => setStatus(`Could not save: ${String(cause)}`),
+              (cause: unknown) => {
+                setSaving(false);
+                setFailed(String(cause));
+              },
             );
           }}
           onError={(message) => {
             setImporting(null);
-            setStatus(`Could not read that PDF: ${message}`);
+            setSaving(false);
+            setFailed(message);
           }}
         />
       )}
@@ -93,14 +102,3 @@ export function useImport(): ImportContextValue {
   if (!found) throw new Error('useImport was called outside ImportProvider.');
   return found;
 }
-
-const styles = StyleSheet.create({
-  status: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 92,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-});
