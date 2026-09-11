@@ -34,7 +34,10 @@ export function useSavedPosition(bookId: number | null, sentenceIndex: number): 
       const index = current.current;
       if (written.current === index) return;
       written.current = index;
-      void savePosition(bookId, index);
+      // A book can be deleted between the timer firing and this landing, and
+      // foreign keys are on, so the write would fail. Losing a position for a
+      // book that no longer exists is not worth an unhandled rejection.
+      void savePosition(bookId, index).catch(() => undefined);
     };
 
     const timer = setInterval(write, INTERVAL_MS);

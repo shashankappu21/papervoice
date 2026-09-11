@@ -15,6 +15,7 @@ import { useTheme } from './ThemeProvider';
 import { deleteBook, type Book } from '../db/books';
 import { createGroup, groupsOf, listGroups, setBookGroup, type Group } from '../db/groups';
 import { useKeyboardHeight } from './useKeyboardHeight';
+import { useReading } from '../player/PlaybackProvider';
 
 interface Props {
   book: Book | null;
@@ -28,6 +29,7 @@ export function BookMenu({ book, onClose, onChanged }: Props) {
   const { colors, space, radius, font } = useTheme();
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
+  const reading = useReading();
   const [groups, setGroups] = useState<Group[]>([]);
   const [member, setMember] = useState<Set<number>>(new Set());
   const [naming, setNaming] = useState(false);
@@ -78,6 +80,17 @@ export function BookMenu({ book, onClose, onChanged }: Props) {
           text: 'Remove',
           style: 'destructive',
           onPress: () => {
+            /*
+             * Stop before deleting, not after. The bar above the tabs shows
+             * whatever the provider is holding, and the provider knows nothing
+             * about the library -- so a book removed while it was being read
+             * stayed in the bar, playing from files that were no longer there.
+             *
+             * Closing first also means the last position is written while the
+             * book still exists to write it against.
+             */
+            if (reading.book?.id === book.id) reading.close();
+
             void deleteBook(book.id).then(() => {
               onChanged();
               onClose();
