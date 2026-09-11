@@ -67,16 +67,26 @@ function Bar({ state, navigation }: BarProps) {
     return (
       <Pressable
         key={name}
-        ref={name === 'voices' ? voicesTab.ref : undefined}
-        onLayout={name === 'voices' ? voicesTab.onLayout : undefined}
         onPress={() => navigation.navigate(name)}
         accessibilityRole="tab"
         accessibilityLabel={label}
         accessibilityState={{ selected: focused }}
         style={styles.cell}
       >
-        <TabIcon focused={focused} color={tint} name={icon} />
-        <Animated.Text style={[styles.label, { color: tint }]}>{label}</Animated.Text>
+        {/*
+          The tour measures this rather than the tab itself. A tab is a flex
+          cell a third of the screen wide and the full height of the bar, so a
+          spotlight on it is a band across the bottom of the screen pointing at
+          nothing in particular. The icon and its label are the thing meant.
+        */}
+        <View
+          ref={name === 'voices' ? voicesTab.ref : undefined}
+          onLayout={name === 'voices' ? voicesTab.onLayout : undefined}
+          style={styles.tabMark}
+        >
+          <TabIcon focused={focused} color={tint} name={icon} />
+          <Animated.Text style={[styles.label, { color: tint }]}>{label}</Animated.Text>
+        </View>
       </Pressable>
     );
   };
@@ -120,8 +130,6 @@ function ImportButton() {
   return (
     <View style={styles.cell}>
       <Pressable
-        ref={target.ref}
-        onLayout={target.onLayout}
         onPress={start}
         onPressIn={() => spring(0.9)}
         onPressOut={() => spring(1)}
@@ -131,6 +139,14 @@ function ImportButton() {
         accessibilityState={{ disabled: busy }}
       >
         <Animated.View
+          /*
+           * The tour measures the circle rather than the Pressable around it.
+           * The circle is lifted clear of the bar with a negative margin, so
+           * it is drawn outside its parent's layout box -- measuring the
+           * parent put the spotlight below the button it was pointing at.
+           */
+          ref={target.ref}
+          onLayout={target.onLayout}
           style={[
             styles.add,
             {
@@ -153,6 +169,7 @@ const styles = StyleSheet.create({
   // reserves for its own navigation.
   bar: { flexDirection: 'row', borderTopWidth: 1, paddingTop: 6 },
   cell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  tabMark: { alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 11, fontWeight: '600', marginTop: 2 },
   add: {
     width: 56,

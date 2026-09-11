@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { getSetting, setSetting } from '../db/settings';
 import { seenKey, TOURS, type TargetId, type TourId } from './steps';
 import type { Rect } from './spotlight';
@@ -14,6 +15,8 @@ import type { Rect } from './spotlight';
 interface TourContextValue {
   /** The tour running now, or null. */
   tour: TourId | null;
+  /** Changes when the tours are replayed, to re-run the offers. */
+  generation: number;
   step: number;
   /** Where each registered control is, in screen coordinates. */
   targets: Partial<Record<TargetId, Rect>>;
@@ -40,6 +43,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const [tour, setTour] = useState<TourId | null>(null);
   const [step, setStep] = useState(0);
   const [targets, setTargets] = useState<Partial<Record<TargetId, Rect>>>({});
+  /** Bumped by replay, so screens already on display offer their tour again. */
+  const [generation, setGeneration] = useState(0);
 
   /** Tours already finished, so one is never offered twice in a session. */
   const seen = useRef(new Set<TourId>());
@@ -118,6 +123,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     // which is not what "show me around again" says.
     seen.current.clear();
     asked.current.clear();
+    // Screens are already mounted, so nothing would offer a tour again on its
+    // own: a tab that never unmounts never runs its mount effect twice.
+    setGeneration((count) => count + 1);
     await Promise.all([
       setSetting(seenKey('library'), '').catch(() => undefined),
       setSetting(seenKey('reader'), '').catch(() => undefined),
@@ -125,8 +133,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<TourContextValue>(
-    () => ({ tour, step, targets, register, offer, next, finish, replay }),
-    [tour, step, targets, register, offer, next, finish, replay],
+    () => ({ tour, generation, step, targets, register, offer, next, finish, replay }),
+    [tour, generation, step, targets, register, offer, next, finish, replay],
   );
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
@@ -139,14 +147,24 @@ export function useTour(): TourContextValue {
 }
 
 /**
- * Offers a tour once the screen showing it exists.
+ * Offers a tour whenever the screen showing it comes into view.
  *
- * Called by the screen rather than by the provider, because only the screen
- * knows when it is actually on display.
+ * On focus rather than on mount. A tab stays mounted once visited, so a mount
+ * effect runs exactly once for the life of the app -- which meant "show me
+ * around again" cleared the flags and then nothing ever asked again.
+ *
+ * Focus also settles the other half of it: replaying from Settings should not
+ * start a tour pointing at controls behind the Settings sheet. The library
+ * only regains focus once that sheet is closed.
  */
 export function useOfferTour(wanted: TourId, ready = true): void {
-  const { offer } = useTour();
-  useEffect(() => {
-    if (ready) offer(wanted);
-  }, [wanted, ready, offer]);
+  const { offer, generation } = useTour();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (ready) offer(wanted);
+      // generation is not used in the body; it is here so that replaying
+      // re-runs this on a screen that never left the foreground.
+    }, [wanted, ready, offer, generation]),
+  );
 }

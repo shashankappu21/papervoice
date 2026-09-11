@@ -74,6 +74,22 @@ export function TourOverlay() {
   const side = captionSide(target, height);
   const last = step === steps.length - 1;
 
+  // Square within a few pixels, and small: that is a round button.
+  const round =
+    target !== null && Math.abs(target.width - target.height) < 6 && target.width < 120;
+
+  /*
+   * Kept inside the screen. A control at the very bottom -- anything in the
+   * tab bar -- otherwise gets a ring whose lower half is cut off by the edge,
+   * which looks like a drawing error rather than a highlight.
+   */
+  const ringHeight =
+    target === null
+      ? 0
+      : height > 0
+        ? Math.min(target.height + MARGIN * 2, Math.max(0, height - (target.y - MARGIN)))
+        : target.height + MARGIN * 2;
+
   const caption = (
     <View
       style={[
@@ -164,8 +180,13 @@ export function TourOverlay() {
             left: target.x - MARGIN,
             top: target.y - MARGIN,
             width: target.width + MARGIN * 2,
-            height: target.height + MARGIN * 2,
-            borderRadius: radius.lg,
+            height: ringHeight,
+            /*
+             * A round control gets a round ring. A rounded rectangle drawn
+             * around a circle reads as a mistake, and the import button is a
+             * circle.
+             */
+            borderRadius: round ? (target.width + MARGIN * 2) / 2 : radius.lg,
             borderWidth: 2,
             borderColor: colors.accent,
           }}
