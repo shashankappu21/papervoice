@@ -395,12 +395,18 @@ const BRYCE_PAGE = 'https://brycebeattie.com/files/tts/';
  * count has already proved useless here as a predictor -- Cori is fine at 640,
  * Norman is not at 1200. Rose and Olive did not pass and stay hidden.
  *
- * The genders are still read off the readers' names, and which four speakers
- * are British is recorded nowhere, so `unsure` marks the ones where the name
- * does not settle it. Those labels are cosmetic and wrong ones are worth
- * fixing -- guessing exactly this from a published list is how every Kitten
- * voice ended up labelled with the wrong gender -- but none of it stops a
- * voice from reading a book correctly.
+ * The accents were checked against Ruth Golding's catalogue of British
+ * LibriVox readers rather than guessed from the recordings. Cori Samuel, Steve
+ * C and Martin Clifton are on it; nobody else here is. With Owlivia, who is
+ * hidden, that is the four British speakers Bryce counts, and finding exactly
+ * four by a route that had nothing to do with his description is the reason to
+ * believe it. Two labels were wrong before this: Steve was marked American and
+ * Paul British.
+ *
+ * One gender is still a guess. `progressingamerica` is a pseudonym with no
+ * person attached to it anywhere, so `unsure` stays on that one alone --
+ * guessing this from a published list is how every Kitten voice ended up
+ * labelled with the wrong gender.
  */
 const MANYVOICE_SPEAKERS: Array<{
   speakerId: number;
@@ -432,20 +438,13 @@ const MANYVOICE_SPEAKERS: Array<{
     accent: 'US',
     unsure: true,
   },
-  { speakerId: 10, reader: 'Steve_C', name: 'Steve', gender: 'male', accent: 'US' },
+  { speakerId: 10, reader: 'Steve_C', name: 'Steve', gender: 'male', accent: 'GB' },
   // Auditioned and rejected, as above.
   { speakerId: 11, reader: 'Owlivia', name: 'Olive', gender: 'female', accent: 'GB', hidden: true },
-  { speakerId: 12, reader: 'Paul_Hampton', name: 'Paul', gender: 'male', accent: 'GB', unsure: true },
+  { speakerId: 12, reader: 'Paul_Hampton', name: 'Paul', gender: 'male', accent: 'US' },
   { speakerId: 13, reader: 'Jennifer_Dorr', name: 'Jenny', gender: 'female', accent: 'US' },
-  { speakerId: 14, reader: 'Emily_Cripps', name: 'Emily', gender: 'female', accent: 'US', unsure: true },
-  {
-    speakerId: 15,
-    reader: 'Martin_Clifton',
-    name: 'Martin',
-    gender: 'male',
-    accent: 'GB',
-    unsure: true,
-  },
+  { speakerId: 14, reader: 'Emily_Cripps', name: 'Emily', gender: 'female', accent: 'US' },
+  { speakerId: 15, reader: 'Martin_Clifton', name: 'Martin', gender: 'male', accent: 'GB' },
 ];
 
 MANYVOICE_SPEAKERS.forEach(({ speakerId, name, gender, accent, hidden }) => {
