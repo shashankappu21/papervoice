@@ -84,6 +84,17 @@ export interface VoiceMeta {
    */
   licenceAnchor?: string;
   /**
+   * Bytes to append to the model after downloading it, base64.
+   *
+   * For models published without the metadata sherpa reads out of the ONNX
+   * file -- which is every model Piper itself publishes, as opposed to the
+   * copies re-published for sherpa. See the note in voiceStore.install; the
+   * whole edit is about 130 bytes, and doing it here means a voice can be
+   * fetched from wherever its author put it rather than needing a re-hosted
+   * copy. modelSha256 is the hash after this is applied.
+   */
+  modelMetadata?: string;
+  /**
    * True where the licence forbids commercial use. These are legitimate in a
    * free app and would have to go if one were ever sold, so they are marked
    * rather than remembered -- dropping them later is then a filter, not an
@@ -444,22 +455,7 @@ MANYVOICE_SPEAKERS.forEach(({ speakerId, name, gender, accent, hidden }) => {
     family: 'vits',
     name,
     accent,
-    /*
-     * Hidden until the model is hosted somewhere, which is not Bryce's bucket.
-     *
-     * sherpa will not load what he publishes. It reads seven key/value pairs
-     * out of the ONNX file itself -- sample_rate, n_speakers and so on -- and
-     * a stock Piper model carries none of them, so it fails at load with
-     * "'sample_rate' does not exist in the metadata". The csukuangfj
-     * repositories every other voice here comes from are not mirrors: they are
-     * these weights with that metadata added.
-     *
-     * scripts/patchPiperMeta.py adds it, and the patched model loads and
-     * speaks. But the app downloads from modelUrl, and modelUrl serves the
-     * unpatched file, so these stay out of the list until there is somewhere
-     * to put the patched one. The samples are already rendered from it.
-     */
-    hidden: true,
+    hidden,
     gender,
     sizeBytes: 77_100_232,
     modelUrl: `${BRYCE}/mv2.onnx`,
@@ -470,7 +466,14 @@ MANYVOICE_SPEAKERS.forEach(({ speakerId, name, gender, accent, hidden }) => {
      * a file we already serve is a way for them to drift apart later.
      */
     tokensUrl: `${SHERPA}/vits-piper-en_US-ljspeech-medium/resolve/main/tokens.txt`,
-    // The patched file's hash, not Bryce's. Adding metadata changes the bytes.
+    /*
+     * The seven values sherpa reads out of the ONNX file. Piper publishes them
+     * in a JSON config beside the model, which sherpa does not read; without
+     * them it refuses the file outright. Appended on the phone after download.
+     */
+    modelMetadata:
+      'chIKCm1vZGVsX3R5cGUSBHZpdHNyEAoHY29tbWVudBIFcGlwZXJyEwoIbGFuZ3VhZ2USB0VuZ2xpc2hyDwoKaGFzX2VzcGVhaxIBMXILCgV2b2ljZRICZW5yFAoLc2FtcGxlX3JhdGUSBTIyMDUwchAKCm5fc3BlYWtlcnMSAjE2',
+    // The hash after appending -- that is the file the engine opens.
     modelSha256: 'd687542489c5ed8aaf6a15f39086c974458e10cb8a1b128f16f1531944e50d61',
     speakerId,
     defaultRate: 1,

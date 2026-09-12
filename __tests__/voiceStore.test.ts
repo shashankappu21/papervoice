@@ -17,10 +17,12 @@ const voice: VoiceMeta = {
 };
 
 /** An in-memory stand-in for the device's storage. */
-function fakeFiles(): VoiceFiles & { present: Set<string> } {
+function fakeFiles(): VoiceFiles & { present: Set<string>; appended: string[] } {
   const present = new Set<string>();
+  const appended: string[] = [];
   return {
     present,
+    appended,
     exists: (path) => present.has(path),
     remove: (path) => {
       present.delete(path);
@@ -31,6 +33,7 @@ function fakeFiles(): VoiceFiles & { present: Set<string> } {
       present.add(to);
     },
     checksum: async () => 'abc123',
+    append: (path, base64) => appended.push(`${path}:${base64}`),
   };
 }
 
@@ -140,5 +143,45 @@ describe('voiceStore', () => {
     store.remove(voice);
 
     expect(store.isInstalled(voice)).toBe(false);
+  });
+});
+
+describe('models published without the metadata the engine reads', () => {
+  it('has the bytes added before the checksum, not after', async () => {
+    /*
+     * Order is the whole point. What gets verified has to be the file the
+     * engine will open -- checking the download and then changing it would
+     * make the checksum a statement about a file that no longer exists.
+     */
+    const files = fakeFiles();
+    const seen: string[] = [];
+    const store = createVoiceStore({
+      files: {
+        ...files,
+        append: (path, base64) => {
+          seen.push('append');
+          files.append(path, base64);
+        },
+        checksum: async () => {
+          seen.push('checksum');
+          return 'abc123';
+        },
+      },
+      download: async () => {},
+      root: '/voices',
+    });
+
+    await store.install({ ...voice, modelMetadata: 'chIK' });
+
+    expect(seen).toEqual(['append', 'checksum']);
+  });
+
+  it('leaves models that already carry it alone', async () => {
+    const files = fakeFiles();
+    const store = createVoiceStore({ files, download: async () => {}, root: '/voices' });
+
+    await store.install(voice);
+
+    expect(files.appended).toEqual([]);
   });
 });

@@ -9,6 +9,8 @@ export interface VoiceFiles {
   remove(path: string): void;
   rename(from: string, to: string): void;
   checksum(path: string): Promise<string>;
+  /** Adds bytes to the end of a file, given as base64. */
+  append(path: string, base64: string): void;
 }
 
 export type Download = (
@@ -88,6 +90,28 @@ export function createVoiceStore({ files, download, root }: VoiceStoreOptions): 
         const partial = `${target}.part`;
         const base = done;
         await download(url, partial, (fraction) => onProgress?.(base + fraction * share));
+
+        /*
+         * Some models arrive missing the metadata the engine reads out of them.
+         *
+         * sherpa does not read the JSON config a Piper model ships beside it.
+         * It reads sample_rate, n_speakers and five other values from inside
+         * the ONNX file, and refuses one that has none -- which is every model
+         * published by Piper itself, as opposed to the copies re-published for
+         * sherpa with those values added.
+         *
+         * Adding them is an append. ONNX files are protobuf, repeated fields
+         * may appear anywhere in the message, so the whole edit is a handful of
+         * bytes on the end -- 129 of them here. Doing it on the phone means the
+         * app can use a model straight from wherever its author put it, instead
+         * of needing a re-hosted copy of every voice it wants to offer.
+         *
+         * Before the checksum on purpose: what is verified is the file the
+         * engine will open, not an intermediate nobody keeps.
+         */
+        if (target === model && voice.modelMetadata) {
+          files.append(partial, voice.modelMetadata);
+        }
 
         // An empty checksum means one has not been recorded yet, which is the
         // case while a voice is still being evaluated. Skipping the check is

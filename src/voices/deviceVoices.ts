@@ -1,4 +1,4 @@
-import { Directory, File, Paths } from 'expo-file-system';
+import { Directory, File, FileMode, Paths } from 'expo-file-system';
 import { SherpaTts } from '../../modules/sherpa-tts';
 import { createVoiceStore, type VoiceStore } from './voiceStore';
 import { VOICES, type VoiceMeta } from './catalog';
@@ -36,6 +36,23 @@ export function voiceStore(): VoiceStore {
       // The native module hashes the file, which avoids reading 63MB through
       // JavaScript only to throw the bytes away.
       checksum: (path) => SherpaTts.sha256(path),
+      /*
+       * Appends, rather than rewriting the file with the extra bytes on the
+       * end. A 77MB model read into JavaScript and written back out would cost
+       * far more memory than the phone should be asked for, to change about a
+       * hundred bytes. FileMode.Append puts the cursor at the end and the
+       * write goes straight there.
+       */
+      append: (path, base64) => {
+        const handle = new File(`file://${path}`).open(FileMode.Append);
+        try {
+          handle.writeBytes(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
+        } finally {
+          // Left open, the bytes may never reach the disk and the checksum
+          // that runs next would be reading a file still missing them.
+          handle.close();
+        }
+      },
     },
     download: async (url, to, onProgress) => {
       const target = new File(`file://${to}`);

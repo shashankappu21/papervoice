@@ -90,7 +90,7 @@ describe('what stands between this app and being sold', () => {
     ]);
   });
 
-  it('leaves three voices that can be sold today', () => {
+  it('leaves seventeen voices that can be sold today', () => {
     /*
      * Three of these existed before ManyVoice. The other fourteen arrived in
      * one 77MB download of public-domain speakers, which is why the number is
@@ -102,6 +102,24 @@ describe('what stands between this app and being sold', () => {
       return !voice.hidden && row && SELLABLE.includes(row.verdict);
     }).map((voice) => voice.name);
 
-    expect(sellable).toEqual(['Lyra', 'Kristin', 'Cori']);
+    expect(sellable).toEqual([
+      'Lyra',
+      'Kristin',
+      'Cori',
+      'Cora',
+      'Kara',
+      'Kris',
+      'Maria',
+      'Mike',
+      'Mark',
+      'Michael',
+      'James',
+      'Wendell',
+      'Steve',
+      'Paul',
+      'Jenny',
+      'Emily',
+      'Martin',
+    ]);
   });
 });

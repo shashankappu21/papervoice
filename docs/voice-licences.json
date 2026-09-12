@@ -316,7 +316,7 @@
     {
       "id": "manyvoice-0",
       "name": "Cora",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-0",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -332,7 +332,7 @@
     {
       "id": "manyvoice-1",
       "name": "Kara",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-1",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -348,7 +348,7 @@
     {
       "id": "manyvoice-2",
       "name": "Kris",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-2",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -364,7 +364,7 @@
     {
       "id": "manyvoice-3",
       "name": "Maria",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-3",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -380,7 +380,7 @@
     {
       "id": "manyvoice-4",
       "name": "Mike",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-4",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -396,7 +396,7 @@
     {
       "id": "manyvoice-5",
       "name": "Mark",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-5",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -412,7 +412,7 @@
     {
       "id": "manyvoice-6",
       "name": "Michael",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-6",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -428,7 +428,7 @@
     {
       "id": "manyvoice-7",
       "name": "James",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-7",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -460,7 +460,7 @@
     {
       "id": "manyvoice-9",
       "name": "Wendell",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-9",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -476,7 +476,7 @@
     {
       "id": "manyvoice-10",
       "name": "Steve",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-10",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -508,7 +508,7 @@
     {
       "id": "manyvoice-12",
       "name": "Paul",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-12",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -524,7 +524,7 @@
     {
       "id": "manyvoice-13",
       "name": "Jenny",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-13",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -540,7 +540,7 @@
     {
       "id": "manyvoice-14",
       "name": "Emily",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-14",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -556,7 +556,7 @@
     {
       "id": "manyvoice-15",
       "name": "Martin",
-      "offered": false,
+      "offered": true,
       "key": "manyvoice-15",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
