@@ -94,13 +94,6 @@ export interface VoiceMeta {
    * copy. modelSha256 is the hash after this is applied.
    */
   modelMetadata?: string;
-  /**
-   * True where the licence forbids commercial use. These are legitimate in a
-   * free app and would have to go if one were ever sold, so they are marked
-   * rather than remembered -- dropping them later is then a filter, not an
-   * archaeology exercise across ten entries.
-   */
-  nonCommercial?: boolean;
 }
 
 const SHERPA = 'https://huggingface.co/csukuangfj';
@@ -198,70 +191,17 @@ const PIPER: Array<{
     licence: 'Public domain',
   },
 
-  // Non-commercial. Fine while the app is free and open; the first thing to go
-  // if it is ever sold.
-  {
-    key: 'en_US-ryan-medium',
-    name: 'Ryan',
-    accent: 'US',
-    gender: 'male',
-    sizeBytes: 63_201_425,
-    sha256: '8a4063318faeda9bf67f89d25b29cc4bd5fde8832422aa451a5d5d2647553081',
-    licence: 'CC BY-NC-SA 4.0',
-    nonCommercial: true,
-  },
-  {
-    // The HiFi Captain voices are published without names of their own.
-    key: 'en_US-hfc_female-medium',
-    name: 'Grace',
-    accent: 'US',
-    gender: 'female',
-    sizeBytes: 63_201_425,
-    sha256: '6d8b3711715f17f29b9f0ded97571924ead9a06e300bfdf3680b014a51ddc9e5',
-    licence: 'CC BY-NC-SA 4.0',
-    nonCommercial: true,
-  },
-  {
-    key: 'en_US-hfc_male-medium',
-    name: 'Walter',
-    accent: 'US',
-    gender: 'male',
-    sizeBytes: 63_201_425,
-    sha256: '2dba095f50970dddc4f6da704b25a9767f334011b369df2ef496690ab71ea23c',
-    licence: 'CC BY-NC-SA 4.0',
-    nonCommercial: true,
-  },
-  {
-    // One voice in two accents, so the name alone cannot tell them apart.
-    key: 'en_GB-miro-high',
-    name: 'Miro (British)',
-    accent: 'GB',
-    gender: 'male',
-    sizeBytes: 63_153_791,
-    sha256: '68c263187b6a741bc0fe6b73d51471f7b074826bcf23852b048e0ab17b4bac12',
-    licence: 'CC BY-NC-SA 4.0',
-    nonCommercial: true,
-  },
-  {
-    key: 'en_US-miro-high',
-    name: 'Miro (American)',
-    accent: 'US',
-    gender: 'male',
-    sizeBytes: 63_153_781,
-    sha256: 'b8a9c21c10e4a65880be47419a847d4d5844e9d4294ab1814ea4339be4838b92',
-    licence: 'CC BY-NC-SA 4.0',
-    nonCommercial: true,
-  },
-  {
-    key: 'en_GB-dii-high',
-    name: 'Dii',
-    accent: 'GB',
-    gender: 'female',
-    sizeBytes: 63_153_791,
-    sha256: '6cf7c3a8ff40ae45e675a548ab2b7592239218880d73ecb036332c2356b85de7',
-    licence: 'CC BY-NC-SA 4.0',
-    nonCommercial: true,
-  },
+  /*
+   * Six non-commercial voices were removed here on the way to charging for the
+   * app: Ryan, Grace, Walter, two Miros and Dii. Three were CC BY-NC-SA at the
+   * dataset, and Ryan, Grace and Walter were finetuned from lessac on top of
+   * that -- Blizzard 2013, research only. None of it is liftable by retraining
+   * or converting: a derivative of restricted weights carries the restriction.
+   *
+   * They are gone rather than hidden. A hidden voice stays installable by
+   * whoever already chose it, which is exactly what a licence forbidding
+   * commercial use does not allow once there is a price.
+   */
 ];
 
 export const VOICES: VoiceMeta[] = PIPER.map((voice) => ({

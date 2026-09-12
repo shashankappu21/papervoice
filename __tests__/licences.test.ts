@@ -51,45 +51,24 @@ describe('the voice licence registry', () => {
     expect(rows.filter((row) => !row.cardUrl.startsWith('https://')).map((r) => r.id)).toEqual([]);
   });
 
-  it('flags every voice the audit says cannot be sold', () => {
+  it('offers nothing the audit will not clear', () => {
     /*
-     * The direction that matters. A voice the audit blocks while the catalog
-     * has forgotten to mark it is one that gets sold by accident; the reverse
-     * -- marked here, cleared upstream -- is only over-caution, and costs a
-     * voice rather than a lawsuit.
+     * The invariant now that the non-commercial voices are gone. It used to
+     * read the other way -- those voices were legitimate while the app was
+     * free, and the test only asked that the catalog admit which ones they
+     * were. There is no longer a category of voice that is offered and cannot
+     * be sold, so anything appearing here is a mistake rather than a decision.
      */
-    const unflagged = VOICES.filter((voice) => {
+    const unsellable = VOICES.filter((voice) => {
       const row = byId.get(voice.id);
-      return row && !SELLABLE.includes(row.verdict) && voice.nonCommercial !== true;
+      return !voice.hidden && row && !SELLABLE.includes(row.verdict);
     }).map((voice) => `${voice.name}: ${byId.get(voice.id)?.why}`);
 
-    expect(unflagged).toEqual([]);
+    expect(unsellable).toEqual([]);
   });
 });
 
-describe('what stands between this app and being sold', () => {
-  it('is exactly these voices, and changing that list is a deliberate diff', () => {
-    /*
-     * Written down rather than computed into a number, so that a voice
-     * entering or leaving this set shows up in review as a name. The six are
-     * legitimate while the app is free; every one of them has to go on the day
-     * money changes hands.
-     */
-    const blockers = VOICES.filter((voice) => {
-      const row = byId.get(voice.id);
-      return !voice.hidden && row && !SELLABLE.includes(row.verdict);
-    }).map((voice) => voice.name);
-
-    expect(blockers).toEqual([
-      'Ryan',
-      'Grace',
-      'Walter',
-      'Miro (British)',
-      'Miro (American)',
-      'Dii',
-    ]);
-  });
-
+describe('the roster that can be sold', () => {
   it('leaves seventeen voices that can be sold today', () => {
     /*
      * Three of these existed before ManyVoice. The other fourteen arrived in
