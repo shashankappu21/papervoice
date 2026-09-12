@@ -69,7 +69,7 @@ describe('the voice licence registry', () => {
 });
 
 describe('the roster that can be sold', () => {
-  it('leaves seventeen voices that can be sold today', () => {
+  it('offers fifteen voices', () => {
     /*
      * Three of these existed before ManyVoice. The other fourteen arrived in
      * one 77MB download of public-domain speakers, which is why the number is
@@ -85,9 +85,7 @@ describe('the roster that can be sold', () => {
       'Lyra',
       'Kristin',
       'Cori',
-      'Cora',
       'Kara',
-      'Kris',
       'Maria',
       'Mike',
       'Mark',

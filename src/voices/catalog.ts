@@ -360,9 +360,17 @@ const MANYVOICE_SPEAKERS: Array<{
   /** Kept out of the list: auditioned and not good enough to offer. */
   hidden?: boolean;
 }> = [
-  { speakerId: 0, reader: 'Cori_Samuel', name: 'Cora', gender: 'female', accent: 'GB' },
+  /*
+   * Hidden as a duplicate, not for quality. Cori_Samuel and Kristin_Hughes are
+   * the same two readers as the Cori and Kristin voices above, and Bryce says a
+   * speaker sounds the same solo as in the multivoice model. Offering both
+   * would put two names on one voice -- and the solo models had 640 and 2000
+   * epochs against ManyVoice's 400, so the dedicated one is the one to keep.
+   */
+  { speakerId: 0, reader: 'Cori_Samuel', name: 'Cora', gender: 'female', accent: 'GB', hidden: true },
   { speakerId: 1, reader: 'Kara_Shallenberg', name: 'Kara', gender: 'female', accent: 'US' },
-  { speakerId: 2, reader: 'Kristin_Hughes', name: 'Kris', gender: 'female', accent: 'US' },
+  // Duplicate of Kristin, as above.
+  { speakerId: 2, reader: 'Kristin_Hughes', name: 'Kris', gender: 'female', accent: 'US', hidden: true },
   { speakerId: 3, reader: 'Maria_Kasper', name: 'Maria', gender: 'female', accent: 'US' },
   { speakerId: 4, reader: 'Mike_Pelton', name: 'Mike', gender: 'male', accent: 'US' },
   { speakerId: 5, reader: 'Mark_Nelson', name: 'Mark', gender: 'male', accent: 'US' },

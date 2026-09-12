@@ -214,7 +214,7 @@
     {
       "id": "manyvoice-0",
       "name": "Cora",
-      "offered": true,
+      "offered": false,
       "key": "manyvoice-0",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
@@ -246,7 +246,7 @@
     {
       "id": "manyvoice-2",
       "name": "Kris",
-      "offered": true,
+      "offered": false,
       "key": "manyvoice-2",
       "cardUrl": "https://brycebeattie.com/files/tts/",
       "dataset": "recordings were public domain and came from LibriVox",
