@@ -1,0 +1,317 @@
+{
+  "audited": "2026-09-12",
+  "source": "https://huggingface.co/rhasspy/piper-voices",
+  "voices": [
+    {
+      "id": "ljspeech-medium",
+      "name": "Lyra",
+      "offered": true,
+      "key": "en_US-ljspeech-medium",
+      "cardUrl": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ljspeech/medium/MODEL_CARD",
+      "dataset": "https://keithito.com/LJ-Speech-Dataset/",
+      "datasetLicence": "public domain",
+      "training": "See: https://brycebeattie.com/files/tts/ US English female voice. Single speaker. Trained from scratch for 1000 epochs on medium quality settings using the LJ Speech dataset. I reencoded the recordings to a bit rate of 22500 Hz so it would match other voices released for Piper TTS.",
+      "derivedFrom": null,
+      "chain": [
+        "en_US-ljspeech-medium"
+      ],
+      "verdict": "clear",
+      "why": "public domain"
+    },
+    {
+      "id": "en_US-kristin-medium",
+      "name": "Kristin",
+      "offered": true,
+      "key": "en_US-kristin-medium",
+      "cardUrl": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/kristin/medium/MODEL_CARD",
+      "dataset": "https://librivox.org",
+      "datasetLicence": "public domain",
+      "training": "See: https://brycebeattie.com/files/tts/ US English female voice. Single Speaker. Trained from scratch on medium quality settings for 2000 epochs. I put together the dataset, which ended up with about 11.5 hours of recordings. All recordings came from LibriVox.org.",
+      "derivedFrom": null,
+      "chain": [
+        "en_US-kristin-medium"
+      ],
+      "verdict": "clear",
+      "why": "public domain"
+    },
+    {
+      "id": "en_US-norman-medium",
+      "name": "Norman",
+      "offered": false,
+      "key": "en_US-norman-medium",
+      "cardUrl": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/norman/medium/MODEL_CARD",
+      "dataset": "https://librivox.org",
+      "datasetLicence": "public domain",
+      "training": "See: https://brycebeattie.com/files/tts/ US English male voice. Single Speaker. Trained from scratch on medium quality settings for 1200 epochs. I put together the dataset, which ended up with about 15.5 hours of recordings. All recordings came from LibriVox.org. I forgot to save the ckpt file on this one, sorry.",
+      "derivedFrom": null,
+      "chain": [
+        "en_US-norman-medium"
+      ],
+      "verdict": "clear",
+      "why": "public domain"
+    },
+    {
+      "id": "en_US-john-medium",
+      "name": "John",
+      "offered": false,
+      "key": "en_US-john-medium",
+      "cardUrl": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/john/medium/MODEL_CARD",
+      "dataset": "https://librivox.org",
+      "datasetLicence": "public domain",
+      "training": "See: https://brycebeattie.com/files/tts/ US English male voice. Single Speaker. Finetuned from Kristin (above) on medium quality settings for an additional 600 epochs. I put together the dataset, which ended up with about 12.5 hours of recordings. All recordings came from LibriVox.org.",
+      "derivedFrom": "en_US-kristin-medium",
+      "chain": [
+        "en_US-john-medium",
+        "en_US-kristin-medium"
+      ],
+      "verdict": "clear",
+      "why": "public domain (inherited from en_US-kristin-medium: public domain)"
+    },
+    {
+      "id": "en_GB-cori-medium",
+      "name": "Cori",
+      "offered": true,
+      "key": "en_GB-cori-medium",
+      "cardUrl": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/medium/MODEL_CARD",
+      "dataset": "https://librivox.org",
+      "datasetLicence": "public domain",
+      "training": "See: https://brycebeattie.com/files/tts/ UK English female voice. Single Speaker. Trained from scratch on medium quality settings for 640 epochs. I put together the dataset, which ended up with about 24 hours of recordings. All recordings came from LibriVox.org.",
+      "derivedFrom": null,
+      "chain": [
+        "en_GB-cori-medium"
+      ],
+      "verdict": "clear",
+      "why": "public domain"
+    },
+    {
+      "id": "en_US-ryan-medium",
+      "name": "Ryan",
+      "offered": true,
+      "key": "en_US-ryan-medium",
+      "cardUrl": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/MODEL_CARD",
+      "dataset": "https://www.kaggle.com/datasets/roholazandie/ryanspeech",
+      "datasetLicence": "CC BY-NC-SA 4.0",
+      "training": "Finetuned from U.S. English lessac voice (medium quality).",
+      "derivedFrom": "en_US-lessac-medium",
+      "chain": [
+        "en_US-ryan-medium",
+        "en_US-lessac-medium"
+      ],
+      "verdict": "blocked",
+      "why": "licence matches /blizzard/i (inherited from en_US-lessac-medium: https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/license.html)"
+    },
+    {
+      "id": "en_US-hfc_female-medium",
+      "name": "Grace",
+      "offered": true,
+      "key": "en_US-hfc_female-medium",
+      "cardUrl": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/hfc_female/medium/MODEL_CARD",
+      "dataset": "https://ast-astrec.nict.go.jp/en/release/hi-fi-captain/",
+      "datasetLicence": "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en",
+      "training": "Finetuned from U.S. English lessac voice (medium quality).",
+      "derivedFrom": "en_US-lessac-medium",
+      "chain": [
+        "en_US-hfc_female-medium",
+        "en_US-lessac-medium"
+      ],
+      "verdict": "blocked",
+      "why": "licence matches /blizzard/i (inherited from en_US-lessac-medium: https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/license.html)"
+    },
+    {
+      "id": "en_US-hfc_male-medium",
+      "name": "Walter",
+      "offered": true,
+      "key": "en_US-hfc_male-medium",
+      "cardUrl": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/hfc_male/medium/MODEL_CARD",
+      "dataset": "https://ast-astrec.nict.go.jp/en/release/hi-fi-captain/",
+      "datasetLicence": "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en",
+      "training": "Finetuned from U.S. English lessac voice (medium quality).",
+      "derivedFrom": "en_US-lessac-medium",
+      "chain": [
+        "en_US-hfc_male-medium",
+        "en_US-lessac-medium"
+      ],
+      "verdict": "blocked",
+      "why": "licence matches /blizzard/i (inherited from en_US-lessac-medium: https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/license.html)"
+    },
+    {
+      "id": "en_GB-miro-high",
+      "name": "Miro (British)",
+      "offered": true,
+      "key": "en_GB-miro-high",
+      "cardUrl": "https://huggingface.co/csukuangfj/vits-piper-en_GB-miro-high",
+      "dataset": "Jarbas/tts-train-synthetic-miro_en-GB",
+      "datasetLicence": "CC BY-NC-SA 4.0",
+      "training": "",
+      "derivedFrom": "OpenVoiceOS/pipertts_nl-NL_miro",
+      "chain": [
+        "en_GB-miro-high",
+        "OpenVoiceOS/pipertts_nl-NL_miro"
+      ],
+      "verdict": "blocked",
+      "why": "licence matches /by-nc/i -- stated by the distributing repo, not a Piper model card"
+    },
+    {
+      "id": "en_US-miro-high",
+      "name": "Miro (American)",
+      "offered": true,
+      "key": "en_US-miro-high",
+      "cardUrl": "https://huggingface.co/csukuangfj/vits-piper-en_US-miro-high",
+      "dataset": "Jarbas/tts-train-synthetic-miro_en-US",
+      "datasetLicence": "CC BY-NC-SA 4.0",
+      "training": "",
+      "derivedFrom": "OpenVoiceOS/pipertts_en-GB_miro",
+      "chain": [
+        "en_US-miro-high",
+        "OpenVoiceOS/pipertts_en-GB_miro"
+      ],
+      "verdict": "blocked",
+      "why": "licence matches /by-nc/i -- stated by the distributing repo, not a Piper model card"
+    },
+    {
+      "id": "en_GB-dii-high",
+      "name": "Dii",
+      "offered": true,
+      "key": "en_GB-dii-high",
+      "cardUrl": "https://huggingface.co/csukuangfj/vits-piper-en_GB-dii-high",
+      "dataset": "Jarbas/tts-train-synthetic-dii_en-GB",
+      "datasetLicence": "CC BY-NC-SA 4.0",
+      "training": "",
+      "derivedFrom": "OpenVoiceOS/pipertts_nl-NL_dii",
+      "chain": [
+        "en_GB-dii-high",
+        "OpenVoiceOS/pipertts_nl-NL_dii"
+      ],
+      "verdict": "blocked",
+      "why": "licence matches /by-nc/i -- stated by the distributing repo, not a Piper model card"
+    },
+    {
+      "id": "kitten-nano-0",
+      "name": "Jasper",
+      "offered": false,
+      "key": "kitten-nano-en-v0_2-fp16",
+      "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
+      "dataset": "",
+      "datasetLicence": "apache-2.0",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "kitten-nano-en-v0_2-fp16"
+      ],
+      "verdict": "attribution",
+      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+    },
+    {
+      "id": "kitten-nano-1",
+      "name": "Bella",
+      "offered": false,
+      "key": "kitten-nano-en-v0_2-fp16",
+      "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
+      "dataset": "",
+      "datasetLicence": "apache-2.0",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "kitten-nano-en-v0_2-fp16"
+      ],
+      "verdict": "attribution",
+      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+    },
+    {
+      "id": "kitten-nano-2",
+      "name": "Bruno",
+      "offered": false,
+      "key": "kitten-nano-en-v0_2-fp16",
+      "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
+      "dataset": "",
+      "datasetLicence": "apache-2.0",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "kitten-nano-en-v0_2-fp16"
+      ],
+      "verdict": "attribution",
+      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+    },
+    {
+      "id": "kitten-nano-3",
+      "name": "Luna",
+      "offered": false,
+      "key": "kitten-nano-en-v0_2-fp16",
+      "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
+      "dataset": "",
+      "datasetLicence": "apache-2.0",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "kitten-nano-en-v0_2-fp16"
+      ],
+      "verdict": "attribution",
+      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+    },
+    {
+      "id": "kitten-nano-4",
+      "name": "Hugo",
+      "offered": false,
+      "key": "kitten-nano-en-v0_2-fp16",
+      "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
+      "dataset": "",
+      "datasetLicence": "apache-2.0",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "kitten-nano-en-v0_2-fp16"
+      ],
+      "verdict": "attribution",
+      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+    },
+    {
+      "id": "kitten-nano-5",
+      "name": "Rosie",
+      "offered": false,
+      "key": "kitten-nano-en-v0_2-fp16",
+      "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
+      "dataset": "",
+      "datasetLicence": "apache-2.0",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "kitten-nano-en-v0_2-fp16"
+      ],
+      "verdict": "attribution",
+      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+    },
+    {
+      "id": "kitten-nano-6",
+      "name": "Leo",
+      "offered": false,
+      "key": "kitten-nano-en-v0_2-fp16",
+      "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
+      "dataset": "",
+      "datasetLicence": "apache-2.0",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "kitten-nano-en-v0_2-fp16"
+      ],
+      "verdict": "attribution",
+      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+    },
+    {
+      "id": "kitten-nano-7",
+      "name": "Kiki",
+      "offered": false,
+      "key": "kitten-nano-en-v0_2-fp16",
+      "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
+      "dataset": "",
+      "datasetLicence": "apache-2.0",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "kitten-nano-en-v0_2-fp16"
+      ],
+      "verdict": "attribution",
+      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+    }
+  ]
+}

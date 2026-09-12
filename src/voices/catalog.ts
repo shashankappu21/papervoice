@@ -63,6 +63,17 @@ export interface VoiceMeta {
   /** What the licence permits, shown rather than buried. */
   licence: string;
   /**
+   * Where that licence is actually stated, when it is not the repository we
+   * download from.
+   *
+   * Needed because the two can differ, and the difference is invisible until
+   * someone looks: Kitten's model is fetched from a mirror that states no
+   * licence at all, while the Apache-2.0 above comes from KittenML upstream.
+   * Naming the source turns the claim into something `npm run audit:licences`
+   * can check, rather than something the catalog asserts about itself.
+   */
+  licenceSource?: string;
+  /**
    * True where the licence forbids commercial use. These are legitimate in a
    * free app and would have to go if one were ever sold, so they are marked
    * rather than remembered -- dropping them later is then a filter, not an
@@ -335,6 +346,9 @@ KITTEN_VOICES.forEach(({ speakerId, name, gender, hidden }) => {
     // leaving the waveform stepping to silence from a third of full volume.
     trimTail: 0.12,
     licence: 'Apache-2.0',
+    // Stated upstream by KittenML. The mirror the model is fetched from states
+    // no licence at all, so without this the claim has no source to check.
+    licenceSource: 'https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md',
   });
 });
 
