@@ -74,6 +74,16 @@ export interface VoiceMeta {
    */
   licenceSource?: string;
   /**
+   * The heading to read the licence under, where `licenceSource` is a page
+   * describing several models.
+   *
+   * Bryce Beattie publishes eleven models on one page under two different
+   * licences. Without a heading to scope to, the auditor can only say the page
+   * disagrees with itself and refuse to answer -- which is the right answer to
+   * the wrong question. This asks the question that has an answer.
+   */
+  licenceAnchor?: string;
+  /**
    * True where the licence forbids commercial use. These are legitimate in a
    * free app and would have to go if one were ever sold, so they are marked
    * rather than remembered -- dropping them later is then a filter, not an
@@ -349,6 +359,101 @@ KITTEN_VOICES.forEach(({ speakerId, name, gender, hidden }) => {
     // Stated upstream by KittenML. The mirror the model is fetched from states
     // no licence at all, so without this the claim has no source to check.
     licenceSource: 'https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md',
+  });
+});
+
+const BRYCE = 'https://sfo3.digitaloceanspaces.com/bkmdls';
+const BRYCE_PAGE = 'https://brycebeattie.com/files/tts/';
+
+/**
+ * ManyVoice: sixteen speakers in one 77MB download, all public domain.
+ *
+ * The same author as Kristin, Cori, Norman and John, trained the same way from
+ * LibriVox recordings that were public domain to begin with -- so unlike almost
+ * every other multi-speaker English model, nothing in its lineage forbids
+ * selling it. It was never uploaded to Piper's repository, which is why it
+ * appears in no list of Piper voices.
+ *
+ * It needs nothing new to run. `npm run phonemes -- compare ljspeech-medium
+ * <its config>` reports 157 tokens each and no difference at all, so it takes
+ * the phonemes we already produce and the tokens file we already ship; the only
+ * thing separating one of these voices from another is a speaker id.
+ *
+ * All sixteen start hidden, and that is the point rather than an oversight.
+ * They were trained for 400 epochs, and epoch count has already proved useless
+ * here as a predictor of whether a voice speaks properly -- Cori is fine at
+ * 640, Norman is not at 1200. The genders below are read off the readers' names
+ * and the four British speakers are not identified anywhere, so both are
+ * guesses until somebody listens. Guessing this exact thing from a published
+ * list is how every Kitten voice ended up labelled with the wrong gender.
+ * Bryce publishes a sample per speaker: audition, then unhide what earns it.
+ */
+const MANYVOICE_SPEAKERS: Array<{
+  speakerId: number;
+  /** The LibriVox reader, as the model's own speaker_id_map names them. */
+  reader: string;
+  name: string;
+  gender: 'female' | 'male';
+  accent: 'US' | 'GB';
+  /** True where the name does not settle it and only listening will. */
+  unsure?: boolean;
+}> = [
+  { speakerId: 0, reader: 'Cori_Samuel', name: 'Cora', gender: 'female', accent: 'GB' },
+  { speakerId: 1, reader: 'Kara_Shallenberg', name: 'Kara', gender: 'female', accent: 'US' },
+  { speakerId: 2, reader: 'Kristin_Hughes', name: 'Kris', gender: 'female', accent: 'US' },
+  { speakerId: 3, reader: 'Maria_Kasper', name: 'Maria', gender: 'female', accent: 'US' },
+  { speakerId: 4, reader: 'Mike_Pelton', name: 'Mike', gender: 'male', accent: 'US' },
+  { speakerId: 5, reader: 'Mark_Nelson', name: 'Mark', gender: 'male', accent: 'US' },
+  { speakerId: 6, reader: 'Michael_Scherer', name: 'Michael', gender: 'male', accent: 'US' },
+  { speakerId: 7, reader: 'James_K_White', name: 'James', gender: 'male', accent: 'US' },
+  { speakerId: 8, reader: 'Rose_Ibex', name: 'Rose', gender: 'female', accent: 'US', unsure: true },
+  {
+    speakerId: 9,
+    reader: 'progressingamerica',
+    name: 'Wendell',
+    gender: 'male',
+    accent: 'US',
+    unsure: true,
+  },
+  { speakerId: 10, reader: 'Steve_C', name: 'Steve', gender: 'male', accent: 'US' },
+  { speakerId: 11, reader: 'Owlivia', name: 'Olive', gender: 'female', accent: 'GB', unsure: true },
+  { speakerId: 12, reader: 'Paul_Hampton', name: 'Paul', gender: 'male', accent: 'GB', unsure: true },
+  { speakerId: 13, reader: 'Jennifer_Dorr', name: 'Jenny', gender: 'female', accent: 'US' },
+  { speakerId: 14, reader: 'Emily_Cripps', name: 'Emily', gender: 'female', accent: 'US', unsure: true },
+  {
+    speakerId: 15,
+    reader: 'Martin_Clifton',
+    name: 'Martin',
+    gender: 'male',
+    accent: 'GB',
+    unsure: true,
+  },
+];
+
+MANYVOICE_SPEAKERS.forEach(({ speakerId, name, gender, accent }) => {
+  VOICES.push({
+    id: `manyvoice-${speakerId}`,
+    packId: 'manyvoice',
+    family: 'vits',
+    name,
+    accent,
+    gender,
+    hidden: true,
+    sizeBytes: 77_100_103,
+    modelUrl: `${BRYCE}/mv2.onnx`,
+    /*
+     * Lyra's tokens, deliberately. The two models' symbol tables were compared
+     * id by id and are the same file's worth of information, and Bryce ships no
+     * tokens.txt of his own -- sherpa needs one, and inventing a second copy of
+     * a file we already serve is a way for them to drift apart later.
+     */
+    tokensUrl: `${SHERPA}/vits-piper-en_US-ljspeech-medium/resolve/main/tokens.txt`,
+    modelSha256: '3cc7b8f55b82146c09265e909beaa539254a882b9a6ac915792cbfc7d41ba235',
+    speakerId,
+    defaultRate: 1,
+    licence: 'LibriVox, public domain',
+    licenceSource: BRYCE_PAGE,
+    licenceAnchor: 'ManyVoice',
   });
 });
 

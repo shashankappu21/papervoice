@@ -260,15 +260,44 @@ async function audit(voice: VoiceMeta): Promise<Audited> {
   if (!first && voice.licenceSource) {
     const stated = await fetchCard(voice.licenceSource);
     if (stated) {
-      const licence = stated.match(/^license:\s*(.+)$/im)?.[1]?.trim() ?? '';
-      const verdict = judge(licence, '');
+      /*
+       * Scoped to this model's own heading where the page holds several.
+       * Read from the heading to the first licence line after it, which is
+       * that model's -- taking the page's first licence line instead would
+       * report whichever model happens to be listed at the top.
+       */
+      const scoped = voice.licenceAnchor
+        ? stated
+            .replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .split(new RegExp(`\\b${voice.licenceAnchor}\\b`))[1] ?? ''
+        : stated;
+      const licence = scoped.match(/licen[cs]e:\s*([^|.]{3,60}?)(?=\s{2,}|\s+Downloads|\s*[|.]|$)/i)
+        ?.[1]
+        ?.trim() ??
+        stated.match(/^license:\s*(.+)$/im)?.[1]?.trim() ??
+        '';
+      /*
+       * What the scoped section says the recordings were.
+       *
+       * Without this the row claimed the training data was undisclosed for
+       * voices whose page describes it in the sentence above the licence --
+       * "All recordings were public domain and came from LibriVox.org". A tool
+       * built to stop unfounded claims must not make one of its own.
+       */
+      const described = scoped.match(
+        /\b((?:recordings?|dataset|data)[^.]{0,120}?(?:librivox|public domain|libritts|gutenberg)[^.]{0,60})\./i,
+      );
+      const dataset = described ? described[1].trim() : '';
+      const verdict = judge(licence, dataset);
       return {
         id: voice.id,
         name: voice.name,
         offered: !voice.hidden,
         key,
         cardUrl: voice.licenceSource,
-        dataset: '',
+        dataset,
         datasetLicence: licence,
         training: '',
         derivedFrom: null,
@@ -278,7 +307,9 @@ async function audit(voice: VoiceMeta): Promise<Audited> {
         // A permissive label over training data nobody has described is a
         // different kind of fact from a documented public-domain lineage, and
         // the registry should not flatten the two into one tick.
-        why: `${verdict.why} -- upstream states this; training data undisclosed`,
+        why:
+          `${verdict.why} -- stated at ${voice.licenceAnchor ?? 'the source'}` +
+          (dataset ? `; ${dataset}` : '; training data undisclosed'),
       };
     }
   }

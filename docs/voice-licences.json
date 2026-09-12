@@ -192,14 +192,14 @@
       "key": "kitten-nano-en-v0_2-fp16",
       "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
       "dataset": "",
-      "datasetLicence": "apache-2.0",
+      "datasetLicence": "apache-2",
       "training": "",
       "derivedFrom": null,
       "chain": [
         "kitten-nano-en-v0_2-fp16"
       ],
       "verdict": "attribution",
-      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+      "why": "apache-2 -- credit required -- stated at the source; training data undisclosed"
     },
     {
       "id": "kitten-nano-1",
@@ -208,14 +208,14 @@
       "key": "kitten-nano-en-v0_2-fp16",
       "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
       "dataset": "",
-      "datasetLicence": "apache-2.0",
+      "datasetLicence": "apache-2",
       "training": "",
       "derivedFrom": null,
       "chain": [
         "kitten-nano-en-v0_2-fp16"
       ],
       "verdict": "attribution",
-      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+      "why": "apache-2 -- credit required -- stated at the source; training data undisclosed"
     },
     {
       "id": "kitten-nano-2",
@@ -224,14 +224,14 @@
       "key": "kitten-nano-en-v0_2-fp16",
       "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
       "dataset": "",
-      "datasetLicence": "apache-2.0",
+      "datasetLicence": "apache-2",
       "training": "",
       "derivedFrom": null,
       "chain": [
         "kitten-nano-en-v0_2-fp16"
       ],
       "verdict": "attribution",
-      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+      "why": "apache-2 -- credit required -- stated at the source; training data undisclosed"
     },
     {
       "id": "kitten-nano-3",
@@ -240,14 +240,14 @@
       "key": "kitten-nano-en-v0_2-fp16",
       "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
       "dataset": "",
-      "datasetLicence": "apache-2.0",
+      "datasetLicence": "apache-2",
       "training": "",
       "derivedFrom": null,
       "chain": [
         "kitten-nano-en-v0_2-fp16"
       ],
       "verdict": "attribution",
-      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+      "why": "apache-2 -- credit required -- stated at the source; training data undisclosed"
     },
     {
       "id": "kitten-nano-4",
@@ -256,14 +256,14 @@
       "key": "kitten-nano-en-v0_2-fp16",
       "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
       "dataset": "",
-      "datasetLicence": "apache-2.0",
+      "datasetLicence": "apache-2",
       "training": "",
       "derivedFrom": null,
       "chain": [
         "kitten-nano-en-v0_2-fp16"
       ],
       "verdict": "attribution",
-      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+      "why": "apache-2 -- credit required -- stated at the source; training data undisclosed"
     },
     {
       "id": "kitten-nano-5",
@@ -272,14 +272,14 @@
       "key": "kitten-nano-en-v0_2-fp16",
       "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
       "dataset": "",
-      "datasetLicence": "apache-2.0",
+      "datasetLicence": "apache-2",
       "training": "",
       "derivedFrom": null,
       "chain": [
         "kitten-nano-en-v0_2-fp16"
       ],
       "verdict": "attribution",
-      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+      "why": "apache-2 -- credit required -- stated at the source; training data undisclosed"
     },
     {
       "id": "kitten-nano-6",
@@ -288,14 +288,14 @@
       "key": "kitten-nano-en-v0_2-fp16",
       "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
       "dataset": "",
-      "datasetLicence": "apache-2.0",
+      "datasetLicence": "apache-2",
       "training": "",
       "derivedFrom": null,
       "chain": [
         "kitten-nano-en-v0_2-fp16"
       ],
       "verdict": "attribution",
-      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+      "why": "apache-2 -- credit required -- stated at the source; training data undisclosed"
     },
     {
       "id": "kitten-nano-7",
@@ -304,14 +304,270 @@
       "key": "kitten-nano-en-v0_2-fp16",
       "cardUrl": "https://huggingface.co/KittenML/kitten-tts-nano-0.2/resolve/main/README.md",
       "dataset": "",
-      "datasetLicence": "apache-2.0",
+      "datasetLicence": "apache-2",
       "training": "",
       "derivedFrom": null,
       "chain": [
         "kitten-nano-en-v0_2-fp16"
       ],
       "verdict": "attribution",
-      "why": "apache-2.0 -- credit required -- upstream states this; training data undisclosed"
+      "why": "apache-2 -- credit required -- stated at the source; training data undisclosed"
+    },
+    {
+      "id": "manyvoice-0",
+      "name": "Cora",
+      "offered": false,
+      "key": "manyvoice-0",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-0"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-1",
+      "name": "Kara",
+      "offered": false,
+      "key": "manyvoice-1",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-1"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-2",
+      "name": "Kris",
+      "offered": false,
+      "key": "manyvoice-2",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-2"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-3",
+      "name": "Maria",
+      "offered": false,
+      "key": "manyvoice-3",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-3"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-4",
+      "name": "Mike",
+      "offered": false,
+      "key": "manyvoice-4",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-4"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-5",
+      "name": "Mark",
+      "offered": false,
+      "key": "manyvoice-5",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-5"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-6",
+      "name": "Michael",
+      "offered": false,
+      "key": "manyvoice-6",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-6"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-7",
+      "name": "James",
+      "offered": false,
+      "key": "manyvoice-7",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-7"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-8",
+      "name": "Rose",
+      "offered": false,
+      "key": "manyvoice-8",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-8"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-9",
+      "name": "Wendell",
+      "offered": false,
+      "key": "manyvoice-9",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-9"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-10",
+      "name": "Steve",
+      "offered": false,
+      "key": "manyvoice-10",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-10"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-11",
+      "name": "Olive",
+      "offered": false,
+      "key": "manyvoice-11",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-11"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-12",
+      "name": "Paul",
+      "offered": false,
+      "key": "manyvoice-12",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-12"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-13",
+      "name": "Jenny",
+      "offered": false,
+      "key": "manyvoice-13",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-13"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-14",
+      "name": "Emily",
+      "offered": false,
+      "key": "manyvoice-14",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-14"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
+    },
+    {
+      "id": "manyvoice-15",
+      "name": "Martin",
+      "offered": false,
+      "key": "manyvoice-15",
+      "cardUrl": "https://brycebeattie.com/files/tts/",
+      "dataset": "recordings were public domain and came from LibriVox",
+      "datasetLicence": "public domain",
+      "training": "",
+      "derivedFrom": null,
+      "chain": [
+        "manyvoice-15"
+      ],
+      "verdict": "clear",
+      "why": "public domain -- stated at ManyVoice; recordings were public domain and came from LibriVox"
     }
   ]
 }
