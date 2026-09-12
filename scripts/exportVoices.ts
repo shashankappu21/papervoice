@@ -13,6 +13,7 @@ const rows = OFFERED_VOICES.map((voice) => ({
   id: voice.id,
   name: voice.name,
   family: voice.family,
+  packId: voice.packId ?? voice.id,
   speakerId: voice.speakerId ?? 0,
   model: voice.modelUrl,
   tokens: voice.tokensUrl,

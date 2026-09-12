@@ -379,14 +379,17 @@ const BRYCE_PAGE = 'https://brycebeattie.com/files/tts/';
  * the phonemes we already produce and the tokens file we already ship; the only
  * thing separating one of these voices from another is a speaker id.
  *
- * All sixteen start hidden, and that is the point rather than an oversight.
- * They were trained for 400 epochs, and epoch count has already proved useless
- * here as a predictor of whether a voice speaks properly -- Cori is fine at
- * 640, Norman is not at 1200. The genders below are read off the readers' names
- * and the four British speakers are not identified anywhere, so both are
- * guesses until somebody listens. Guessing this exact thing from a published
- * list is how every Kitten voice ended up labelled with the wrong gender.
- * Bryce publishes a sample per speaker: audition, then unhide what earns it.
+ * Fourteen of the sixteen are offered. All were auditioned one sample at a
+ * time before any of them was shown, because 400 epochs is low and the epoch
+ * count has already proved useless here as a predictor -- Cori is fine at 640,
+ * Norman is not at 1200. Rose and Olive did not pass and stay hidden.
+ *
+ * The genders are still read off the readers' names, and which four speakers
+ * are British is recorded nowhere, so `unsure` marks the ones where the name
+ * does not settle it. Those labels are cosmetic and wrong ones are worth
+ * fixing -- guessing exactly this from a published list is how every Kitten
+ * voice ended up labelled with the wrong gender -- but none of it stops a
+ * voice from reading a book correctly.
  */
 const MANYVOICE_SPEAKERS: Array<{
   speakerId: number;
@@ -395,8 +398,10 @@ const MANYVOICE_SPEAKERS: Array<{
   name: string;
   gender: 'female' | 'male';
   accent: 'US' | 'GB';
-  /** True where the name does not settle it and only listening will. */
+  /** True where the name does not settle the gender or accent. */
   unsure?: boolean;
+  /** Kept out of the list: auditioned and not good enough to offer. */
+  hidden?: boolean;
 }> = [
   { speakerId: 0, reader: 'Cori_Samuel', name: 'Cora', gender: 'female', accent: 'GB' },
   { speakerId: 1, reader: 'Kara_Shallenberg', name: 'Kara', gender: 'female', accent: 'US' },
@@ -406,7 +411,8 @@ const MANYVOICE_SPEAKERS: Array<{
   { speakerId: 5, reader: 'Mark_Nelson', name: 'Mark', gender: 'male', accent: 'US' },
   { speakerId: 6, reader: 'Michael_Scherer', name: 'Michael', gender: 'male', accent: 'US' },
   { speakerId: 7, reader: 'James_K_White', name: 'James', gender: 'male', accent: 'US' },
-  { speakerId: 8, reader: 'Rose_Ibex', name: 'Rose', gender: 'female', accent: 'US', unsure: true },
+  // Auditioned and rejected: does not read cleanly enough to offer.
+  { speakerId: 8, reader: 'Rose_Ibex', name: 'Rose', gender: 'female', accent: 'US', hidden: true },
   {
     speakerId: 9,
     reader: 'progressingamerica',
@@ -416,7 +422,8 @@ const MANYVOICE_SPEAKERS: Array<{
     unsure: true,
   },
   { speakerId: 10, reader: 'Steve_C', name: 'Steve', gender: 'male', accent: 'US' },
-  { speakerId: 11, reader: 'Owlivia', name: 'Olive', gender: 'female', accent: 'GB', unsure: true },
+  // Auditioned and rejected, as above.
+  { speakerId: 11, reader: 'Owlivia', name: 'Olive', gender: 'female', accent: 'GB', hidden: true },
   { speakerId: 12, reader: 'Paul_Hampton', name: 'Paul', gender: 'male', accent: 'GB', unsure: true },
   { speakerId: 13, reader: 'Jennifer_Dorr', name: 'Jenny', gender: 'female', accent: 'US' },
   { speakerId: 14, reader: 'Emily_Cripps', name: 'Emily', gender: 'female', accent: 'US', unsure: true },
@@ -430,16 +437,31 @@ const MANYVOICE_SPEAKERS: Array<{
   },
 ];
 
-MANYVOICE_SPEAKERS.forEach(({ speakerId, name, gender, accent }) => {
+MANYVOICE_SPEAKERS.forEach(({ speakerId, name, gender, accent, hidden }) => {
   VOICES.push({
     id: `manyvoice-${speakerId}`,
     packId: 'manyvoice',
     family: 'vits',
     name,
     accent,
-    gender,
+    /*
+     * Hidden until the model is hosted somewhere, which is not Bryce's bucket.
+     *
+     * sherpa will not load what he publishes. It reads seven key/value pairs
+     * out of the ONNX file itself -- sample_rate, n_speakers and so on -- and
+     * a stock Piper model carries none of them, so it fails at load with
+     * "'sample_rate' does not exist in the metadata". The csukuangfj
+     * repositories every other voice here comes from are not mirrors: they are
+     * these weights with that metadata added.
+     *
+     * scripts/patchPiperMeta.py adds it, and the patched model loads and
+     * speaks. But the app downloads from modelUrl, and modelUrl serves the
+     * unpatched file, so these stay out of the list until there is somewhere
+     * to put the patched one. The samples are already rendered from it.
+     */
     hidden: true,
-    sizeBytes: 77_100_103,
+    gender,
+    sizeBytes: 77_100_232,
     modelUrl: `${BRYCE}/mv2.onnx`,
     /*
      * Lyra's tokens, deliberately. The two models' symbol tables were compared
@@ -448,7 +470,8 @@ MANYVOICE_SPEAKERS.forEach(({ speakerId, name, gender, accent }) => {
      * a file we already serve is a way for them to drift apart later.
      */
     tokensUrl: `${SHERPA}/vits-piper-en_US-ljspeech-medium/resolve/main/tokens.txt`,
-    modelSha256: '3cc7b8f55b82146c09265e909beaa539254a882b9a6ac915792cbfc7d41ba235',
+    // The patched file's hash, not Bryce's. Adding metadata changes the bytes.
+    modelSha256: 'd687542489c5ed8aaf6a15f39086c974458e10cb8a1b128f16f1531944e50d61',
     speakerId,
     defaultRate: 1,
     licence: 'LibriVox, public domain',

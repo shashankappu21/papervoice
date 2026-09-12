@@ -79,7 +79,11 @@ def fetch(url: str, path: str) -> None:
 
 
 def tts_for(voice: dict) -> sherpa_onnx.OfflineTts:
-    folder = os.path.join(CACHE, voice['id'].replace('/', '_'))
+    # Cached by the download it belongs to, not by the voice. A model holding
+    # many speakers is one file offered as one voice per speaker: keying this
+    # by voice id fetched ManyVoice's 77MB sixteen times, and Kitten's eight
+    # times before that.
+    folder = os.path.join(CACHE, (voice.get('packId') or voice['id']).replace('/', '_'))
     model = os.path.join(folder, 'model.onnx')
     tokens = os.path.join(folder, 'tokens.txt')
 

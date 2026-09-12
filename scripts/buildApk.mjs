@@ -3,6 +3,7 @@
  *
  *   npm run apk              both ABIs, the one to send to people
  *   npm run apk -- --fast    arm64 only, for testing a release build quickly
+ *   npm run apk -- --emu     x86_64 only, the only one an emulator will install
  *
  * Gradle's output goes straight to the terminal rather than into a file, so a
  * forty-minute build is something you can watch rather than something you have
@@ -19,7 +20,14 @@ import path from 'node:path';
  * the first build that includes armeabi-v7a compiles it from cold and takes
  * far longer than the ones after it.
  */
-const ABIS = process.argv.includes('--fast') ? 'arm64-v8a' : 'arm64-v8a,armeabi-v7a';
+const ABIS = process.argv.includes('--emu')
+  ? // The emulator is an x86_64 image running on the laptop's own cores, so an
+    // arm64 build simply will not install on it. Never shipped: this flag has
+    // to be asked for, and the AAB build does not offer it at all.
+    'x86_64'
+  : process.argv.includes('--fast')
+    ? 'arm64-v8a'
+    : 'arm64-v8a,armeabi-v7a';
 
 const APK = 'android/app/build/outputs/apk/release/app-release.apk';
 

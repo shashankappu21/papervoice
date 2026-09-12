@@ -31,6 +31,22 @@ const SAMPLES: Record<string, number> = {
   'kitten-nano-4': require('../../assets/samples/kitten-nano-4.opus'),
   'kitten-nano-5': require('../../assets/samples/kitten-nano-5.opus'),
   'kitten-nano-7': require('../../assets/samples/kitten-nano-7.opus'),
+
+  // ManyVoice: one 77MB download, one sample per speaker in it.
+  'manyvoice-0': require('../../assets/samples/manyvoice-0.opus'),
+  'manyvoice-1': require('../../assets/samples/manyvoice-1.opus'),
+  'manyvoice-2': require('../../assets/samples/manyvoice-2.opus'),
+  'manyvoice-3': require('../../assets/samples/manyvoice-3.opus'),
+  'manyvoice-4': require('../../assets/samples/manyvoice-4.opus'),
+  'manyvoice-5': require('../../assets/samples/manyvoice-5.opus'),
+  'manyvoice-6': require('../../assets/samples/manyvoice-6.opus'),
+  'manyvoice-7': require('../../assets/samples/manyvoice-7.opus'),
+  'manyvoice-9': require('../../assets/samples/manyvoice-9.opus'),
+  'manyvoice-10': require('../../assets/samples/manyvoice-10.opus'),
+  'manyvoice-12': require('../../assets/samples/manyvoice-12.opus'),
+  'manyvoice-13': require('../../assets/samples/manyvoice-13.opus'),
+  'manyvoice-14': require('../../assets/samples/manyvoice-14.opus'),
+  'manyvoice-15': require('../../assets/samples/manyvoice-15.opus'),
 };
 
 /** The bundled recording for a voice, or null where one was never made. */

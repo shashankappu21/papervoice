@@ -91,6 +91,12 @@ describe('what stands between this app and being sold', () => {
   });
 
   it('leaves three voices that can be sold today', () => {
+    /*
+     * Three of these existed before ManyVoice. The other fourteen arrived in
+     * one 77MB download of public-domain speakers, which is why the number is
+     * asserted rather than counted: it should move when a pack is added or a
+     * speaker is retired, and never quietly.
+     */
     const sellable = VOICES.filter((voice) => {
       const row = byId.get(voice.id);
       return !voice.hidden && row && SELLABLE.includes(row.verdict);
