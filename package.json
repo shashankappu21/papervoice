@@ -50,5 +50,5 @@
     "emu": "node scripts/emulator.mjs",
     "emu:create": "node scripts/createAvd.mjs"
   },
-  "private": true
+  "license": "GPL-3.0-or-later"
 }

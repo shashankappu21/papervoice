@@ -1,0 +1,38 @@
+Additional permission under GNU GPL version 3 section 7
+=======================================================
+
+Papervoice is licensed under the GNU General Public License version 3,
+because it links eSpeak NG, which is GPLv3. See LICENSE.
+
+As an additional permission under section 7 of the GPL version 3, the
+copyright holders of Papervoice give permission to distribute this
+program through an application store, even where that store's terms are
+incompatible with the GPL -- PROVIDED that the complete corresponding
+source is simultaneously available, under the GPL and with no such
+terms, from a channel that anyone may use without an account.
+
+Why this exists
+---------------
+
+The GPL requires that whoever receives the program may redistribute it.
+Google Play's terms tell users they may not. Distributing a GPL program
+only through Play would therefore fail the licence, which is why GPL
+apps are usually published in two places at once.
+
+The condition is the substance of it: the permission is worth nothing
+unless the unencumbered copy actually exists. Take the app off GitHub
+and leave it on Play, and this paragraph stops applying to the version
+that is still there.
+
+What this does NOT cover
+------------------------
+
+Only the parts of Papervoice whose copyright is held by its authors.
+
+eSpeak NG is somebody else's work, under plain GPLv3, and no permission
+here can extend to it. Anyone relying on this exception for an app-store
+build should know that the eSpeak NG portion is unaffected by it.
+
+The voices are separate works and are not covered by the GPL at all.
+Each is downloaded at run time under its own licence, listed in
+docs/voice-licences.json alongside the page each licence was read from.
