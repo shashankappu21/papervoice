@@ -45,7 +45,7 @@
     "apk": "node scripts/buildApk.mjs",
     "samples": "tsx scripts/exportVoices.ts && python scripts/makeVoiceSamples.py",
     "aab": "node scripts/buildAab.mjs",
-    "audit:licences": "vite-node scripts/auditLicences.ts",
+    "audit:licences": "vite-node scripts/auditLicences.ts --",
     "phonemes": "vite-node scripts/phonemes.ts --"
   },
   "private": true

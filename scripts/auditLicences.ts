@@ -327,6 +327,191 @@ async function audit(voice: VoiceMeta): Promise<Audited> {
   };
 }
 
+/**
+ * The size above which a model cannot be used for live synthesis on a phone.
+ *
+ * From the brief, which set it after four models failed at a real-time factor
+ * around 1.0. It is checked here because licence is not the only way a
+ * candidate dies, and finding out after reading the terms is the wrong order:
+ * Higgs Audio v3 is 4B parameters, roughly 8GB, and no licence would have
+ * saved it.
+ */
+const LIVE_SYNTH_LIMIT = 130_000_000;
+
+/** File extensions that are the model itself rather than its paperwork. */
+const WEIGHTS = /\.(onnx|safetensors|bin|gguf|tflite|pt|pth|ckpt)$/i;
+
+/**
+ * Judges one model that is not in the catalog yet.
+ *
+ * The point is the "yet". Auditing what has already been adopted finds
+ * mistakes after they have been built on; this is the same evidence gathered
+ * before the decision, which is when it is worth something. It exists because
+ * `arctic` reached a planning document as the paid tier before anyone followed
+ * its lineage, and because a model named similarly to a good one was nearly
+ * taken for it.
+ *
+ * Accepts a HuggingFace repo (URL or `owner/name`), a Piper voice key such as
+ * `en_US-arctic-medium`, or any URL whose text can be read for licence terms.
+ */
+async function check(target: string) {
+  console.log(`\nChecking ${target}\n`);
+  const lines: string[] = [];
+  let licence = '';
+  let dataset = '';
+  let lineage = '';
+  let bytes = 0;
+  let source = '';
+
+  // A Piper voice key: its model card is the authority, and it may have a
+  // parent whose terms override whatever this one says.
+  const piperCard = cardUrlFor(target);
+  if (piperCard) {
+    const card = await fetchCard(piperCard);
+    if (card) {
+      source = piperCard;
+      licence = field(card, 'License');
+      dataset = field(card, 'URL');
+      const training = trainingText(card);
+      const parent = PARENTS.find(([pattern]) => pattern.test(training));
+      lineage = parent ? parent[1] : 'trained from scratch';
+      lines.push(`training: ${training.slice(0, 160)}`);
+
+      if (parent) {
+        const parentCard = await fetchCard(cardUrlFor(parent[1]) ?? '');
+        if (parentCard) {
+          const parentLicence = field(parentCard, 'License');
+          lines.push(`parent ${parent[1]}: ${parentLicence || field(parentCard, 'URL')}`);
+          // The parent binds the child. This is the whole reason the tool
+          // exists, so it is the licence that gets judged.
+          licence = parentLicence || field(parentCard, 'URL');
+          dataset = field(parentCard, 'URL');
+        }
+      }
+    }
+  }
+
+  // A HuggingFace repository.
+  const repoId = target.match(/huggingface\.co\/([^/]+\/[^/?#]+)/)?.[1] ?? (
+    /^[\w.-]+\/[\w.-]+$/.test(target) ? target : null
+  );
+  if (!source && repoId) {
+    const api = await fetch(`https://huggingface.co/api/models/${repoId}`);
+    if (api.ok) {
+      const meta = (await api.json()) as {
+        cardData?: {
+          license?: string;
+          license_name?: string;
+          license_link?: string;
+          base_model?: string | string[];
+          datasets?: string[];
+        };
+        siblings?: Array<{ rfilename: string }>;
+      };
+      const card = meta.cardData ?? {};
+      source = `https://huggingface.co/${repoId}`;
+      licence = [card.license, card.license_name, card.license_link].filter(Boolean).join(' ');
+      dataset = (card.datasets ?? []).join(', ');
+      lineage = [card.base_model ?? []].flat().join(', ') || 'not stated';
+
+      const readme = await fetchCard(`https://huggingface.co/${repoId}/raw/main/README.md`);
+      if (readme && !licence) {
+        licence = readme.match(/^license:\s*(.+)$/im)?.[1]?.trim() ?? '';
+      }
+      // The body, always -- a repo can declare `other` in metadata and spell
+      // out non-commercial terms in prose underneath it.
+      if (readme) {
+        const prose = readme.match(
+          /(research and non-?commercial|non-?commercial|CC[ -]?BY[ -]?NC[^\s,.]*|research (?:use )?only)/i,
+        );
+        if (prose) {
+          lines.push(`README says: "${prose[1]}"`);
+          licence = `${licence} ${prose[1]}`.trim();
+        }
+      }
+
+      const tree = await fetch(`https://huggingface.co/api/models/${repoId}/tree/main`);
+      if (tree.ok) {
+        const files = (await tree.json()) as Array<{ path: string; size?: number }>;
+        bytes = files
+          .filter((file) => WEIGHTS.test(file.path))
+          .reduce((total, file) => total + (file.size ?? 0), 0);
+      }
+    }
+  }
+
+  /*
+   * Anything else with readable text.
+   *
+   * Every licence statement on the page, not the first -- because a page is
+   * often not about one model. Bryce Beattie's lists eleven, under four
+   * different licences, and answering for "the page" would be answering a
+   * question nobody asked. Where the statements disagree the honest output is
+   * to show them and decline the verdict, rather than quote whichever matched
+   * first and sound certain about it.
+   */
+  if (!source) {
+    const page = await fetchCard(target);
+    if (!page) {
+      console.log('Could not read anything at that address. Check it by hand.');
+      process.exitCode = 1;
+      return;
+    }
+    source = target;
+    lineage = 'not stated';
+
+    const text = page
+      .replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ');
+
+    const stated = [
+      ...text.matchAll(/licen[cs]e:\s*([^|.]{3,60}?)(?=\s{2,}|\s+Downloads|\s*[|.]|$)/gi),
+    ].map((match) => match[1].trim().replace(/\s+/g, ' '));
+    const distinct = [...new Set(stated.map((one) => one.toLowerCase()))];
+
+    if (distinct.length > 1) {
+      console.log(`This page states ${distinct.length} different licences:`);
+      for (const one of distinct) console.log(`  - ${one}`);
+      console.log('\nIt describes more than one model. Check the specific model you want,');
+      console.log('by its own page or its HuggingFace repo -- a verdict for "this page"');
+      console.log('would not mean anything.');
+      process.exitCode = 1;
+      return;
+    }
+    licence = stated[0] ?? '';
+  }
+
+  const verdict = judge(licence, dataset);
+  const tooBig = bytes > LIVE_SYNTH_LIMIT;
+
+  console.log(`source   ${source}`);
+  console.log(`licence  ${licence || '(none stated)'}`);
+  console.log(`data     ${dataset || 'NOT STATED -- provenance unknown'}`);
+  console.log(`lineage  ${lineage}`);
+  if (bytes) console.log(`weights  ${(bytes / 1e6).toFixed(1)} MB`);
+  for (const line of lines) console.log(`         ${line}`);
+
+  console.log();
+  if (tooBig) {
+    console.log(`TOO BIG -- ${(bytes / 1e6).toFixed(0)} MB of weights against a ${
+      LIVE_SYNTH_LIMIT / 1e6
+    } MB ceiling for live synthesis.`);
+  }
+  console.log(`${SYMBOL[verdict.verdict]} -- ${verdict.why}`);
+  if (!dataset) {
+    console.log('Training data is not described. A permissive label over undescribed');
+    console.log('data is a judgement to make deliberately, not a clearance.');
+  }
+  if (verdict.verdict === 'blocked') {
+    console.log('\nFinetuning, quantizing or converting does NOT lift this. A derivative');
+    console.log('of restricted weights carries the same restriction -- which is how');
+    console.log('arctic, with a permissive dataset, turned out to be unusable.');
+  }
+  process.exitCode = verdict.verdict === 'clear' || verdict.verdict === 'attribution' ? 0 : 1;
+}
+
 const SYMBOL: Record<Verdict, string> = {
   clear: 'OK',
   attribution: 'OK+credit',
@@ -366,7 +551,25 @@ async function main() {
   );
 }
 
-main().catch((cause) => {
-  console.error(cause);
+const [command, ...rest] = process.argv.slice(2);
+
+// No arguments audits the catalog; `check` judges something not in it yet.
+const run =
+  command === 'check' && rest.length === 1
+    ? check(rest[0])
+    : command === undefined
+      ? main()
+      : Promise.reject(
+          new Error(
+            'usage:\n' +
+              '  npm run audit:licences                  audit every voice in the catalog\n' +
+              '  npm run audit:licences -- check <model>  judge one before adopting it\n' +
+              '      <model> is a HuggingFace URL or owner/name, a Piper voice key\n' +
+              '      such as en_US-arctic-medium, or any page stating terms.',
+          ),
+        );
+
+run.catch((cause: Error) => {
+  console.error(cause.message);
   process.exit(1);
 });
