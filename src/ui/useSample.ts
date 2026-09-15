@@ -22,6 +22,16 @@ export function useSample() {
     if (done.current) clearTimeout(done.current);
     done.current = null;
     try {
+      /*
+       * Paused first, and that order is the whole fix.
+       *
+       * `remove()` is documented as "remove the player from memory to free up
+       * resources" -- it releases the object, it does not stop the sound.
+       * Dropping the reference on a playing sample left it playing with
+       * nothing holding it, so tapping through the list stacked up voices all
+       * talking over each other. expo-audio has no stop(); pause() is it.
+       */
+      player.current?.pause();
       player.current?.remove();
     } catch {
       // Already gone. Nothing to release.
