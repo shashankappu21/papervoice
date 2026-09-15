@@ -11,6 +11,13 @@
  */
 export const EXTRACTOR_HTML = `<!doctype html>
 <meta charset="utf-8">
+<!--
+  Nothing here is ever meant to be seen. The page has no content, but a WebView
+  paints white by default, and an unstyled body paints white over that -- which
+  is how a document being imported showed up as a pale rectangle behind the
+  progress card.
+-->
+<style>html,body{background:transparent;margin:0;width:0;height:0;overflow:hidden}</style>
 <body>
 <script>
 var post = function (msg) { window.ReactNativeWebView.postMessage(JSON.stringify(msg)); };
@@ -102,12 +109,9 @@ async function readOutline(pdf) {
 }
 
 function coverWith(pdfjsLib) {
-  return async function (base64) {
+  return async function (url) {
     try {
-      var binary = atob(base64);
-      var bytes = new Uint8Array(binary.length);
-      for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      var pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+      var pdf = await pdfjsLib.getDocument({ url: url }).promise;
       var cover = null;
       var outline = [];
       try { cover = await drawCover(pdf); } catch (e) { cover = null; }
@@ -120,13 +124,21 @@ function coverWith(pdfjsLib) {
 }
 
 function extractWith(pdfjsLib) {
-  return async function (base64) {
+  /*
+   * Given a file name next to this page, not the document's bytes.
+   *
+   * The bytes used to arrive as base64 inside an injected line of JavaScript.
+   * For an 80MB PDF that is a 107MB base64 string, stringified again into JS
+   * source, sent over the bridge, then walked a byte at a time by charCodeAt
+   * into a third copy -- several hundred megabytes of peak allocation against
+   * an Android heap that is often 256MB. It did not fail gradually; it failed
+   * at "nothing happens".
+   *
+   * pdf.js can open a URL by itself and read the file as it goes.
+   */
+  return async function (url) {
     try {
-      var binary = atob(base64);
-      var bytes = new Uint8Array(binary.length);
-      for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-
-      var pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+      var pdf = await pdfjsLib.getDocument({ url: url }).promise;
       var items = [];
       var pageHeight = 792;
       var cover = null;
