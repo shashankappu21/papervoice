@@ -41,16 +41,21 @@ if (!existsSync(EMULATOR)) {
 const adb = (...args) => spawnSync(ADB, args, { encoding: 'utf8' }).stdout ?? '';
 
 /*
- * AVDs live on the drive with room for them.
+ * AVDs live on an internal disk, and which disk turns out to matter a lot.
  *
- * The default is %USERPROFILE%\.android, which is on a C: drive that is 93%
- * full; one emulator with snapshots is comfortably ten gigabytes. Passed
- * explicitly rather than relied on from the environment, so this does the same
- * thing in a shell that has not been restarted since the variable was set.
+ * Two reasons, in order of how much they hurt. An emulator is mostly disk:
+ * userdata alone is gigabytes and is written to constantly, so it wants the
+ * fastest drive with room, and it was noticeably sluggish while parked on an
+ * external USB one. And the default location, %USERPROFILE%\.android, is on a
+ * C: drive with about 14GB free, which one emulator would very nearly fill.
+ *
+ * Passed explicitly rather than read from the environment alone, so this does
+ * the same thing in a shell that has not been restarted since the variable was
+ * last changed.
  */
 const env = {
   ...process.env,
-  ANDROID_AVD_HOME: process.env.ANDROID_AVD_HOME ?? 'G:\\Android\\avd',
+  ANDROID_AVD_HOME: process.env.ANDROID_AVD_HOME ?? 'F:\\Android\\avd',
 };
 
 const known = spawnSync(EMULATOR, ['-list-avds'], { encoding: 'utf8', env })

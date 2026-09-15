@@ -15,8 +15,10 @@
  * - x86_64, which runs on the laptop's own cores through WHPX rather than
  *   emulating ARM instruction by instruction. The sherpa AAR ships an x86_64
  *   build, so the neural voices run here natively too.
- * - Stored on G:. The default is under the user profile on a C: drive with 19GB
- *   free, and an emulator with snapshots is comfortably ten.
+ * - Stored on an internal disk. The default lives under the user profile on a
+ *   nearly full C:, and an emulator with snapshots is several gigabytes that
+ *   are written to the whole time it runs -- which is why it also does not want
+ *   to sit on an external USB drive, where it was measurably sluggish.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -32,7 +34,7 @@ if (!SDK) {
   process.exit(1);
 }
 
-const AVD_HOME = process.env.ANDROID_AVD_HOME ?? 'G:\\Android\\avd';
+const AVD_HOME = process.env.ANDROID_AVD_HOME ?? 'F:\\Android\\avd';
 const env = { ...process.env, ANDROID_AVD_HOME: AVD_HOME };
 
 const bat = (name) =>
