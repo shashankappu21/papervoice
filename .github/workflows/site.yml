@@ -1,0 +1,45 @@
+# Publishes site/ to GitHub Pages.
+#
+# "Deploy from a branch" only offers the repository root or /docs, and the
+# site is neither: it lives in site/, away from the app and away from the
+# developer documentation. Deploying through Actions is how Pages publishes an
+# arbitrary folder, and it costs one small workflow.
+#
+# Set Settings -> Pages -> Source to "GitHub Actions" for this to take effect.
+name: site
+
+on:
+  push:
+    branches: [main]
+    # Only when the site actually changes. A commit touching the app has no
+    # business redeploying a static page.
+    paths:
+      - 'site/**'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and never cancel one halfway: a cancelled deploy
+# can leave the site serving a half-published state.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

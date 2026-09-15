@@ -8,8 +8,14 @@ Two static files. No build step, no framework, no dependencies.
 
 ## Hosting it
 
-**GitHub Pages** — Settings → Pages → deploy from branch, folder `/site`. The
-`CNAME` file points it at the domain; add these DNS records at your registrar:
+**GitHub Pages** — Settings → Pages → Source: **GitHub Actions**. The workflow
+in `.github/workflows/site.yml` publishes this folder.
+
+Not "deploy from a branch": that offers only the repository root or `/docs`,
+and this is neither. Actions is how Pages publishes an arbitrary folder.
+
+The `CNAME` file points it at the domain; add these DNS records at your
+registrar:
 
     A     @    185.199.108.153
     A     @    185.199.109.153
