@@ -15,7 +15,7 @@ Two static files. No build step, no framework, no dependencies.
     A     @    185.199.109.153
     A     @    185.199.110.153
     A     @    185.199.111.153
-    CNAME www  OWNER.github.io
+    CNAME www  shashankappu21.github.io
 
 **Vercel** — import the repo, set the root directory to `site`, framework
 "Other". Add the domain in the dashboard and follow its DNS instructions.
@@ -25,6 +25,6 @@ TLD is HSTS-preloaded, so a site served over plain HTTP simply will not load.
 
 ## Before it goes live
 
-- Replace `OWNER` with the GitHub username in both HTML files
+- Screenshots are still missing from the landing page
 - Add screenshots — a page about an app with no picture of it is a poor advert
 - Point the download button at the real release once one exists

@@ -20,7 +20,7 @@ the text taken from them, nor the audio generated from that text.
 
 This is not a promise about our intentions; it is a property of how the app
 is built. Papervoice is open source, and anyone may check:
-https://github.com/OWNER/papervoice
+https://github.com/shashankappu21/papervoice
 
 ## When the app uses the network
 

@@ -72,3 +72,7 @@ android/keystore.properties
 # generator reads. The finished samples in assets/ are committed; these are not.
 scripts/.voices/
 scripts/voices.json
+
+# Design scratch: mockups, references and competitor screenshots. Working
+# material, not part of the project, and not something to publish.
+/design
