@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { estimateSeconds, wordDuration } from '../src/player/listeningTime';
+import {
+  estimateSeconds,
+  secondsBetween,
+  spokenLengths,
+  wordDuration,
+} from '../src/player/listeningTime';
 import type { Sentence } from '../src/extraction/types';
 
 const say = (text: string, kind: Sentence['kind'] = 'body'): Sentence => ({
@@ -63,5 +68,55 @@ describe('wordDuration', () => {
   it('never says zero minutes', () => {
     // A few seconds left is still "1m": "0m" reads as finished when it is not.
     expect(wordDuration(4)).toBe('1m');
+  });
+});
+
+describe('spokenLengths and secondsBetween', () => {
+  const book = [say('One sentence here.'), say('Another one, slightly longer.'), say('Third.')];
+
+  it('agrees with walking the sentences', () => {
+    // The point of the running total is to be the same answer, faster. If the
+    // two ever disagree the estimate has quietly changed for every reader.
+    const running = spokenLengths(book);
+    for (let at = 0; at <= book.length; at += 1) {
+      expect(secondsBetween(running, 0, at, 1)).toBeCloseTo(estimateSeconds(book.slice(0, at), 1));
+      expect(secondsBetween(running, at, book.length, 1)).toBeCloseTo(
+        estimateSeconds(book.slice(at), 1),
+      );
+    }
+  });
+
+  it('skips page furniture, as the walk does', () => {
+    const withFurniture = [say('Real prose.'), { text: 'Page 12', kind: 'footer' as const }];
+    const running = spokenLengths(withFurniture as never);
+    expect(secondsBetween(running, 0, 2, 1)).toBeCloseTo(estimateSeconds([say('Real prose.')], 1));
+  });
+
+  it('is scaled by the speed', () => {
+    const running = spokenLengths(book);
+    expect(secondsBetween(running, 0, book.length, 2)).toBeCloseTo(
+      secondsBetween(running, 0, book.length, 1) / 2,
+    );
+  });
+
+  it('survives an index past the end', () => {
+    /*
+     * currentIndex briefly sits past the last sentence as a book finishes.
+     * Throwing there would take the reader down on the final sentence.
+     */
+    const running = spokenLengths(book);
+    expect(secondsBetween(running, 0, 999, 1)).toBeCloseTo(
+      secondsBetween(running, 0, book.length, 1),
+    );
+    expect(secondsBetween(running, 999, 1000, 1)).toBe(0);
+    expect(secondsBetween(running, -5, 1, 1)).toBeGreaterThan(0);
+  });
+
+  it('returns nothing for a backwards span', () => {
+    expect(secondsBetween(spokenLengths(book), 2, 1, 1)).toBe(0);
+  });
+
+  it('handles an empty book', () => {
+    expect(secondsBetween(spokenLengths([]), 0, 0, 1)).toBe(0);
   });
 });

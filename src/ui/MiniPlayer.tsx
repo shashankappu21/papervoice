@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -6,7 +6,7 @@ import { useTheme } from './ThemeProvider';
 import { BookCover } from './BookCover';
 import { Spinner } from './Spinner';
 import { useReading } from '../player/PlaybackProvider';
-import { estimateSeconds, wordDuration } from '../player/listeningTime';
+import { secondsBetween, spokenLengths, wordDuration } from '../player/listeningTime';
 
 /**
  * The book being read, kept in reach of every screen.
@@ -32,10 +32,20 @@ export function MiniPlayer() {
     }).start();
   }, [showing, rise]);
 
+  /*
+   * Above the early return, because hooks must be, and memoised because this
+   * used to be neither. It walked the entire book on every render of the bar --
+   * which redraws on each spoken sentence, each press, and each animation of
+   * the thing rising into view.
+   */
+  const running = useMemo(() => spokenLengths(sentences), [sentences]);
+
   if (!book) return null;
 
   const left =
-    wordDuration(estimateSeconds(sentences.slice(playback.currentIndex), playback.rate)) || '';
+    wordDuration(
+      secondsBetween(running, playback.currentIndex, sentences.length, playback.rate),
+    ) || '';
   const fraction =
     sentences.length > 0 ? (playback.currentIndex + 1) / sentences.length : 0;
 

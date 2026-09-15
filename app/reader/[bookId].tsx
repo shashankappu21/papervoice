@@ -8,7 +8,7 @@ import { findMainContentStart } from '../../src/extraction/mainContent';
 import { buildSections } from '../../src/extraction/sections';
 import type { Sentence } from '../../src/extraction/types';
 import { useReading } from '../../src/player/PlaybackProvider';
-import { estimateSeconds, wordDuration } from '../../src/player/listeningTime';
+import { secondsBetween, spokenLengths, wordDuration } from '../../src/player/listeningTime';
 import { SentenceList } from '../../src/ui/SentenceList';
 import { Player } from '../../src/ui/Player';
 import { VoicePicker } from '../../src/ui/VoicePicker';
@@ -118,14 +118,22 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   // must be the one now, not the one captured when the callback was made.
   index.current = at;
 
-  // Recomputed only when the place or the speed changes, not on every render:
-  // this walks the whole book, which for a 5,000-sentence one is real work.
+  /*
+   * Walked once when the book opens, not twice per spoken sentence.
+   *
+   * This used to slice the whole book in two and add up both halves every time
+   * the place changed -- 158ms of it on a laptop for a long book, on the thread
+   * that also draws the page. With a running total the same two numbers are a
+   * subtraction each.
+   */
+  const running = useMemo(() => spokenLengths(sentences), [sentences]);
+
   const { elapsed, remaining } = useMemo(
     () => ({
-      elapsed: wordDuration(estimateSeconds(sentences.slice(0, at), playback.rate)) || '0m',
-      remaining: `${wordDuration(estimateSeconds(sentences.slice(at), playback.rate)) || '0m'} left`,
+      elapsed: wordDuration(secondsBetween(running, 0, at, playback.rate)) || '0m',
+      remaining: `${wordDuration(secondsBetween(running, at, sentences.length, playback.rate)) || '0m'} left`,
     }),
-    [sentences, at, playback.rate],
+    [running, at, sentences.length, playback.rate],
   );
 
   const currentVoice = playback.voices.find((voice) => voice.id === playback.voiceId);
