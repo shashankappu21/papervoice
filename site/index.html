@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Papervoice — your books, read aloud</title>
+<meta name="description" content="Turns the PDFs you own into audiobooks, entirely on your phone. No account, no subscription, and nothing you read is ever uploaded.">
+
+<meta property="og:title" content="Papervoice — your books, read aloud">
+<meta property="og:description" content="Turns the PDFs you own into audiobooks, entirely on your phone. Nothing you read is ever uploaded.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://papervoice.app">
+<meta name="twitter:card" content="summary_large_image">
+
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #1c1c20;
+    --text: #f2f2f4;
+    --muted: #a0a0aa;
+    --accent: #8b7cf6;
+    --accent-on: #0d0d0f;
+    --line: #2a2a31;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+
+  header { padding: 88px 0 56px; text-align: center; }
+  h1 {
+    font-size: clamp(2.4rem, 8vw, 3.6rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin: 0 0 18px;
+    font-weight: 800;
+  }
+  .tagline { font-size: 1.2rem; color: var(--muted); margin: 0 auto 36px; max-width: 30em; }
+
+  .cta {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--accent-on);
+    font-weight: 700;
+    font-size: 1.05rem;
+    padding: 15px 34px;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .cta:hover { filter: brightness(1.08); }
+  .under-cta { color: var(--muted); font-size: 0.92rem; margin-top: 14px; }
+  .under-cta a { color: var(--muted); }
+
+  section { padding: 44px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.45rem; letter-spacing: -0.02em; margin: 0 0 20px; }
+
+  ul.points { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
+  ul.points li { padding-left: 30px; position: relative; }
+  ul.points li::before {
+    content: "";
+    position: absolute; left: 6px; top: 0.62em;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+  }
+  ul.points strong { display: block; }
+  ul.points span { color: var(--muted); }
+
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 24px;
+    color: var(--muted);
+  }
+  .note strong { color: var(--text); }
+
+  code {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 2px 7px;
+    font-size: 0.88em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    overflow-x: auto;
+  }
+  pre code { background: none; border: 0; padding: 0; }
+
+  a { color: var(--accent); }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 34px 0 70px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    text-align: center;
+  }
+  footer a { color: var(--muted); margin: 0 10px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <h1>Your books, read aloud.</h1>
+    <p class="tagline">
+      Papervoice turns the PDFs you own into audiobooks — on your phone,
+      offline, with neural voices. Nothing you read is ever uploaded.
+    </p>
+    <a class="cta" href="https://github.com/OWNER/papervoice/releases/latest">Download for Android</a>
+    <p class="under-cta">
+      Free and open source · <a href="https://github.com/OWNER/papervoice">source on GitHub</a>
+    </p>
+  </header>
+
+  <section>
+    <h2>What it does</h2>
+    <ul class="points">
+      <li>
+        <strong>Reads your PDFs aloud</strong>
+        <span>Import a book and listen. The sentence being spoken is highlighted, and the page follows along.</span>
+      </li>
+      <li>
+        <strong>Fifteen voices, on the device</strong>
+        <span>Eight male, seven female, three British. Downloaded once, then they work in aeroplane mode. Your phone's own voice works too, with nothing to download.</span>
+      </li>
+      <li>
+        <strong>Keeps your place, exactly</strong>
+        <span>Per book, to the sentence. Come back a month later and carry on.</span>
+      </li>
+      <li>
+        <strong>Made to be lived in</strong>
+        <span>Groups for your shelves, a contents page, speed from 0.5× to 3×, light, dark and paper themes.</span>
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>It doesn't phone home</h2>
+    <div class="note">
+      <p style="margin-top:0">
+        <strong>No account. No subscription. No ads. No analytics.</strong>
+      </p>
+      <p>
+        Your documents are read on your phone by software running on your phone.
+        The text never leaves it, and neither does the audio. The app talks to
+        the network exactly once per voice you choose to download, and never
+        again.
+      </p>
+      <p style="margin-bottom:0">
+        That isn't a promise about our intentions — it's a property of how it's
+        built, and the source is public so you can check.
+        <a href="/privacy">Privacy policy</a>
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Installing it</h2>
+    <p style="color:var(--muted)">
+      It isn't on the Play Store yet. Download the APK, open it, and allow your
+      browser to install apps when Android asks — that prompt is normal for
+      anything from outside the store.
+    </p>
+    <p style="color:var(--muted)">
+      Every release publishes a checksum, so you can confirm you got the file we
+      built:
+    </p>
+<pre><code>sha256sum papervoice-1.0.0.apk</code></pre>
+    <p style="color:var(--muted); margin-bottom:0">
+      For automatic updates, point
+      <a href="https://github.com/ImranR98/Obtainium">Obtainium</a> at the
+      GitHub repository.
+    </p>
+  </section>
+
+  <section>
+    <h2>Open source, and why</h2>
+    <p style="color:var(--muted)">
+      Papervoice is GPLv3 — not as a stance, but because the component that
+      turns letters into sounds is, and it runs inside the app. So the source
+      has to be open, which seems a fair trade for software that reads your
+      books.
+    </p>
+    <p style="color:var(--muted); margin-bottom:0">
+      The voices are other people's work, released freely: mostly trained from
+      public-domain LibriVox recordings. Every one is
+      <a href="https://github.com/OWNER/papervoice/blob/main/docs/voice-credits.md">credited with the licence it was checked against</a>.
+    </p>
+  </section>
+
+</div>
+
+<footer>
+  <a href="https://github.com/OWNER/papervoice">GitHub</a>
+  <a href="/privacy">Privacy</a>
+  <a href="mailto:hello@papervoice.app">hello@papervoice.app</a>
+  <p style="margin:18px 0 0">Made by Shashank S T</p>
+</footer>
+
+</body>
+</html>

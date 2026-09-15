@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy — Papervoice</title>
+<meta name="description" content="Papervoice collects nothing.">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #1c1c20;
+    --text: #f2f2f4;
+    --muted: #a0a0aa;
+    --accent: #8b7cf6;
+    --accent-on: #0d0d0f;
+    --line: #2a2a31;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+
+  header { padding: 88px 0 56px; text-align: center; }
+  h1 {
+    font-size: clamp(2.4rem, 8vw, 3.6rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin: 0 0 18px;
+    font-weight: 800;
+  }
+  .tagline { font-size: 1.2rem; color: var(--muted); margin: 0 auto 36px; max-width: 30em; }
+
+  .cta {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--accent-on);
+    font-weight: 700;
+    font-size: 1.05rem;
+    padding: 15px 34px;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .cta:hover { filter: brightness(1.08); }
+  .under-cta { color: var(--muted); font-size: 0.92rem; margin-top: 14px; }
+  .under-cta a { color: var(--muted); }
+
+  section { padding: 44px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.45rem; letter-spacing: -0.02em; margin: 0 0 20px; }
+
+  ul.points { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
+  ul.points li { padding-left: 30px; position: relative; }
+  ul.points li::before {
+    content: "";
+    position: absolute; left: 6px; top: 0.62em;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+  }
+  ul.points strong { display: block; }
+  ul.points span { color: var(--muted); }
+
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 24px;
+    color: var(--muted);
+  }
+  .note strong { color: var(--text); }
+
+  code {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 2px 7px;
+    font-size: 0.88em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    overflow-x: auto;
+  }
+  pre code { background: none; border: 0; padding: 0; }
+
+  a { color: var(--accent); }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 34px 0 70px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    text-align: center;
+  }
+  footer a { color: var(--muted); margin: 0 10px; }
+</style>
+</head>
+<body>
+<div class="wrap" style="padding-top:64px;padding-bottom:64px">
+  <p><a href="/">&larr; Papervoice</a></p>
+  <h1 style="font-size:2.2rem">Privacy Policy</h1>
+  <p style="font-size:1.25rem"><strong>Papervoice collects nothing.</strong></p>
+  <p style="color:var(--muted)">Last updated: 15 September 2026</p>
+  <h2>What is collected</h2>
+  <p style="color:var(--muted)">Nothing. There is no account, no analytics, no crash reporting, no</p>
+  <p style="color:var(--muted)">advertising identifier, and no telemetry of any kind.</p>
+  <p style="color:var(--muted)">We do not know how many books you have, which voices you use, how long you</p>
+  <p style="color:var(--muted)">listen, or that you have opened the app at all.</p>
+  <h2>Your documents</h2>
+  <p style="color:var(--muted)">The PDFs you import stay on your device. They are read on your phone, by</p>
+  <p style="color:var(--muted)">software running on your phone, and are never uploaded anywhere. Neither is</p>
+  <p style="color:var(--muted)">the text taken from them, nor the audio generated from that text.</p>
+  <p style="color:var(--muted)">This is not a promise about our intentions; it is a property of how the app</p>
+  <p style="color:var(--muted)">is built. Papervoice is open source, and anyone may check:</p>
+  <p style="color:var(--muted)"><a href="https://github.com/OWNER/papervoice</p>">https://github.com/OWNER/papervoice</p></a>
+  <h2>When the app uses the network</h2>
+  <p style="color:var(--muted)">Once, per voice you choose to download.</p>
+  <p style="color:var(--muted)">Selecting a natural voice downloads its model from a public address named in</p>
+  <p style="color:var(--muted)">the app's source code. That request contains no information about you or</p>
+  <p style="color:var(--muted)">your documents beyond the fact that a file was requested. The app makes no</p>
+  <p style="color:var(--muted)">other network requests, and works fully offline afterwards.</p>
+  <h2>Permissions</h2>
+  <li style="color:var(--muted)">**Storage / file access** — to open the PDF you pick. Nothing else is read.</li>
+  <li style="color:var(--muted)">**Notifications** — to show playback controls while a book is being read.</li>
+  <p style="color:var(--muted)">There is no microphone, camera, contacts, or location access.</p>
+  <h2>Children</h2>
+  <p style="color:var(--muted)">The app collects no data from anyone, including children.</p>
+  <h2>Changes</h2>
+  <p style="color:var(--muted)">If this ever changes, it will change here first, and the app's release notes</p>
+  <p style="color:var(--muted)">will say so plainly. Anything less would make the rest of this document</p>
+  <p style="color:var(--muted)">worthless.</p>
+  <h2>Contact</h2>
+  <p style="color:var(--muted)"><a href="mailto:hello@papervoice.app">hello@papervoice.app</a></p>
+</div>
+<footer>
+  <a href="/">Home</a>
+  <a href="mailto:hello@papervoice.app">hello@papervoice.app</a>
+</footer>
+</body>
+</html>
