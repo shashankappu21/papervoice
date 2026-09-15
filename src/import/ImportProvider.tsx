@@ -4,7 +4,8 @@ import { File, Paths } from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { ExtractorWebView } from '../extraction/ExtractorWebView';
-import { addBook } from '../db/books';
+import { addBook, findBookByHash } from '../db/books';
+import { SherpaTts } from '../../modules/sherpa-tts';
 import { ImportProgress } from '../ui/ImportProgress';
 import { titleFromUri } from './incomingPdf';
 import { onImportOffered } from './pendingImport';
@@ -27,7 +28,11 @@ const ImportContext = createContext<ImportContextValue | null>(null);
  */
 export function ImportProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [importing, setImporting] = useState<{ uri: string; title: string } | null>(null);
+  const [importing, setImporting] = useState<{
+    uri: string;
+    title: string;
+    hash: string | null;
+  } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   /** Pages read and pages in total, so the wait has a shape rather than a spinner. */
   const [pages, setPages] = useState({ page: 0, total: 0 });
@@ -37,12 +42,48 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
   /** Uris already taken, so a re-launch does not import the same file twice. */
   const taken = useRef(new Set<string>());
 
-  const begin = useCallback((uri: string, title: string) => {
-    setFailed(null);
-    setPages({ page: 0, total: 0 });
-    setStatus('Opening the document…');
-    setImporting({ uri, title });
-  }, []);
+  /*
+   * The document is identified before it is read.
+   *
+   * Importing the same PDF twice used to make two books, because the only
+   * thing a book was known by was its uri -- and both ways in produce a fresh
+   * uri every time: the share sheet mints one per launch, the picker copies to
+   * a new cache name. Hashing the bytes is what tells the two cases apart.
+   *
+   * Done first, before extraction rather than after, because extraction is the
+   * expensive part and there is no sense reading a hundred megabytes to
+   * discover the answer was already in the library.
+   */
+  const begin = useCallback(
+    async (uri: string, title: string) => {
+      setFailed(null);
+      setPages({ page: 0, total: 0 });
+      setStatus('Opening the document…');
+
+      let hash: string | null = null;
+      try {
+        hash = await SherpaTts.sha256(uri.replace(/^file:\/\//, ''));
+      } catch {
+        // A hash that cannot be taken must not stop an import. The worst case
+        // is the old behaviour: a duplicate that is not spotted.
+        hash = null;
+      }
+
+      if (hash) {
+        const already = await findBookByHash(hash).catch(() => null);
+        if (already) {
+          // Opened rather than refused. Someone who picks a document they
+          // already have almost certainly means to read it.
+          setStatus(null);
+          router.push({ pathname: '/reader/[bookId]', params: { bookId: already.id } });
+          return;
+        }
+      }
+
+      setImporting({ uri, title, hash });
+    },
+    [router],
+  );
 
   /**
    * A PDF opened from somewhere else -- a file manager, a share sheet.
@@ -61,8 +102,11 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const copy = new File(Paths.cache, `incoming-${Date.now()}.pdf`);
-        new File(uri).copy(copy);
-        begin(copy.uri, titleFromUri(uri));
+        // copySync, because what follows reads the file immediately. The async
+        // copy() returns before the bytes are there, and hashing a file that is
+        // still being written gives the wrong answer or none at all.
+        new File(uri).copySync(copy);
+        void begin(copy.uri, titleFromUri(uri));
       } catch (cause) {
         setFailed(`That file could not be opened: ${String(cause)}`);
       }
@@ -82,7 +126,7 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
     }).then((result) => {
       if (result.canceled) return;
       const asset = result.assets[0];
-      begin(asset.uri, asset.name.replace(/\.pdf$/i, ''));
+      void begin(asset.uri, asset.name.replace(/\.pdf$/i, ''));
     });
   };
 
@@ -109,11 +153,11 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
           uri={importing.uri}
           onProgress={(page, total) => setPages({ page, total })}
           onDone={(doc) => {
-            const { uri, title } = importing;
+            const { uri, title, hash } = importing;
             setImporting(null);
             setSaving(true);
             setStatus('Saving…');
-            addBook(uri, title, doc).then(
+            addBook(uri, title, doc, hash).then(
               (book) => {
                 setSaving(false);
                 setStatus(null);

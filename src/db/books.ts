@@ -43,6 +43,8 @@ export async function addBook(
   pickedUri: string,
   title: string,
   doc: ExtractedDoc,
+  /** sha256 of the PDF, so the same document is not imported twice. */
+  contentHash: string | null,
 ): Promise<Book> {
   const dir = booksDirectory();
   const stamp = Date.now();
@@ -73,8 +75,8 @@ export async function addBook(
 
   const db = await database();
   const result = await db.runAsync(
-    `INSERT INTO books (title, uri, sentences_path, page_count, sentence_count, added_at, last_opened_at, cover_path, outline)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO books (title, uri, sentences_path, page_count, sentence_count, added_at, last_opened_at, cover_path, outline, content_hash)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     title,
     pdf.uri,
     sentences.uri,
@@ -84,6 +86,7 @@ export async function addBook(
     stamp,
     coverPath,
     JSON.stringify(doc.outline ?? []),
+    contentHash,
   );
 
   return {
@@ -274,4 +277,23 @@ export async function deleteBook(bookId: number): Promise<void> {
       if (file.exists) file.delete();
     }
   }
+}
+
+/**
+ * The book already made from this file, if there is one.
+ *
+ * Identity is the document's bytes, not its uri. A uri says where a file was
+ * picked from: the share sheet mints a new one per launch and the picker
+ * copies to a fresh cache name every time, so the same PDF arriving twice
+ * looks like two different files by every measure except its contents.
+ */
+export async function findBookByHash(hash: string): Promise<Book | null> {
+  const db = await database();
+  const row = await db.getFirstAsync<BookRow>(
+    `SELECT b.*, p.sentence_index
+     FROM books b LEFT JOIN positions p ON p.book_id = b.id
+     WHERE b.content_hash = ?`,
+    hash,
+  );
+  return row ? toBook(row) : null;
 }

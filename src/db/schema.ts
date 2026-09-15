@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bumped whenever the statements below change. The version lives in the
  * database itself, so an app that skipped a release still migrates in order.
  */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 /**
  * Creates or upgrades the library.
@@ -78,6 +78,28 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
     // A contents page is a few kilobytes at most, so it lives in the row
     // rather than in a file of its own like the sentences do.
     await db.execAsync(`ALTER TABLE books ADD COLUMN outline TEXT`);
+  }
+
+  if (version < 6) {
+    /*
+     * What the file is, rather than where it came from.
+     *
+     * The same document imported twice made two books, because the only
+     * identity a book had was its uri -- and a uri is about where a file was
+     * picked from, not what it holds. The share sheet hands out a different
+     * one each time, and the picker copies to a fresh cache name on every
+     * import, so two uris for one document is the normal case rather than the
+     * odd one.
+     *
+     * Null for everything imported before this. They cannot be filled in
+     * afterwards -- the original PDF is not kept -- so an older book is simply
+     * never recognised as a duplicate, which is the behaviour those books
+     * already had.
+     */
+    await db.execAsync(`
+      ALTER TABLE books ADD COLUMN content_hash TEXT;
+      CREATE INDEX IF NOT EXISTS books_content_hash ON books(content_hash);
+    `);
   }
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
