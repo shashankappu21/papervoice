@@ -31,7 +31,13 @@ export function voiceStore(): VoiceStore {
         if (file.exists) file.delete();
       },
       rename: (from, to) => {
-        new File(`file://${from}`).move(new File(`file://${to}`));
+        /*
+         * moveSync, because the store treats this as done when it returns.
+         * move() is a promise: the partial download was reported installed
+         * while it was still being renamed, and whether that was noticed came
+         * down to timing.
+         */
+        new File(`file://${from}`).moveSync(new File(`file://${to}`));
       },
       // The native module hashes the file, which avoids reading 63MB through
       // JavaScript only to throw the bytes away.
