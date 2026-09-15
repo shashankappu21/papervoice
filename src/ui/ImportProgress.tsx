@@ -42,7 +42,21 @@ export function ImportProgress({ title, page, total, message, failed, onDismiss 
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onDismiss}>
-      <View style={styles.backdrop}>
+      {/*
+        Opaque, not a scrim over the library.
+
+        It was rgba(0,0,0,0.55), and the extractor's WebView showed through it
+        as a white block filling the lower half of the screen -- measured as
+        rgb(113,113,113) every time, which is white at 45%. That WebView cannot
+        be hidden: on Android it takes a surface of its own that the system
+        composites regardless of the view's size, opacity, position or layer
+        type, all four of which were tried.
+        
+        So nothing translucent is put in front of it. An import is a
+        full-screen wait with one thing to look at; there was never much to be
+        gained from seeing the dimmed library behind it.
+      */}
+      <View style={[styles.backdrop, { backgroundColor: colors.bg }]}>
         <View
           style={[
             styles.card,
@@ -153,7 +167,6 @@ export function ImportProgress({ title, page, total, message, failed, onDismiss 
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
