@@ -76,3 +76,8 @@ scripts/voices.json
 # Design scratch: mockups, references and competitor screenshots. Working
 # material, not part of the project, and not something to publish.
 /design
+
+# Local working documents, not part of the shipped project: the business
+# brief (pricing, competitors, targets) and the agent implementation plans.
+/PROJECT_BRIEF_V3_PAPERVOICE.md
+/docs/superpowers
