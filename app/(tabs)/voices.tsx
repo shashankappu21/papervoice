@@ -169,68 +169,6 @@ export default function Voices() {
               </Text>
             </View>
 
-            {system.length > 0 && (
-              <View style={{ paddingHorizontal: space.xl, marginTop: space.xl }}>
-                <Text style={[styles.section, { color: colors.textMuted, fontSize: font.xs }]}>
-                  ALREADY ON THIS PHONE
-                </Text>
-                {system.slice(0, 4).map((voice) => {
-                  const id = systemVoiceId(voice);
-                  const inUse = selected === id;
-                  return (
-                    <Pressable
-                      key={id}
-                      onPress={() => void setSetting(SETTING_VOICE, id).then(refresh)}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: inUse }}
-                      style={({ pressed }) => [
-                        styles.card,
-                        {
-                          backgroundColor: colors.surface,
-                          borderRadius: radius.lg,
-                          padding: space.md,
-                          marginBottom: space.sm,
-                          opacity: pressed ? 0.8 : 1,
-                          borderWidth: inUse ? 2 : 0,
-                          borderColor: colors.accent,
-                        },
-                      ]}
-                    >
-                      <VoiceAvatar name={systemVoiceLabel(voice)} size={44} />
-                      <View style={styles.cardText}>
-                        <Text
-                          style={{ color: colors.text, fontSize: font.lg, fontWeight: '600' }}
-                        >
-                          {systemVoiceLabel(voice)}
-                        </Text>
-                        <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 2 }}>
-                          System voice · nothing to download
-                        </Text>
-                      </View>
-                      {inUse && (
-                        <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-
-            {hiddenVoices > 0 && (
-              <Text
-                style={{
-                  paddingHorizontal: space.xl,
-                  color: colors.textMuted,
-                  fontSize: font.xs,
-                  lineHeight: 17,
-                }}
-              >
-                {hiddenVoices} more {hiddenVoices === 1 ? 'voice speaks' : 'voices speak'} over the
-                internet. Reading a document with {hiddenVoices === 1 ? 'it' : 'them'} would send
-                it away, so {hiddenVoices === 1 ? 'it is' : 'they are'} not offered.
-              </Text>
-            )}
-
             <View style={{ paddingHorizontal: space.xl, marginTop: space.xl }}>
               <Text style={[styles.section, { color: colors.textMuted, fontSize: font.xs }]}>
                 NATURAL VOICES
@@ -372,17 +310,90 @@ export default function Voices() {
             </View>
           );
         }}
+        /*
+         * The phone's own voices come last.
+         *
+         * They were first, above the natural ones, and the effect was that
+         * someone opening this screen saw four entries named en-AU and en-IN
+         * and nothing else -- the fifteen voices the app exists for were below
+         * the fold on a phone at its default font size. The system voices are
+         * the fallback, not the offer, and they now read as one.
+         */
         ListFooterComponent={
-          <Text
-            style={{
-              color: colors.textMuted,
-              fontSize: font.sm,
-              textAlign: 'center',
-              paddingTop: space.md,
-            }}
-          >
-            {installedCount.length} installed · {megabytes(usedBytes)} used offline
-          </Text>
+          <View>
+            <Text
+              style={{
+                color: colors.textMuted,
+                fontSize: font.sm,
+                textAlign: 'center',
+                paddingTop: space.md,
+              }}
+            >
+              {installedCount.length} installed · {megabytes(usedBytes)} used offline
+            </Text>
+
+            {system.length > 0 && (
+              <View style={{ paddingHorizontal: space.xl, marginTop: space.xl }}>
+                <Text style={[styles.section, { color: colors.textMuted, fontSize: font.xs }]}>
+                  ALREADY ON THIS PHONE
+                </Text>
+                {system.slice(0, 4).map((voice) => {
+                  const id = systemVoiceId(voice);
+                  const inUse = selected === id;
+                  return (
+                    <Pressable
+                      key={id}
+                      onPress={() => void setSetting(SETTING_VOICE, id).then(refresh)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: inUse }}
+                      style={({ pressed }) => [
+                        styles.card,
+                        {
+                          backgroundColor: colors.surface,
+                          borderRadius: radius.lg,
+                          padding: space.md,
+                          marginBottom: space.sm,
+                          opacity: pressed ? 0.8 : 1,
+                          borderWidth: inUse ? 2 : 0,
+                          borderColor: colors.accent,
+                        },
+                      ]}
+                    >
+                      <VoiceAvatar name={systemVoiceLabel(voice)} size={44} />
+                      <View style={styles.cardText}>
+                        <Text
+                          style={{ color: colors.text, fontSize: font.lg, fontWeight: '600' }}
+                        >
+                          {systemVoiceLabel(voice)}
+                        </Text>
+                        <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 2 }}>
+                          System voice · nothing to download
+                        </Text>
+                      </View>
+                      {inUse && (
+                        <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+
+            {hiddenVoices > 0 && (
+              <Text
+                style={{
+                  paddingHorizontal: space.xl,
+                  color: colors.textMuted,
+                  fontSize: font.xs,
+                  lineHeight: 17,
+                }}
+              >
+                {hiddenVoices} more {hiddenVoices === 1 ? 'voice speaks' : 'voices speak'} over the
+                internet. Reading a document with {hiddenVoices === 1 ? 'it' : 'them'} would send
+                it away, so {hiddenVoices === 1 ? 'it is' : 'they are'} not offered.
+              </Text>
+            )}
+          </View>
         }
       />
 
