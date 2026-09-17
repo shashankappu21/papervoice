@@ -49,7 +49,8 @@
     "phonemes": "vite-node scripts/phonemes.ts --",
     "emu": "node scripts/emulator.mjs",
     "emu:create": "node scripts/createAvd.mjs",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "assets": "python scripts/storeAssets.py"
   },
   "license": "GPL-3.0-or-later"
 }

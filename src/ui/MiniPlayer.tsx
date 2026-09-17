@@ -18,7 +18,7 @@ import { secondsBetween, spokenLengths, wordDuration } from '../player/listening
 export function MiniPlayer() {
   const router = useRouter();
   const { colors, space, radius, font } = useTheme();
-  const { playback, book, sentences } = useReading();
+  const { playback, book, sentences, close } = useReading();
 
   const showing = book !== null;
   const rise = useRef(new Animated.Value(0)).current;
@@ -117,6 +117,27 @@ export function MiniPlayer() {
             style={playback.playing ? undefined : { marginLeft: 2 }}
           />
         </Pressable>
+
+        {/*
+          Putting the book down.
+
+          The bar appeared with the first book opened and then stayed for ever:
+          close() has always done the right thing -- pause, forget the book,
+          leave the place saved -- and nothing ever called it except deleting
+          the book out from under it. There was no way to simply stop.
+
+          Muted and small on purpose. It sits beside the play button and must
+          not compete with it, since dismissing is the rarer thing to want.
+        */}
+        <Pressable
+          onPress={close}
+          accessibilityRole="button"
+          accessibilityLabel={`Stop reading ${book.title}`}
+          hitSlop={12}
+          style={({ pressed }) => [styles.close, { opacity: pressed ? 0.5 : 1 }]}
+        >
+          <Ionicons name="close" size={20} color={colors.textMuted} />
+        </Pressable>
       </Pressable>
 
       <View style={[styles.track, { backgroundColor: colors.divider }]}>
@@ -134,6 +155,7 @@ export function MiniPlayer() {
 const styles = StyleSheet.create({
   wrap: { overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center' },
+  close: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   text: { flex: 1 },
   play: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute' },
