@@ -20,6 +20,13 @@ import path from 'node:path';
 
 const AAB = 'android/app/build/outputs/bundle/release/app-release.aab';
 
+// Without the key the build quietly signs with the debug one, which Play
+// rejects -- or worse, accepts into a draft that then has to be discarded.
+if (!existsSync('keys/keystore.properties')) {
+  console.error('\nNo keys/keystore.properties: this would be signed with the debug key.\n');
+  process.exit(1);
+}
+
 const started = Date.now();
 console.log('\nBuilding the release bundle for arm64-v8a,armeabi-v7a\n');
 

@@ -39,12 +39,12 @@ console.log(`\nPapervoice ${version} (versionCode ${versionCode})\n`);
  * Google-generated key instead would leave those two permanently unable to
  * update each other, and everyone who sideloaded would have to uninstall.
  *
- * Which makes android/papervoice-release.keystore the single file in this
- * project that cannot be replaced. android/ is generated and ignored by git,
- * so it is not in a commit anywhere. Keep a copy somewhere else.
+ * Which makes keys/papervoice-release.keystore the single file in this
+ * project that cannot be replaced. It is ignored by git, so it is not in a
+ * commit anywhere. Keep a copy somewhere else.
  */
-if (!existsSync('android/keystore.properties')) {
-  console.error('No android/keystore.properties: this would be signed with the debug');
+if (!existsSync('keys/keystore.properties')) {
+  console.error('No keys/keystore.properties: this would be signed with the debug');
   console.error('key, which cannot be updated by a properly signed build later.');
   process.exit(1);
 }
