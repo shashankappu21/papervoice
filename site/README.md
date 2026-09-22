@@ -19,17 +19,28 @@ are kept as secondary links, for the people who want them.
 
 Both live at the top of the script at the bottom of `index.html`.
 
-**`EARLY_ACCESS_ENDPOINT`** — a URL that accepts `POST` with a JSON body:
+**`EARLY_ACCESS_ENDPOINT`** — the deployed Google Apps Script web-app URL. It
+receives JSON:
 
-    { email, timestamp, utm_source, utm_medium, utm_campaign, referrer }
+    { email, timestamp, utm_source, utm_medium, utm_campaign, utm_content,
+      referrer }
 
-and answers 2xx once the address is stored. Nothing else is collected.
+and answers `{ ok: true }` or `{ ok: false, error: '...' }`. The script, and
+the steps to deploy it, are in [`early-access/`](../early-access/) — a Google
+Sheet and forty lines of Apps Script, with no vendor and nothing to pay for.
 
-Until it is set, the form opens a pre-addressed email to `hello@papervoice.app`
-instead. That is deliberate: showing "You're in." after a request that went
-nowhere would be a lie to someone who wanted in. No vendor has been chosen —
-a form service, a Google Apps Script bound to a Sheet, or a small function
-would all do.
+The success panel appears only when the endpoint confirms `ok: true`. A
+refusal shows the server's own message inline; anything else shows a generic
+error and the fallback address. A submission already in flight ignores further
+clicks.
+
+The body goes as `text/plain`, not `application/json`. Any other content type
+makes the browser send a CORS preflight, and an Apps Script web app does not
+answer `OPTIONS`, so the request would fail before it was made.
+
+Until the URL is set, the form opens a pre-addressed email to
+`hello@papervoice.app` instead. That is deliberate: showing "You're in." after
+a request that went nowhere would be a lie to someone who wanted in.
 
 **`BETA_OPT_IN_URL`** — the Play Console tester opt-in link. The "Join the
 Android beta" line stays hidden until this is set.
@@ -94,7 +105,8 @@ file, because the fonts and images are referenced from the site root.
 
 ## Before it goes live
 
-- Set `EARLY_ACCESS_ENDPOINT`, or the form falls back to opening a mail client
+- Deploy `early-access/Code.gs` and set `EARLY_ACCESS_ENDPOINT`, or the form
+  falls back to opening a mail client
 - Set `BETA_OPT_IN_URL` once internal testing has an opt-in link
 - The releases page is linked from the FAQ and the footer, and is empty until
   a release is published

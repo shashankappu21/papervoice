@@ -378,6 +378,9 @@
   .field input::placeholder { color: #a8a29e; }
   .capture .btn { width: 100%; margin-top: 14px; }
   .form-note { margin: 14px 0 0; font-size: 0.83rem; color: var(--muted); }
+  /* Out of sight and out of the tab order, for bots that fill in every input.
+     Not display:none, which the better ones know to skip. */
+  .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
   .beta-line { margin: 18px 0 0; font-size: 0.93rem; }
 
   .status { margin: 16px 0 0; font-size: 0.95rem; }
@@ -668,6 +671,10 @@
                      autocomplete="email" placeholder="you@gmail.com" required
                      aria-describedby="email-help">
             </div>
+            <div class="trap" aria-hidden="true">
+              <label for="company">Company</label>
+              <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
+            </div>
             <button class="btn btn-primary" type="submit" data-track="early_access_submit">Get early access</button>
             <p class="status" id="status" role="status" aria-live="polite"></p>
             <p class="form-note" id="email-help">
@@ -749,14 +756,22 @@
    * ------------------------------------------------------------------
    *
    * 1. EARLY_ACCESS_ENDPOINT
-   *    A URL that accepts POST with a JSON body:
+   *    The deployed Google Apps Script web-app URL. It receives JSON:
    *
-   *      { email, timestamp, utm_source, utm_medium, utm_campaign, referrer }
+   *      { email, timestamp, utm_source, utm_medium, utm_campaign,
+   *        utm_content, referrer }
    *
-   *    and answers 2xx when the address is stored. Until it is set, the form
-   *    falls back to opening a pre-addressed email instead -- which is not as
-   *    smooth, but is honest, because a success message shown over a request
-   *    that went nowhere is a lie to someone who wanted in.
+   *    and answers { ok: true } or { ok: false, error: '...' }. The script
+   *    that does this is in early-access/Code.gs, with the deployment steps
+   *    beside it. Until the URL is set, the form falls back to opening a
+   *    pre-addressed email -- less smooth, but honest, because a success
+   *    message shown over a request that went nowhere is a lie to someone
+   *    who wanted in.
+   *
+   *    The body is sent as text/plain on purpose. Any other content type
+   *    makes the browser send a CORS preflight first, and an Apps Script web
+   *    app does not answer OPTIONS -- so the request fails before it is made.
+   *    Apps Script reads the body the same way either way.
    *
    * 2. BETA_OPT_IN_URL
    *    The Play Console tester opt-in link. The "Join the Android beta"
@@ -838,8 +853,14 @@
     else status.removeAttribute('data-tone');
   }
 
+  // One request at a time. Without this a second tap while the first is in
+  // flight puts the address in the sheet twice.
+  var sending = false;
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
+    if (sending) return;
+
     var input = document.getElementById('email');
     var email = input.value.trim();
 
@@ -851,11 +872,17 @@
       return;
     }
 
-    var record = Object.assign({
+    var record = {
       email: email,
       timestamp: new Date().toISOString(),
-      referrer: document.referrer || undefined
-    }, campaign);
+      utm_source: campaign.utm_source || '',
+      utm_medium: campaign.utm_medium || '',
+      utm_campaign: campaign.utm_campaign || '',
+      utm_content: campaign.utm_content || '',
+      referrer: document.referrer || '',
+      // A field no person sees and every naive bot fills in.
+      trap: (document.getElementById('company') || {}).value || ''
+    };
 
     if (!EARLY_ACCESS_ENDPOINT) {
       // No list to add to yet. Hand the person their own email client rather
@@ -869,15 +896,35 @@
     }
 
     var button = form.querySelector('button[type=submit]');
+    sending = true;
     button.disabled = true;
+    input.readOnly = true;
     say('Adding you…');
+
+    function failed(message) {
+      sending = false;
+      button.disabled = false;
+      input.readOnly = false;
+      say(message || ('That didn’t go through. Try again, or email ' + FALLBACK_EMAIL + '.'), 'error');
+    }
 
     fetch(EARLY_ACCESS_ENDPOINT, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(record)
+      headers: { 'content-type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(record),
+      redirect: 'follow'
     }).then(function (response) {
-      if (!response.ok) throw new Error('rejected ' + response.status);
+      // Apps Script answers 200 with its own body even when it refused, so
+      // the status alone says nothing. The JSON decides.
+      return response.text().then(function (text) {
+        try { return JSON.parse(text); } catch (err) { return null; }
+      });
+    }).then(function (result) {
+      if (!result || result.ok !== true) {
+        failed(result && result.error ? result.error : undefined);
+        return;
+      }
+      sending = false;
       track('early_access_submit', { mode: 'endpoint' });
       document.getElementById('capture-form').hidden = true;
       var done = document.getElementById('capture-done');
@@ -885,8 +932,7 @@
       done.setAttribute('tabindex', '-1');
       done.focus();
     }).catch(function () {
-      button.disabled = false;
-      say('That didn’t go through. Try again, or email ' + FALLBACK_EMAIL + '.', 'error');
+      failed();
     });
   });
 
