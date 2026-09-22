@@ -37,6 +37,26 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      # The endpoints are filled in here rather than committed.
+      #
+      # Neither is a secret in the sense of a password -- the browser has to
+      # POST to the one and open the other, so both are visible in the served
+      # page, and nothing can change that about a static site. Keeping them
+      # out of the repository keeps them out of git history and out of search
+      # results for the source, which is worth having on its own.
+      #
+      # Settings -> Secrets and variables -> Actions -> New repository secret.
+      # Missing, the step does nothing and the page keeps its fallbacks: the
+      # form opens a mail client, and the beta line stays hidden.
+      - name: Fill in the endpoints
+        env:
+          EARLY_ACCESS_ENDPOINT: ${{ secrets.EARLY_ACCESS_ENDPOINT }}
+          BETA_OPT_IN_URL: ${{ secrets.BETA_OPT_IN_URL }}
+        run: |
+          set -euo pipefail
+          python3 scripts/fillEndpoints.py site/index.html             EARLY_ACCESS_ENDPOINT BETA_OPT_IN_URL
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
