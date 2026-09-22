@@ -3,211 +3,924 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Papervoice — your books, read aloud</title>
-<meta name="description" content="Turns the PDFs you own into audiobooks, entirely on your phone. No account, no subscription, and nothing you read is ever uploaded.">
+<title>Papervoice — finally get through the PDFs you keep meaning to read</title>
+<meta name="description" content="Turn the PDFs you already own into something you can listen to, with natural voices that work entirely on your phone. Free, offline, open source. Get early access to the Android beta.">
+<link rel="canonical" href="https://papervoice.app/">
 
-<meta property="og:title" content="Papervoice — your books, read aloud">
-<meta property="og:description" content="Turns the PDFs you own into audiobooks, entirely on your phone. Nothing you read is ever uploaded.">
+<meta property="og:title" content="Papervoice — finally get through the PDFs you keep meaning to read">
+<meta property="og:description" content="Turn the PDFs you already own into something you can listen to, with natural voices that work entirely on your phone.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://papervoice.app">
+<meta property="og:url" content="https://papervoice.app/">
+<meta property="og:image" content="https://papervoice.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Papervoice, with the app open on a book being read aloud">
 <meta name="twitter:card" content="summary_large_image">
 
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#faf7f0">
+
+<script>document.documentElement.className += " js";</script>
+
+<link rel="preload" href="/fonts/jost.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/playfair.woff2" as="font" type="font/woff2" crossorigin>
+
 <style>
-  :root {
-    --bg: #0d0d0f;
-    --surface: #1c1c20;
-    --text: #f2f2f4;
-    --muted: #a0a0aa;
-    --accent: #8b7cf6;
-    --accent-on: #0d0d0f;
-    --line: #2a2a31;
+  /*
+   * Self-hosted, and subset to the characters this page uses: 32KB for both.
+   * A font from someone else's CDN would mean every reader of a page about
+   * privacy making a request to a third party before a word appears.
+   */
+  @font-face {
+    font-family: 'Playfair';
+    src: url('/fonts/playfair.woff2') format('woff2-variations');
+    font-weight: 400 700;
+    font-display: swap;
   }
+  @font-face {
+    font-family: 'Jost';
+    src: url('/fonts/jost.woff2') format('woff2-variations');
+    font-weight: 300 700;
+    font-display: swap;
+  }
+
+  :root {
+    /* The app's own paper theme, so the site and the product are one thing. */
+    --paper: #faf7f0;
+    --surface: #f2ece0;
+    --sink: #ece4d4;
+    --ink: #1c1917;
+    --muted: #57534e;
+    --line: #e7dfd0;
+    --accent: #4f46e5;
+    --accent-soft: #eceafc;
+    --on-accent: #ffffff;
+    --highlight: #fde68a;
+    --teal: #0f766e;
+
+    --display: 'Playfair', Georgia, 'Times New Roman', serif;
+    --text: 'Jost', -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+    --gutter: clamp(20px, 5vw, 40px);
+    --wide: 1140px;
+    --narrow: 680px;
+  }
+
   * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
   body {
     margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--text);
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 1.65;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
 
-  header { padding: 88px 0 56px; text-align: center; }
-  h1 {
-    font-size: clamp(2.4rem, 8vw, 3.6rem);
+  .wrap { max-width: var(--wide); margin: 0 auto; padding-inline: var(--gutter); }
+  .narrow { max-width: var(--narrow); }
+
+  h1, h2, h3 {
+    font-family: var(--display);
+    font-weight: 500;
     line-height: 1.08;
-    letter-spacing: -0.03em;
-    margin: 0 0 18px;
-    font-weight: 800;
+    letter-spacing: -0.015em;
+    margin: 0;
+    text-wrap: balance;
   }
-  .tagline { font-size: 1.2rem; color: var(--muted); margin: 0 auto 36px; max-width: 30em; }
-
-  .cta {
-    display: inline-block;
-    background: var(--accent);
-    color: var(--accent-on);
-    font-weight: 700;
-    font-size: 1.05rem;
-    padding: 15px 34px;
-    border-radius: 999px;
-    text-decoration: none;
-  }
-  .cta:hover { filter: brightness(1.08); }
-  .under-cta { color: var(--muted); font-size: 0.92rem; margin-top: 14px; }
-  .under-cta a { color: var(--muted); }
-
-  section { padding: 44px 0; border-top: 1px solid var(--line); }
-  h2 { font-size: 1.45rem; letter-spacing: -0.02em; margin: 0 0 20px; }
-
-  ul.points { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
-  ul.points li { padding-left: 30px; position: relative; }
-  ul.points li::before {
-    content: "";
-    position: absolute; left: 6px; top: 0.62em;
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--accent);
-  }
-  ul.points strong { display: block; }
-  ul.points span { color: var(--muted); }
-
-  .note {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 22px 24px;
-    color: var(--muted);
-  }
-  .note strong { color: var(--text); }
-
-  code {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 2px 7px;
-    font-size: 0.88em;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
-  pre {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 16px 18px;
-    overflow-x: auto;
-  }
-  pre code { background: none; border: 0; padding: 0; }
-
+  h1 { font-size: clamp(2.6rem, 7.2vw, 4.3rem); }
+  h2 { font-size: clamp(2rem, 5.2vw, 3.1rem); }
+  h3 { font-size: 1.12rem; font-family: var(--text); font-weight: 600; letter-spacing: 0; }
+  p { margin: 0 0 1.1em; text-wrap: pretty; }
   a { color: var(--accent); }
 
-  footer {
+  .lede { font-size: clamp(1.07rem, 2.3vw, 1.28rem); color: var(--muted); max-width: 34em; }
+
+  .eyebrow {
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 18px;
+  }
+
+  /* The reading highlight from the app, used as the page's one motif. */
+  .mark {
+    background: linear-gradient(var(--highlight), var(--highlight)) no-repeat left center / 0% 88%;
+    padding: 0 0.06em;
+    animation: sweep 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.45s forwards;
+  }
+  @keyframes sweep { to { background-size: 100% 88%; } }
+
+  /* ---------- buttons ---------- */
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    font-family: var(--text);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 17px 30px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.16), 0 10px 24px -14px rgba(79, 70, 229, 0.85);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(28,25,23,0.18), 0 16px 30px -14px rgba(79,70,229,0.9); }
+  .btn-quiet {
+    background: transparent;
+    color: var(--ink);
+    border-color: #d8cfbc;
+  }
+  .btn-quiet:hover { background: var(--surface); }
+  .btn:active { transform: translateY(0); }
+
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  .skip {
+    position: absolute;
+    left: -9999px;
+    top: 8px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 16px;
+    border-radius: 8px;
+    z-index: 20;
+  }
+  .skip:focus { left: 12px; }
+
+  /* ---------- masthead ---------- */
+
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 26px 0 0;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-family: var(--display);
+    font-size: 1.28rem;
+    font-weight: 600;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+  .brand img { width: 30px; height: 30px; border-radius: 8px; display: block; }
+  .top nav { display: flex; align-items: center; gap: 22px; font-size: 0.95rem; }
+  .top nav a { color: var(--muted); text-decoration: none; }
+  .top nav a:hover { color: var(--ink); }
+  @media (max-width: 640px) { .top nav .hide-s { display: none; } }
+
+  /* ---------- hero ---------- */
+
+  .hero { padding: clamp(48px, 8vw, 84px) 0 clamp(56px, 8vw, 96px); }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.06fr 0.94fr;
+    gap: clamp(28px, 5vw, 64px);
+    align-items: center;
+  }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+
+  .hero p.lede { margin-top: 22px; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 13px; margin-top: 30px; }
+
+  .trust {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 26px;
+    padding: 0;
+    list-style: none;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .trust li { display: flex; align-items: center; gap: 7px; }
+  .trust svg { flex: none; color: var(--teal); }
+
+  /* ---------- the phone ---------- */
+
+  .phone {
+    position: relative;
+    width: min(300px, 74vw);
+    margin-inline: auto;
+    border-radius: 34px;
+    padding: 9px;
+    background: #16161a;
+    box-shadow: 0 2px 6px rgba(28, 25, 23, 0.16), 0 34px 60px -32px rgba(28, 25, 23, 0.55);
+  }
+  /* height:auto, or the width/height attributes win and the phone renders
+     at its intrinsic 1422px. The attributes stay to reserve the space. */
+  .phone img { display: block; width: 100%; height: auto; border-radius: 26px; }
+  .phone-stage { position: relative; }
+  .phone-stage::before {
+    /* A soft pool of colour under the device, rather than a flat rectangle. */
+    content: '';
+    position: absolute;
+    inset: 12% -6% -4%;
+    background: radial-gradient(60% 50% at 50% 50%, rgba(79, 70, 229, 0.16), transparent 72%);
+    filter: blur(22px);
+    z-index: -1;
+  }
+
+  /* ---------- sections ---------- */
+
+  section { padding: clamp(60px, 9vw, 108px) 0; }
+  .band { background: var(--surface); }
+  .band-soft { background: linear-gradient(var(--paper), var(--surface) 55%, var(--surface)); }
+
+  .split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(30px, 6vw, 76px);
+    align-items: center;
+  }
+  @media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+  .split.flip > :first-child { order: 2; }
+  @media (max-width: 860px) { .split.flip > :first-child { order: 0; } }
+
+  /* ---------- the pile of unread documents ---------- */
+
+  .pile { display: grid; gap: 11px; max-width: 430px; }
+  .doc {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 15px 18px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    color: var(--muted);
+    font-size: 0.97rem;
+  }
+  .band .doc { background: var(--paper); }
+  .doc .sheet {
+    flex: none;
+    width: 26px;
+    height: 32px;
+    border-radius: 4px;
+    background: var(--sink);
+    border: 1px solid var(--line);
+  }
+  .doc .when { margin-left: auto; font-size: 0.83rem; opacity: 0.8; }
+  .doc:nth-child(2) { opacity: 0.82; }
+  .doc:nth-child(3) { opacity: 0.64; }
+  .doc:nth-child(4) { opacity: 0.46; }
+  .doc:nth-child(5) { opacity: 0.28; }
+
+  .turn {
+    font-family: var(--display);
+    font-size: clamp(1.5rem, 3.6vw, 2.15rem);
+    line-height: 1.24;
+    margin: 38px 0 0;
+    max-width: 22em;
+  }
+
+  /* ---------- voice card ---------- */
+
+  .voice {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 18px;
+    background: var(--paper);
+    border: 2px solid var(--accent);
+    border-radius: 18px;
+    max-width: 380px;
+  }
+  .voice .dot {
+    flex: none;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--teal);
+    display: grid;
+    place-items: center;
+  }
+  .voice .name { font-weight: 600; font-size: 1.06rem; }
+  .voice .meta { font-size: 0.88rem; color: var(--muted); }
+  .voice .tick { margin-left: auto; color: var(--accent); }
+
+  .aside-note {
+    margin-top: 26px;
+    padding-top: 22px;
     border-top: 1px solid var(--line);
-    padding: 34px 0 70px;
+    font-size: 0.95rem;
+    color: var(--muted);
+    max-width: 34em;
+  }
+
+  /* ---------- features ---------- */
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+    margin-top: 40px;
+  }
+  .feature { background: var(--paper); padding: 24px 22px; }
+  .feature h3 { margin: 0 0 5px; }
+  .feature p { margin: 0; font-size: 0.93rem; color: var(--muted); }
+
+  /* ---------- early access ---------- */
+
+  .capture {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: clamp(26px, 4.4vw, 42px);
+    max-width: 560px;
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.05), 0 26px 48px -34px rgba(28, 25, 23, 0.4);
+  }
+  .capture h2 { font-size: clamp(1.6rem, 3.6vw, 2.1rem); }
+  .capture .why { margin: 14px 0 22px; color: var(--muted); font-size: 0.97rem; }
+  .field { display: grid; gap: 8px; }
+  .field label { font-size: 0.88rem; font-weight: 600; }
+  .field input {
+    font-family: var(--text);
+    font-size: 1rem;
+    padding: 15px 17px;
+    border-radius: 13px;
+    border: 1px solid #d8cfbc;
+    background: var(--paper);
+    color: var(--ink);
+    width: 100%;
+  }
+  .field input::placeholder { color: #a8a29e; }
+  .capture .btn { width: 100%; margin-top: 14px; }
+  .form-note { margin: 14px 0 0; font-size: 0.83rem; color: var(--muted); }
+  .beta-line { margin: 18px 0 0; font-size: 0.93rem; }
+
+  .status { margin: 16px 0 0; font-size: 0.95rem; }
+  .status[data-tone='error'] { color: #a4291f; }
+  .done { text-align: center; padding: 8px 0 4px; }
+  .done .big { font-family: var(--display); font-size: clamp(1.7rem, 4vw, 2.2rem); margin-bottom: 8px; }
+  .done p { color: var(--muted); margin: 0; }
+  [hidden] { display: none !important; }
+
+  /* ---------- faq ---------- */
+
+  .faq { margin-top: 34px; border-top: 1px solid var(--line); }
+  .faq details { border-bottom: 1px solid var(--line); }
+  .faq summary {
+    cursor: pointer;
+    padding: 20px 40px 20px 0;
+    font-weight: 600;
+    list-style: none;
+    position: relative;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    transform: translateY(-70%) rotate(45deg);
+    transition: transform 0.2s ease;
+  }
+  .faq details[open] summary::after { transform: translateY(-30%) rotate(-135deg); }
+  .faq .answer { padding: 0 0 22px; color: var(--muted); max-width: 46em; }
+  .faq .answer p:last-child { margin-bottom: 0; }
+
+  /* ---------- footer ---------- */
+
+  footer.end {
+    border-top: 1px solid var(--line);
+    padding: 40px 0 62px;
     color: var(--muted);
     font-size: 0.92rem;
-    text-align: center;
   }
-  footer a { color: var(--muted); margin: 0 10px; }
+  .end-row { display: flex; flex-wrap: wrap; gap: 14px 26px; align-items: center; }
+  .end-row a { color: var(--muted); text-decoration: none; }
+  .end-row a:hover { color: var(--ink); text-decoration: underline; }
+  .end .made { margin: 22px 0 0; }
+
+  /* ---------- reveal ---------- */
+
+  /* Only hidden where there is JavaScript to bring it back. Keyed off the
+     class set in <head>, or a reader with JS off sees an empty page. */
+  .js .rise { opacity: 0; transform: translateY(16px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+  .js .rise.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .js .rise { opacity: 1; transform: none; transition: none; }
+    .mark { animation: none; background-size: 100% 88%; }
+    .btn { transition: none; }
+  }
 </style>
 </head>
 <body>
 
+<a class="skip" href="#main">Skip to content</a>
+
 <div class="wrap">
-
-  <header>
-    <h1>Your books, read aloud.</h1>
-    <p class="tagline">
-      Papervoice turns the PDFs you own into audiobooks — on your phone,
-      offline, with neural voices. Nothing you read is ever uploaded.
-    </p>
-    <a class="cta" href="https://github.com/shashankappu21/papervoice/releases/latest">Download for Android</a>
-    <p class="under-cta">
-      Free and open source · <a href="https://github.com/shashankappu21/papervoice">source on GitHub</a>
-    </p>
+  <header class="top">
+    <a class="brand" href="/">
+      <img src="/favicon.png" alt="" width="30" height="30">
+      Papervoice
+    </a>
+    <nav>
+      <a class="hide-s" href="#how">How it works</a>
+      <a class="hide-s" href="#faq">FAQ</a>
+      <a href="https://github.com/shashankappu21/papervoice" data-track="github_click" rel="noopener">GitHub</a>
+    </nav>
   </header>
+</div>
 
-  <section>
-    <h2>What it does</h2>
-    <ul class="points">
-      <li>
-        <strong>Reads your PDFs aloud</strong>
-        <span>Import a book and listen. The sentence being spoken is highlighted, and the page follows along.</span>
-      </li>
-      <li>
-        <strong>Fifteen voices, on the device</strong>
-        <span>Eight male, seven female, three British. Downloaded once, then they work in aeroplane mode. Your phone's own voice works too, with nothing to download.</span>
-      </li>
-      <li>
-        <strong>Keeps your place, exactly</strong>
-        <span>Per book, to the sentence. Come back a month later and carry on.</span>
-      </li>
-      <li>
-        <strong>Made to be lived in</strong>
-        <span>Groups for your shelves, a contents page, speed from 0.5× to 3×, light, dark and paper themes.</span>
-      </li>
-    </ul>
+<main id="main">
+
+  <!-- 1. Hero -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <h1>Finally get through the PDFs you keep <span class="mark">meaning to read</span>.</h1>
+        <p class="lede">
+          Turn the PDFs you already own into something you can listen to — with
+          natural voices that work entirely on your phone.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#early-access" data-track="early_access_click" data-where="hero">Get early access</a>
+          <a class="btn btn-quiet" href="https://github.com/shashankappu21/papervoice" data-track="github_click" rel="noopener">View on GitHub</a>
+        </div>
+        <ul class="trust">
+          <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.6l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Free</li>
+          <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.6l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Offline</li>
+          <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.6l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>No uploads</li>
+          <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.6l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Open source</li>
+        </ul>
+      </div>
+
+      <div class="phone-stage">
+        <div class="phone">
+          <img src="/img/reader.webp" width="640" height="1422" fetchpriority="high"
+               alt="Papervoice reading a book aloud. The sentence being spoken is highlighted in yellow, with playback controls and the selected voice below it.">
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section>
-    <h2>It doesn't phone home</h2>
-    <div class="note">
-      <p style="margin-top:0">
-        <strong>No account. No subscription. No ads. No analytics.</strong>
-      </p>
-      <p>
-        Your documents are read on your phone by software running on your phone.
-        The text never leaves it, and neither does the audio. The app talks to
-        the network exactly once per voice you choose to download, and never
-        again.
-      </p>
-      <p style="margin-bottom:0">
-        That isn't a promise about our intentions — it's a property of how it's
-        built, and the source is public so you can check.
-        <a href="/privacy">Privacy policy</a>
+  <!-- 2. The problem -->
+  <section class="band-soft" id="how">
+    <div class="wrap split">
+      <div class="rise">
+        <p class="eyebrow">The honest version</p>
+        <h2>Saved for later. And later never comes.</h2>
+        <p class="lede" style="margin-top:20px">
+          Books. Papers. Reports. Notes. PDFs you genuinely wanted to read —
+          still sitting there.
+        </p>
+      </div>
+      <div class="pile rise" aria-hidden="true">
+        <div class="doc"><span class="sheet"></span> The book you bought <span class="when">March</span></div>
+        <div class="doc"><span class="sheet"></span> Research paper <span class="when">April</span></div>
+        <div class="doc"><span class="sheet"></span> Annual report <span class="when">June</span></div>
+        <div class="doc"><span class="sheet"></span> Lecture notes <span class="when">August</span></div>
+        <div class="doc"><span class="sheet"></span> Saved for later <span class="when">—</span></div>
+      </div>
+    </div>
+    <div class="wrap">
+      <p class="turn rise">
+        You don't need more reading time.<br>
+        You need <span class="mark">another way to read</span>.
       </p>
     </div>
   </section>
 
-  <section>
-    <h2>Installing it</h2>
-    <p style="color:var(--muted)">
-      It isn't on the Play Store yet. Download the APK, open it, and allow your
-      browser to install apps when Android asks — that prompt is normal for
-      anything from outside the store.
-    </p>
-    <p style="color:var(--muted)">
-      Every release publishes a checksum, so you can confirm you got the file we
-      built:
-    </p>
-<pre><code>sha256sum papervoice-1.0.0.apk</code></pre>
-    <p style="color:var(--muted); margin-bottom:0">
-      For automatic updates, point
-      <a href="https://github.com/ImranR98/Obtainium">Obtainium</a> at the
-      GitHub repository.
-    </p>
+  <!-- 3. The outcome -->
+  <section class="band">
+    <div class="wrap split flip">
+      <div class="phone-stage rise">
+        <div class="phone">
+          <img src="/img/library.webp" width="640" height="1422" loading="lazy"
+               alt="The Papervoice library, showing part-read books with their progress and a mini player at the bottom.">
+        </div>
+      </div>
+      <div class="rise">
+        <p class="eyebrow">What changes</p>
+        <h2>Turn reading time into listening time.</h2>
+        <p class="lede" style="margin-top:20px">
+          Walk. Commute. Rest. Keep going. Papervoice lets the things you want
+          to read come with you.
+        </p>
+        <p class="aside-note">
+          It picks up exactly where you stopped — to the sentence — in every
+          book, however long you leave it.
+        </p>
+      </div>
+    </div>
   </section>
 
+  <!-- 4. Voices -->
   <section>
-    <h2>Open source, and why</h2>
-    <p style="color:var(--muted)">
-      Papervoice is GPLv3 — not as a stance, but because the component that
-      turns letters into sounds is, and it runs inside the app. So the source
-      has to be open, which seems a fair trade for software that reads your
-      books.
-    </p>
-    <p style="color:var(--muted); margin-bottom:0">
-      The voices are other people's work, released freely: mostly trained from
-      public-domain LibriVox recordings. Every one is
-      <a href="https://github.com/shashankappu21/papervoice/blob/main/docs/voice-credits.md">credited with the licence it was checked against</a>.
-    </p>
+    <div class="wrap split">
+      <div class="rise">
+        <p class="eyebrow">Voices</p>
+        <h2>Natural voices. On your device.</h2>
+        <p class="lede" style="margin-top:20px">
+          Choose from natural-sounding voices and download them once. After
+          that, they work offline.
+        </p>
+        <div class="voice" style="margin-top:28px">
+          <span class="dot" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24"><g fill="#fff"><rect x="3" y="9" width="2.6" height="6" rx="1.3"/><rect x="7.5" y="6" width="2.6" height="12" rx="1.3"/><rect x="12" y="3.5" width="2.6" height="17" rx="1.3"/><rect x="16.5" y="7.5" width="2.6" height="9" rx="1.3"/></g></svg>
+          </span>
+          <span>
+            <span class="name">Lyra</span><br>
+            <span class="meta">US · female · on this phone</span>
+          </span>
+          <svg class="tick" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <p class="aside-note">
+          Lyra is the voice most people settle on. There are others — British
+          and American, female and male — and your phone's own voice works too,
+          with nothing to download.
+        </p>
+      </div>
+      <div class="phone-stage rise">
+        <div class="phone">
+          <img src="/img/voices.webp" width="640" height="1422" loading="lazy"
+               alt="The Papervoice voice list, with Lyra selected and marked as already downloaded to the phone.">
+        </div>
+      </div>
+    </div>
   </section>
 
-</div>
+  <!-- 5. Offline and privacy -->
+  <section class="band">
+    <div class="wrap">
+      <div class="split">
+        <div class="rise">
+          <p class="eyebrow">Offline</p>
+          <h2>No internet required.</h2>
+          <p class="lede" style="margin-top:18px">
+            Once a voice is downloaded, listening happens entirely on your
+            phone. Aeroplane mode, the underground, a dead signal — it carries
+            on reading.
+          </p>
+        </div>
+        <div class="rise">
+          <p class="eyebrow">Privacy</p>
+          <h2>No uploads. No account.</h2>
+          <p class="lede" style="margin-top:18px">
+            Your documents stay on your device. Papervoice does not need your
+            books in the cloud just to read them aloud.
+          </p>
+          <p class="aside-note">
+            That isn't a promise about intentions — it's how the app is built,
+            and the source is public so anyone can check.
+            <a href="/privacy">Read the privacy policy</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-<footer>
-  <a href="https://github.com/shashankappu21/papervoice">GitHub</a>
-  <a href="/privacy">Privacy</a>
-  <a href="mailto:hello@papervoice.app">hello@papervoice.app</a>
-  <p style="margin:18px 0 0">Made by Shashank S T</p>
+  <!-- 6. Supporting features -->
+  <section>
+    <div class="wrap">
+      <p class="eyebrow rise">Everything else it does</p>
+      <h2 class="narrow rise">Made to be lived in.</h2>
+      <div class="features rise">
+        <div class="feature"><h3>Follow along</h3><p>The spoken sentence is highlighted as it reads.</p></div>
+        <div class="feature"><h3>Tap to jump</h3><p>Touch any sentence to start from there.</p></div>
+        <div class="feature"><h3>Resume exactly</h3><p>Your place is kept to the sentence, per book.</p></div>
+        <div class="feature"><h3>Contents</h3><p>Chapter navigation, read out of the PDF itself.</p></div>
+        <div class="feature"><h3>Speed</h3><p>From 0.5&times; to 3&times;, with presets.</p></div>
+        <div class="feature"><h3>Themes</h3><p>Paper, light and dark.</p></div>
+        <div class="feature"><h3>Groups</h3><p>Shelves, for keeping a library in order.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Open source -->
+  <section class="band">
+    <div class="wrap narrow rise">
+      <p class="eyebrow">Trust</p>
+      <h2>Built in the open.</h2>
+      <p class="lede" style="margin-top:20px">
+        Papervoice is free and open source. You can inspect the code, see how
+        your documents are handled, and contribute improvements.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-quiet" href="https://github.com/shashankappu21/papervoice" data-track="github_click" rel="noopener">View source on GitHub</a>
+      </div>
+      <p class="aside-note">
+        Licensed under the GPL, because the component that turns letters into
+        sounds is. <a href="https://github.com/shashankappu21/papervoice/blob/main/LICENSE">Licence</a> ·
+        <a href="https://github.com/shashankappu21/papervoice/blob/main/docs/voice-credits.md">Voice credits</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- 8. Early access -->
+  <section id="early-access">
+    <div class="wrap split">
+      <div class="rise">
+        <h2>Your PDFs.<br>Now listenable.</h2>
+        <p class="lede" style="margin-top:20px">
+          Get early access to Papervoice on Android.
+        </p>
+      </div>
+
+      <div class="capture rise">
+        <div id="capture-form">
+          <h2 id="early-access-heading">Get early access to Papervoice</h2>
+          <p class="why">
+            Enter the Google account you use on your Android phone. I'll use it
+            to invite you to the beta.
+          </p>
+          <form id="early-access-form" novalidate>
+            <div class="field">
+              <label for="email">Email address</label>
+              <input id="email" name="email" type="email" inputmode="email"
+                     autocomplete="email" placeholder="you@gmail.com" required
+                     aria-describedby="email-help">
+            </div>
+            <button class="btn btn-primary" type="submit" data-track="early_access_submit">Get early access</button>
+            <p class="status" id="status" role="status" aria-live="polite"></p>
+            <p class="form-note" id="email-help">
+              Your address is used to send a beta invite, and nothing else. No
+              newsletter, no sharing. <a href="/privacy#early-access">How it's handled</a>
+            </p>
+          </form>
+          <p class="beta-line" id="beta-line" hidden>
+            Already have an invite? <a id="beta-link" href="#" data-track="beta_join_click" rel="noopener">Join the Android beta</a>
+          </p>
+        </div>
+
+        <div class="done" id="capture-done" hidden>
+          <p class="big">You're in.</p>
+          <p>I'll send you access when your beta invite is ready.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. FAQ -->
+  <section class="band" id="faq">
+    <div class="wrap narrow">
+      <p class="eyebrow rise">Questions</p>
+      <h2 class="rise">Before you sign up.</h2>
+      <div class="faq rise">
+        <details>
+          <summary>Is Papervoice free?</summary>
+          <div class="answer"><p>Yes. It is currently free and open source.</p></div>
+        </details>
+        <details>
+          <summary>Does it work offline?</summary>
+          <div class="answer"><p>Yes, after downloading a voice once. Your phone's own voice needs no download at all.</p></div>
+        </details>
+        <details>
+          <summary>Are my PDFs uploaded anywhere?</summary>
+          <div class="answer"><p>No. Reading happens on-device. The app fetches a voice when you choose to download one, and makes no other network requests.</p></div>
+        </details>
+        <details>
+          <summary>Is it on Google Play?</summary>
+          <div class="answer"><p>Not publicly yet. Early-access users will be invited to the Android beta.</p></div>
+        </details>
+        <details>
+          <summary>Can I install it from GitHub?</summary>
+          <div class="answer"><p>Yes, if you're comfortable sideloading an APK. Builds are published on the <a href="https://github.com/shashankappu21/papervoice/releases" data-track="github_click" rel="noopener">releases page</a>, each with a checksum you can verify.</p></div>
+        </details>
+        <details>
+          <summary>Which phones does it run on?</summary>
+          <div class="answer"><p>Android 7.0 and newer.</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="end">
+  <div class="wrap">
+    <div class="end-row">
+      <a href="https://github.com/shashankappu21/papervoice" data-track="github_click" rel="noopener">GitHub</a>
+      <a href="/privacy">Privacy</a>
+      <a href="https://github.com/shashankappu21/papervoice/releases" data-track="github_click" rel="noopener">Releases</a>
+      <a href="mailto:hello@papervoice.app">hello@papervoice.app</a>
+    </div>
+    <p class="made">Made by Shashank S T</p>
+  </div>
 </footer>
+
+<script>
+/*
+ * Everything below is optional to the page working. The links, the form
+ * markup and the content are all there without it.
+ */
+(function () {
+  'use strict';
+
+  /* ------------------------------------------------------------------
+   * INTEGRATION POINTS — the two things to fill in
+   * ------------------------------------------------------------------
+   *
+   * 1. EARLY_ACCESS_ENDPOINT
+   *    A URL that accepts POST with a JSON body:
+   *
+   *      { email, timestamp, utm_source, utm_medium, utm_campaign, referrer }
+   *
+   *    and answers 2xx when the address is stored. Until it is set, the form
+   *    falls back to opening a pre-addressed email instead -- which is not as
+   *    smooth, but is honest, because a success message shown over a request
+   *    that went nowhere is a lie to someone who wanted in.
+   *
+   * 2. BETA_OPT_IN_URL
+   *    The Play Console tester opt-in link. The "Join the Android beta"
+   *    line stays hidden until this is set.
+   */
+  var EARLY_ACCESS_ENDPOINT = '';
+  var BETA_OPT_IN_URL = '';
+  var FALLBACK_EMAIL = 'hello@papervoice.app';
+
+  /* ------------------------------------------------------------------
+   * Analytics: nothing is sent anywhere by default.
+   *
+   * The app's whole claim is that it does not watch you, and a page making
+   * that claim while loading someone else's tracker would be worth less than
+   * no page at all. So every event is dispatched as a DOM event and, only if
+   * an endpoint is configured, sent to it as well. Point ANALYTICS_ENDPOINT
+   * at something you host, or listen for 'papervoice:track' from your own
+   * script.
+   * ------------------------------------------------------------------ */
+  var ANALYTICS_ENDPOINT = '';
+
+  var campaign = (function () {
+    var out = {};
+    try {
+      var params = new URLSearchParams(location.search);
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (key) {
+        var value = params.get(key);
+        if (value) out[key] = value.slice(0, 120);
+      });
+      // Kept for the whole visit, so a submit on a later scroll still knows
+      // which campaign brought the person here.
+      if (Object.keys(out).length) sessionStorage.setItem('pv_campaign', JSON.stringify(out));
+      else {
+        var saved = sessionStorage.getItem('pv_campaign');
+        if (saved) out = JSON.parse(saved);
+      }
+    } catch (e) {
+      // Private browsing can refuse storage. Campaign data is not worth an
+      // exception on a landing page.
+    }
+    return out;
+  })();
+
+  function track(event, detail) {
+    var payload = Object.assign({ event: event, at: new Date().toISOString() }, campaign, detail || {});
+    try {
+      document.dispatchEvent(new CustomEvent('papervoice:track', { detail: payload }));
+    } catch (e) { /* ancient browser; the page still works */ }
+    if (!ANALYTICS_ENDPOINT) return;
+    try {
+      var body = JSON.stringify(payload);
+      if (navigator.sendBeacon) navigator.sendBeacon(ANALYTICS_ENDPOINT, body);
+      else fetch(ANALYTICS_ENDPOINT, { method: 'POST', body: body, keepalive: true });
+    } catch (e) { /* never let a metric break a click */ }
+  }
+
+  track('page_view', { path: location.pathname });
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-track]');
+    if (el) track(el.getAttribute('data-track'), { where: el.getAttribute('data-where') || undefined });
+  });
+
+  /* ---------- the beta line, only when there is somewhere to send people ---- */
+  if (BETA_OPT_IN_URL) {
+    var link = document.getElementById('beta-link');
+    link.href = BETA_OPT_IN_URL;
+    link.target = '_blank';
+    document.getElementById('beta-line').hidden = false;
+  }
+
+  /* ---------- early access ---------- */
+  var form = document.getElementById('early-access-form');
+  var status = document.getElementById('status');
+
+  function say(message, tone) {
+    status.textContent = message;
+    if (tone) status.setAttribute('data-tone', tone);
+    else status.removeAttribute('data-tone');
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var input = document.getElementById('email');
+    var email = input.value.trim();
+
+    // Deliberately loose. The address is confirmed by an invite arriving, and
+    // a clever pattern here only ever turns away real, unusual addresses.
+    if (!email || email.indexOf('@') < 1 || email.indexOf('.') < 0) {
+      say('That address looks incomplete — please check it.', 'error');
+      input.focus();
+      return;
+    }
+
+    var record = Object.assign({
+      email: email,
+      timestamp: new Date().toISOString(),
+      referrer: document.referrer || undefined
+    }, campaign);
+
+    if (!EARLY_ACCESS_ENDPOINT) {
+      // No list to add to yet. Hand the person their own email client rather
+      // than pretending the address was stored.
+      say('Opening your email app — send the message and you’re on the list.');
+      track('early_access_submit', { mode: 'mailto' });
+      location.href = 'mailto:' + FALLBACK_EMAIL +
+        '?subject=' + encodeURIComponent('Early access to Papervoice') +
+        '&body=' + encodeURIComponent('Please add ' + email + ' to the Papervoice beta.');
+      return;
+    }
+
+    var button = form.querySelector('button[type=submit]');
+    button.disabled = true;
+    say('Adding you…');
+
+    fetch(EARLY_ACCESS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(record)
+    }).then(function (response) {
+      if (!response.ok) throw new Error('rejected ' + response.status);
+      track('early_access_submit', { mode: 'endpoint' });
+      document.getElementById('capture-form').hidden = true;
+      var done = document.getElementById('capture-done');
+      done.hidden = false;
+      done.setAttribute('tabindex', '-1');
+      done.focus();
+    }).catch(function () {
+      button.disabled = false;
+      say('That didn’t go through. Try again, or email ' + FALLBACK_EMAIL + '.', 'error');
+    });
+  });
+
+  /* ---------- reveal on scroll ---------- */
+  var rises = document.querySelectorAll('.rise');
+  if (!window.IntersectionObserver || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    rises.forEach(function (el) { el.classList.add('in'); });
+  } else {
+    var seen = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('in');
+        seen.unobserve(entry.target);
+      });
+    }, { rootMargin: '0px 0px -12% 0px' });
+    rises.forEach(function (el) { seen.observe(el); });
+  }
+})();
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Papervoice",
+  "applicationCategory": "BooksApplication",
+  "operatingSystem": "Android 7.0+",
+  "url": "https://papervoice.app/",
+  "description": "Turn the PDFs you already own into something you can listen to, with natural voices that work entirely on your phone.",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "license": "https://www.gnu.org/licenses/gpl-3.0.html"
+}
+</script>
 
 </body>
 </html>

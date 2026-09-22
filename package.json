@@ -52,7 +52,13 @@
     "release": "node scripts/release.mjs",
     "shot": "node scripts/shot.mjs",
     "shots": "node scripts/shotServer.mjs",
-    "assets": "python scripts/storeAssets.py"
+    "svg:promo": "node scripts/exportSvgPromoAssets.mjs",
+    "promo:lyra": "node scripts/promoPreviewServer.mjs",
+    "promo:manifest": "node scripts/createPromoManifest.mjs",
+    "promo:sync": "node scripts/createPromoManifest.mjs && node scripts/syncRemotionAssets.mjs && node scripts/createPromoManifest.mjs && node scripts/syncRemotionAssets.mjs",
+    "remotion:studio": "npm --prefix promo-remotion run studio",
+    "assets": "python scripts/storeAssets.py",
+    "site:assets": "python scripts/siteAssets.py"
   },
   "license": "GPL-3.0-or-later"
 }

@@ -4,143 +4,198 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Privacy — Papervoice</title>
-<meta name="description" content="Papervoice collects nothing.">
+<meta name="description" content="The Papervoice app collects nothing. This page says exactly what that means, and what happens to an address given to the early-access list.">
+<link rel="canonical" href="https://papervoice.app/privacy">
+<meta name="robots" content="index, follow">
+
+<link rel="icon" href="/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#faf7f0">
+
 <style>
+  @font-face {
+    font-family: 'Playfair';
+    src: url('/fonts/playfair.woff2') format('woff2-variations');
+    font-weight: 400 700;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Jost';
+    src: url('/fonts/jost.woff2') format('woff2-variations');
+    font-weight: 300 700;
+    font-display: swap;
+  }
+
   :root {
-    --bg: #0d0d0f;
-    --surface: #1c1c20;
-    --text: #f2f2f4;
-    --muted: #a0a0aa;
-    --accent: #8b7cf6;
-    --accent-on: #0d0d0f;
-    --line: #2a2a31;
+    --paper: #faf7f0;
+    --surface: #f2ece0;
+    --ink: #1c1917;
+    --muted: #57534e;
+    --line: #e7dfd0;
+    --accent: #4f46e5;
+    --display: 'Playfair', Georgia, serif;
+    --text: 'Jost', -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--text);
+    font-size: 17px;
+    line-height: 1.7;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 40px); }
+  a { color: var(--accent); }
+  a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 
-  header { padding: 88px 0 56px; text-align: center; }
+  .back { display: inline-block; margin: 34px 0 0; color: var(--muted); text-decoration: none; font-size: 0.95rem; }
+  .back:hover { color: var(--ink); }
+
   h1 {
-    font-size: clamp(2.4rem, 8vw, 3.6rem);
-    line-height: 1.08;
-    letter-spacing: -0.03em;
-    margin: 0 0 18px;
-    font-weight: 800;
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(2.2rem, 6vw, 3rem);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    margin: 26px 0 0;
   }
-  .tagline { font-size: 1.2rem; color: var(--muted); margin: 0 auto 36px; max-width: 30em; }
-
-  .cta {
-    display: inline-block;
-    background: var(--accent);
-    color: var(--accent-on);
-    font-weight: 700;
-    font-size: 1.05rem;
-    padding: 15px 34px;
-    border-radius: 999px;
-    text-decoration: none;
+  h2 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 1.5rem;
+    line-height: 1.2;
+    margin: 46px 0 12px;
   }
-  .cta:hover { filter: brightness(1.08); }
-  .under-cta { color: var(--muted); font-size: 0.92rem; margin-top: 14px; }
-  .under-cta a { color: var(--muted); }
-
-  section { padding: 44px 0; border-top: 1px solid var(--line); }
-  h2 { font-size: 1.45rem; letter-spacing: -0.02em; margin: 0 0 20px; }
-
-  ul.points { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
-  ul.points li { padding-left: 30px; position: relative; }
-  ul.points li::before {
-    content: "";
-    position: absolute; left: 6px; top: 0.62em;
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--accent);
-  }
-  ul.points strong { display: block; }
-  ul.points span { color: var(--muted); }
+  .claim { font-size: 1.22rem; margin: 20px 0 6px; }
+  .dated { color: var(--muted); font-size: 0.92rem; margin: 0 0 8px; }
+  p { margin: 0 0 1.05em; color: var(--muted); }
+  p.ink { color: var(--ink); }
+  ul { margin: 0 0 1.05em; padding-left: 1.15em; color: var(--muted); }
+  li { margin-bottom: 0.5em; }
+  li strong { color: var(--ink); }
 
   .note {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 14px;
-    padding: 22px 24px;
-    color: var(--muted);
+    padding: 20px 22px;
+    margin: 0 0 1.05em;
   }
-  .note strong { color: var(--text); }
-
-  code {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 2px 7px;
-    font-size: 0.88em;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
-  pre {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 16px 18px;
-    overflow-x: auto;
-  }
-  pre code { background: none; border: 0; padding: 0; }
-
-  a { color: var(--accent); }
+  .note p:last-child { margin-bottom: 0; }
 
   footer {
     border-top: 1px solid var(--line);
-    padding: 34px 0 70px;
+    margin-top: 64px;
+    padding: 30px 0 60px;
     color: var(--muted);
     font-size: 0.92rem;
-    text-align: center;
   }
-  footer a { color: var(--muted); margin: 0 10px; }
+  footer a { color: var(--muted); margin-right: 22px; text-decoration: none; }
+  footer a:hover { color: var(--ink); text-decoration: underline; }
 </style>
 </head>
 <body>
-<div class="wrap" style="padding-top:64px;padding-bottom:64px">
-  <p><a href="/">&larr; Papervoice</a></p>
-  <h1 style="font-size:2.2rem">Privacy Policy</h1>
-  <p style="font-size:1.25rem"><strong>Papervoice collects nothing.</strong></p>
-  <p style="color:var(--muted)">Last updated: 15 September 2026</p>
-  <h2>What is collected</h2>
-  <p style="color:var(--muted)">Nothing. There is no account, no analytics, no crash reporting, no</p>
-  <p style="color:var(--muted)">advertising identifier, and no telemetry of any kind.</p>
-  <p style="color:var(--muted)">We do not know how many books you have, which voices you use, how long you</p>
-  <p style="color:var(--muted)">listen, or that you have opened the app at all.</p>
+
+<div class="wrap">
+  <a class="back" href="/">&larr; Papervoice</a>
+
+  <h1>Privacy Policy</h1>
+  <p class="claim ink"><strong>The Papervoice app collects nothing.</strong></p>
+  <p class="dated">Last updated: 22 September 2026</p>
+
+  <h2>What the app collects</h2>
+  <p>
+    Nothing. There is no account, no analytics, no crash reporting, no
+    advertising identifier, and no telemetry of any kind.
+  </p>
+  <p>
+    We do not know how many books you have, which voices you use, how long you
+    listen, or that you have opened the app at all.
+  </p>
+
   <h2>Your documents</h2>
-  <p style="color:var(--muted)">The PDFs you import stay on your device. They are read on your phone, by</p>
-  <p style="color:var(--muted)">software running on your phone, and are never uploaded anywhere. Neither is</p>
-  <p style="color:var(--muted)">the text taken from them, nor the audio generated from that text.</p>
-  <p style="color:var(--muted)">This is not a promise about our intentions; it is a property of how the app</p>
-  <p style="color:var(--muted)">is built. Papervoice is open source, and anyone may check:</p>
-  <p style="color:var(--muted)"><a href="https://github.com/shashankappu21/papervoice</p>">https://github.com/shashankappu21/papervoice</p></a>
+  <p>
+    The PDFs you import stay on your device. They are read on your phone, by
+    software running on your phone, and are never uploaded anywhere. Neither is
+    the text taken from them, nor the audio generated from that text.
+  </p>
+  <div class="note">
+    <p>
+      This is not a promise about our intentions; it is a property of how the
+      app is built. Papervoice is open source, and anyone may check:
+      <a href="https://github.com/shashankappu21/papervoice">github.com/shashankappu21/papervoice</a>
+    </p>
+  </div>
+
   <h2>When the app uses the network</h2>
-  <p style="color:var(--muted)">Once, per voice you choose to download.</p>
-  <p style="color:var(--muted)">Selecting a natural voice downloads its model from a public address named in</p>
-  <p style="color:var(--muted)">the app's source code. That request contains no information about you or</p>
-  <p style="color:var(--muted)">your documents beyond the fact that a file was requested. The app makes no</p>
-  <p style="color:var(--muted)">other network requests, and works fully offline afterwards.</p>
+  <p>Once, per voice you choose to download.</p>
+  <p>
+    Selecting a natural voice downloads its model from a public address named
+    in the app's source code. That request contains no information about you or
+    your documents beyond the fact that a file was requested. The app makes no
+    other network requests, and works fully offline afterwards.
+  </p>
+
   <h2>Permissions</h2>
-  <li style="color:var(--muted)">**Storage / file access** — to open the PDF you pick. Nothing else is read.</li>
-  <li style="color:var(--muted)">**Notifications** — to show playback controls while a book is being read.</li>
-  <p style="color:var(--muted)">There is no microphone, camera, contacts, or location access.</p>
+  <ul>
+    <li><strong>Storage and file access</strong> — to open the PDF you pick. Nothing else is read.</li>
+    <li><strong>Notifications</strong> — to show playback controls while a book is being read.</li>
+  </ul>
+  <p>There is no microphone, camera, contacts, or location access.</p>
+
+  <h2 id="early-access">The early-access list</h2>
+  <p class="ink">
+    This is the one place Papervoice holds anything about you, and it only
+    happens if you ask it to.
+  </p>
+  <p>
+    If you give your email address on the home page to join the Android beta,
+    that address is stored so an invite can be sent to you. Alongside it are
+    the date you signed up and, when the link you arrived through carried them,
+    the campaign tags in that link (which advert or post brought you here).
+    Nothing else is asked for and nothing else is kept.
+  </p>
+  <p>
+    It is used to send you a beta invite and news about the app, and for
+    nothing else. It is never sold, and never shared with anyone beyond the
+    service that stores the list and Google Play, which needs the address to
+    issue the invite. Ask at any time and the address is deleted — or use the
+    unsubscribe link in any email.
+  </p>
+
+  <h2>This website</h2>
+  <p>
+    The site sets no cookies and loads nothing from third parties: the fonts
+    and images are served from this domain. Your browser keeps any campaign
+    tags from your link for the length of the visit so a later sign-up can be
+    attributed, and that is cleared when you close the tab. The site is hosted
+    on GitHub Pages, whose servers see the usual request information, including
+    your IP address.
+  </p>
+
   <h2>Children</h2>
-  <p style="color:var(--muted)">The app collects no data from anyone, including children.</p>
+  <p>The app collects no data from anyone, including children.</p>
+
   <h2>Changes</h2>
-  <p style="color:var(--muted)">If this ever changes, it will change here first, and the app's release notes</p>
-  <p style="color:var(--muted)">will say so plainly. Anything less would make the rest of this document</p>
-  <p style="color:var(--muted)">worthless.</p>
+  <p>
+    If this ever changes, it will change here first, and the app's release
+    notes will say so plainly. Anything less would make the rest of this
+    document worthless.
+  </p>
+
   <h2>Contact</h2>
-  <p style="color:var(--muted)"><a href="mailto:hello@papervoice.app">hello@papervoice.app</a></p>
+  <p><a href="mailto:hello@papervoice.app">hello@papervoice.app</a></p>
 </div>
+
 <footer>
-  <a href="/">Home</a>
-  <a href="mailto:hello@papervoice.app">hello@papervoice.app</a>
+  <div class="wrap">
+    <a href="/">Home</a>
+    <a href="https://github.com/shashankappu21/papervoice">GitHub</a>
+    <a href="mailto:hello@papervoice.app">hello@papervoice.app</a>
+  </div>
 </footer>
+
 </body>
 </html>
