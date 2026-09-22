@@ -17,10 +17,12 @@ WebP because these are photographs of a screen in all but name: at width 640
 and quality 82 each one lands around 40KB, against 300KB as PNG, and the page
 should open on a phone on a train.
 
-Needs Pillow. Shares its fonts with storeAssets.py, which fetches them.
+Needs Pillow. Shares its fonts with storeAssets.py, which fetches them, and
+brings down their OFL notices, which have to ship beside the font files.
 """
 import os
 import sys
+import urllib.request
 
 from PIL import Image, ImageDraw
 
@@ -128,6 +130,23 @@ def fonts():
     out = os.path.join(SITE, 'fonts')
     os.makedirs(out, exist_ok=True)
     written = []
+
+    # The licence travels with the font. Both are under the SIL Open Font
+    # License, which requires the notice to accompany the font software --
+    # and subsetting it, as this does, is still redistributing it.
+    for folder in ('playfairdisplay', 'jost'):
+        notice = os.path.join(out, 'OFL-%s.txt' % folder)
+        if os.path.exists(notice):
+            continue
+        url = 'https://github.com/google/fonts/raw/main/ofl/%s/OFL.txt' % folder
+        try:
+            with urllib.request.urlopen(url, timeout=60) as response:
+                with open(notice, 'wb') as handle:
+                    handle.write(response.read())
+            written.append('  fetched  fonts/OFL-%s.txt' % folder)
+        except Exception as cause:            # noqa: BLE001 - say so, do not fail
+            written.append('  FAILED to fetch the OFL for %s: %s' % (folder, cause))
+
     for name, target, low, high in (('PlayfairDisplay.ttf', 'playfair.woff2', 400, 700),
                                     ('Jost.ttf', 'jost.woff2', 300, 700)):
         source = os.path.join(ROOT, 'design', 'fonts', name)

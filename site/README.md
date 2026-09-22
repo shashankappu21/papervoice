@@ -6,7 +6,8 @@ loaded from a third party — not a font, not a tracker.
     index.html     the landing page
     privacy.html   the privacy policy, which Play requires at a public URL
     img/           screenshots of the app, from design/raw/
-    fonts/         Playfair Display and Jost, subset to this page
+    fonts/         Playfair Display and Jost, subset to this page, with the
+                   OFL notices that have to ship beside them
     og.png         the social card
     CNAME          the custom domain, for GitHub Pages
 
