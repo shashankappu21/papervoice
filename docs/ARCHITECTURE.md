@@ -161,7 +161,13 @@ npm run audit:licences -- check <model> judge a model before adopting it
 npm run phonemes -- compare <a> <b>     do two models share a phonemiser?
 npm run samples                         re-render the voice previews
 npm run fixture                         capture an extraction fixture
+npm run shots                           capture store screenshots, with buttons
+npm run assets                          frame them for the Play listing
+npm run site:assets                     rebuild what papervoice.app serves
 ```
+
+The website lives in [`site/`](../site) and the early-access list behind it in
+[`early-access/`](../early-access); each has its own README.
 
 Each exists because a question kept coming back and being answered from memory,
 usually wrongly.

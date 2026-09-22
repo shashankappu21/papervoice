@@ -9,11 +9,15 @@ the aeroplane mode on.
 
 **Android, [GPLv3](LICENSE).** Free, and free of ads, trackers and accounts.
 
+[papervoice.app](https://papervoice.app) · [Get early access to the Android beta](https://papervoice.app/#early-access)
+
 ---
 
 ## Install
 
-Download the APK from [Releases](../../releases) and open it. Android will warn
+The beta goes out through Google Play; ask for an invite at
+[papervoice.app](https://papervoice.app/#early-access). To install it directly
+instead, download the APK from [Releases](../../releases) and open it. Android will warn
 you about installing from outside the Play Store — that is expected, and the
 release notes carry a `sha256` you can check the file against first:
 

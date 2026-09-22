@@ -70,6 +70,9 @@ android/keystore.properties
 # The signing key. Outside android/, which prebuild recreates.
 /keys/
 
+# Left behind by running any of the Python scripts.
+__pycache__/
+
 # Voice models downloaded to render the samples, and the catalog dump the
 # generator reads. The finished samples in assets/ are committed; these are not.
 scripts/.voices/
