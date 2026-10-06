@@ -1,8 +1,10 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { readSentences, touchBook, type Book } from '../db/books';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { getBook, listBooks, readSentences, touchBook, type Book } from '../db/books';
+import { getSetting, setSetting, SETTING_LAST_BOOK } from '../db/settings';
 import type { Sentence } from '../extraction/types';
 import { usePlayback, type Playback } from './usePlayback';
 import { useSavedPosition } from './useSavedPosition';
+import { bookToRestore } from './restore';
 import { resumeIndex } from '../library/progress';
 
 const NO_SENTENCES: Sentence[] = [];
@@ -30,6 +32,12 @@ const PlaybackContext = createContext<PlaybackContextValue | null>(null);
 export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [book, setBook] = useState<Book | null>(null);
   const [sentences, setSentences] = useState<Sentence[]>(NO_SENTENCES);
+  /**
+   * Whether the voice should load before play is pressed. Set when someone
+   * opens a book; left false for the one restored at launch, so a cold start
+   * does not load a voice model for a book that may not be played.
+   */
+  const [preload, setPreload] = useState(false);
 
   const playback = usePlayback(
     sentences,
@@ -37,8 +45,45 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     // A finished book opens at the start, not on its last sentence.
     book ? resumeIndex(book) : 0,
     book?.id ?? 0,
+    preload,
   );
   const { pause } = playback;
+
+  /*
+   * Cold start: put the last book back on the bar, paused, voice not loaded.
+   *
+   * Not touchBook(): this is the app remembering, not someone opening it, and
+   * counting it as opened would reorder the library on every launch.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const stored = await getSetting(SETTING_LAST_BOOK);
+      // Only an install that has never written the setting needs the library.
+      const recent = stored === null ? ((await listBooks())[0] ?? null) : null;
+      const id = bookToRestore(stored, recent);
+      if (id === null) return;
+
+      const found = await getBook(id);
+      if (cancelled || !found) return;
+
+      setBook((current) => {
+        // Something was opened while this was looking -- a shared PDF, or a
+        // tap in the library. That wins: it is what someone asked for.
+        if (current) return current;
+        setSentences(readSentences(found));
+        return found;
+      });
+    })().catch((cause: unknown) => {
+      // Nothing on the bar is the right fallback; reading still works.
+      console.log('[papervoice] could not restore the last book:', String(cause));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Saved here rather than in the reader. A book can be listened to entirely
   // from the bar above the tabs, and the reader being closed is no reason for
@@ -47,6 +92,10 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
 
   const open = useCallback(
     (next: Book) => {
+      // Opening is intent to listen, so the voice may start loading now --
+      // including for a book that was restored at launch and is only now
+      // being opened.
+      setPreload(true);
       // Re-opening the book already loaded would reset the place to whatever
       // was saved, which is behind where it has since been read to.
       setBook((current) => {
@@ -55,6 +104,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         void touchBook(next.id);
         return next;
       });
+      void setSetting(SETTING_LAST_BOOK, String(next.id)).catch(() => undefined);
     },
     [],
   );
@@ -63,6 +113,9 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     pause();
     setBook(null);
     setSentences(NO_SENTENCES);
+    setPreload(false);
+    // Closed on purpose, so it stays closed across a restart.
+    void setSetting(SETTING_LAST_BOOK, '').catch(() => undefined);
   }, [pause]);
 
   const value = useMemo<PlaybackContextValue>(

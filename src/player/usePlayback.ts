@@ -80,6 +80,13 @@ export function usePlayback(
    * mistaken for another's and neither has to be thrown away for the other.
    */
   bookId = 0,
+  /**
+   * Whether to load the voice ahead of play. True for a book someone has just
+   * opened, which is a strong sign play is coming. False for the one put back
+   * on the bar at launch: loading a 63MB model on every cold start, for a book
+   * that may not be played this session, is seconds and battery for nothing.
+   */
+  preload = true,
 ): Playback {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [playing, setPlaying] = useState(false);
@@ -423,15 +430,17 @@ export function usePlayback(
     }
   };
 
-  // Load the voice as soon as there is something to read. It takes seconds, and
-  // doing it on the first press makes the app look broken while it waits.
+  // Load the voice as soon as a book is opened. It takes seconds, and doing it
+  // on the first press makes the app look broken while it waits. Not for the
+  // book restored at launch, where play() loads it when it is pressed and the
+  // ring around the button says so.
   useEffect(() => {
-    if (sentences.length === 0) return;
+    if (sentences.length === 0 || !preload) return;
     ensureVoice().catch((cause: unknown) => {
       console.log('[papervoice] voice load failed:', String(cause));
       setError(`Voice unavailable: ${String(cause)}`);
     });
-  }, [sentences.length, ensureVoice]);
+  }, [sentences.length, ensureVoice, preload]);
 
   /**
    * Picks up a voice chosen while this screen was away.
