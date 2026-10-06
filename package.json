@@ -58,7 +58,8 @@
     "promo:sync": "node scripts/createPromoManifest.mjs && node scripts/syncRemotionAssets.mjs && node scripts/createPromoManifest.mjs && node scripts/syncRemotionAssets.mjs",
     "remotion:studio": "npm --prefix promo-remotion run studio",
     "assets": "python scripts/storeAssets.py",
-    "site:assets": "python scripts/siteAssets.py"
+    "site:assets": "python scripts/siteAssets.py",
+    "battery": "node scripts/battery.mjs"
   },
   "license": "GPL-3.0-or-later"
 }
