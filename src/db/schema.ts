@@ -115,4 +115,11 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
   }
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+
+  // Only when something changed, so it is one line per upgrade rather than one
+  // per launch. A release build's database cannot be read over adb; this is
+  // how an upgrade is confirmed on a real device.
+  if (version !== SCHEMA_VERSION) {
+    console.log(`[papervoice] library schema migrated ${version} -> ${SCHEMA_VERSION}`);
+  }
 }

@@ -31,6 +31,7 @@ export async function migrateAudioCache(): Promise<void> {
   if ((await getSetting(SETTING_CACHE_LAYOUT)) === CURRENT_LAYOUT) return;
 
   const synth = new Directory(Paths.cache, 'synth');
+  let removed = 0;
   if (synth.exists) {
     const root = `${synth.uri.replace(/\/?$/, '/')}`;
 
@@ -47,9 +48,15 @@ export async function migrateAudioCache(): Promise<void> {
 
     for (const path of legacySpeedFolders(root, subfolders)) {
       const folder = new Directory(path);
-      if (folder.exists) folder.delete();
+      if (folder.exists) {
+        folder.delete();
+        removed += 1;
+      }
     }
   }
 
   await setSetting(SETTING_CACHE_LAYOUT, CURRENT_LAYOUT);
+  // Once per install, so one line. A release build cannot be inspected over
+  // adb, and this is the only way to confirm it ran on a real device's data.
+  console.log(`[papervoice] audio cache migrated to layout ${CURRENT_LAYOUT}: removed ${removed} per-speed folder(s)`);
 }
