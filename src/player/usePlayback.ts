@@ -129,8 +129,8 @@ export function usePlayback(
 
   /*
    * Read through refs, not captured: the queue is built once per book, and the
-   * voice and speed both change while it is alive. A path built from a stale
-   * closure would file this sentence's audio under the previous voice.
+   * voice changes while it is alive. A path built from a stale closure would
+   * file this sentence's audio under the previous voice.
    */
   const voiceRef = useRef<string | null>(null);
   voiceRef.current = voiceId;
@@ -149,12 +149,14 @@ export function usePlayback(
     if (!folder.exists) folder.create({ intermediates: true });
   }, []);
 
+  // No speed in the key: the engine speaks at the voice's own pace and the
+  // player applies the listener's speed, so a change of speed is not a reason
+  // to make any audio again.
   const pathOf = useCallback(
     (index: number) =>
       audioPath(cacheRoot, {
         bookId,
         voiceId: voiceRef.current ?? 'unset',
-        rate: rateRef.current,
         index,
       }),
     [cacheRoot, bookId],

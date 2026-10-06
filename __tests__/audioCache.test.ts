@@ -1,16 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { audioPath, bookDirectory, evict, type CachedFile } from '../src/tts/audioCache';
+import {
+  audioPath,
+  bookDirectory,
+  evict,
+  isLegacySpeedFolder,
+  legacySpeedFolders,
+  type CachedFile,
+} from '../src/tts/audioCache';
 
-const VOICE = { bookId: 7, voiceId: 'kitten-nano-3', rate: 1.2 };
+const VOICE = { bookId: 7, voiceId: 'kitten-nano-3' };
 
 describe('where a sentence"s audio lives', () => {
-  it('keeps each book, voice and speed apart', () => {
+  it('keeps each book and voice apart', () => {
     const a = audioPath('/c/', { ...VOICE, index: 4 });
     const otherBook = audioPath('/c/', { ...VOICE, bookId: 8, index: 4 });
     const otherVoice = audioPath('/c/', { ...VOICE, voiceId: 'ljspeech-medium', index: 4 });
-    const otherRate = audioPath('/c/', { ...VOICE, rate: 1.5, index: 4 });
 
-    expect(new Set([a, otherBook, otherVoice, otherRate]).size).toBe(4);
+    expect(new Set([a, otherBook, otherVoice]).size).toBe(3);
+  });
+
+  it('has no speed in it, so changing speed reuses the audio already made', () => {
+    // The listener's speed is applied by the player; the audio is identical at
+    // every speed, so a speed in the name only ever forced a re-synthesis.
+    expect(audioPath('/c/', { ...VOICE, index: 4 })).toBe('/c/7/kitten-nano-3/4.wav');
   });
 
   it('gives the same sentence the same name every time', () => {
@@ -27,15 +39,51 @@ describe('where a sentence"s audio lives', () => {
     expect(path).not.toContain('#');
   });
 
-  it('does not let a speed of 1 and 1.0 be two different folders', () => {
-    expect(audioPath('/c/', { ...VOICE, rate: 1, index: 0 })).toBe(
-      audioPath('/c/', { ...VOICE, rate: 1.0, index: 0 }),
-    );
-  });
-
   it('names a book"s folder so everything under it can be dropped at once', () => {
     const dir = bookDirectory('/c/', 7);
     expect(audioPath('/c/', { ...VOICE, index: 4 }).startsWith(dir)).toBe(true);
+  });
+});
+
+describe('the folders the old per-speed layout left behind', () => {
+  it('recognises the speed folders the old layout wrote', () => {
+    for (const name of ['1.00', '1.25', '0.50', '3.00', '10.00']) {
+      expect(isLegacySpeedFolder(name)).toBe(true);
+    }
+  });
+
+  it('leaves alone anything the current layout makes', () => {
+    // A book folder, voice folders, and a sentence file's name.
+    for (const name of ['7', 'kitten-nano-3', 'system_en-us-x-iom-local', 'en_US-lessac', '4.wav', '1.0', '1.000']) {
+      expect(isLegacySpeedFolder(name)).toBe(false);
+    }
+  });
+
+  it('finds them two levels down, under each book and voice, and nowhere else', () => {
+    const tree: Record<string, string[]> = {
+      '/c/': ['7', '8'],
+      '/c/7/': ['kitten-nano-3', 'lyra'],
+      '/c/7/kitten-nano-3/': ['1.00', '1.50'],
+      '/c/7/lyra/': [],
+      '/c/8/': ['lyra'],
+      '/c/8/lyra/': ['2.00'],
+    };
+    const found = legacySpeedFolders('/c/', (path) => tree[path] ?? []);
+
+    expect(found.sort()).toEqual([
+      '/c/7/kitten-nano-3/1.00',
+      '/c/7/kitten-nano-3/1.50',
+      '/c/8/lyra/2.00',
+    ]);
+  });
+
+  it('finds nothing in a cache already in the new layout', () => {
+    const tree: Record<string, string[]> = {
+      '/c/': ['7'],
+      '/c/7/': ['lyra'],
+      '/c/7/lyra/': [],
+    };
+    expect(legacySpeedFolders('/c/', (path) => tree[path] ?? [])).toEqual([]);
   });
 });
 

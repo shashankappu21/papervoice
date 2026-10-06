@@ -6,6 +6,7 @@ import { ImportProvider } from '../src/import/ImportProvider';
 import { PlaybackProvider } from '../src/player/PlaybackProvider';
 import { TourProvider } from '../src/tour/TourProvider';
 import { TourOverlay } from '../src/tour/TourOverlay';
+import { migrateAudioCache } from '../src/tts/cacheMigration';
 
 export default function RootLayout() {
   useEffect(() => {
@@ -15,6 +16,12 @@ export default function RootLayout() {
       playsInSilentMode: true,
       shouldPlayInBackground: true,
       interruptionMode: 'doNotMix',
+    });
+
+    // Clears audio the old per-speed cache layout left behind. Once per install;
+    // a failure is retried on the next launch, and none of it blocks reading.
+    migrateAudioCache().catch((cause: unknown) => {
+      console.log('[papervoice] cache migration failed:', String(cause));
     });
   }, []);
 

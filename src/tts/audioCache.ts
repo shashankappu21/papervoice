@@ -12,33 +12,63 @@
  * today; stepping back plays from disk; and generating a whole book in advance
  * works without any further change, because the files simply accumulate under
  * that book's folder.
+ *
+ * Speed is deliberately not part of the name. It used to be, on the belief that
+ * the engine baked it into the audio -- but the engine is always handed the
+ * voice's own pace, and the listener's speed is applied by the player at
+ * playback. So the name changed with the speed while the audio did not, and
+ * every change of speed re-synthesised the rest of the book into identical
+ * files under a new folder. That was CPU and battery spent making nothing new.
  */
 
 export interface AudioKey {
   bookId: number;
   voiceId: string;
-  /** Speed is baked into the audio by the engine, so it belongs in the name. */
-  rate: number;
   index: number;
 }
 
 /** A voice id can be `system:en-us-x-iom-local`, which is not a folder name. */
 const safe = (value: string): string => value.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-/**
- * Speed as a folder name.
- *
- * Fixed to two decimals so 1 and 1.0 are one folder rather than two, and so a
- * float that arrives as 1.2000000000000002 does not get one of its own.
- */
-const speed = (rate: number): string => (Number.isFinite(rate) ? rate : 1).toFixed(2);
-
 /** Everything belonging to one book, so removing the book removes its audio. */
 export const bookDirectory = (root: string, bookId: number): string =>
   `${root}${bookId}/`;
 
 export function audioPath(root: string, key: AudioKey): string {
-  return `${bookDirectory(root, key.bookId)}${safe(key.voiceId)}/${speed(key.rate)}/${key.index}.wav`;
+  return `${bookDirectory(root, key.bookId)}${safe(key.voiceId)}/${key.index}.wav`;
+}
+
+/**
+ * Whether a folder name is one the old layout made per speed: `1.00`, `1.50`.
+ *
+ * The old layout was book/voice/speed/sentence.wav, and the speed was always
+ * written with exactly two decimals. Nothing in the current layout has that
+ * shape -- a book folder is an integer, a voice folder starts with a letter --
+ * so it identifies the old folders without touching anything else.
+ */
+export const isLegacySpeedFolder = (name: string): boolean => /^\d+\.\d{2}$/.test(name);
+
+/**
+ * The folders the old per-speed layout left behind, two levels below the root.
+ *
+ * Takes a way to list a folder's subfolders rather than reading the disk
+ * itself, so it runs under the tests with no filesystem.
+ */
+export function legacySpeedFolders(
+  root: string,
+  subfolders: (path: string) => string[],
+): string[] {
+  const found: string[] = [];
+  for (const book of subfolders(root)) {
+    const bookPath = `${root}${book}/`;
+    for (const voice of subfolders(bookPath)) {
+      const voicePath = `${bookPath}${voice}/`;
+      for (const name of subfolders(voicePath)) {
+        if (isLegacySpeedFolder(name)) found.push(`${voicePath}${name}`);
+      }
+    }
+  }
+  return found;
 }
 
 export interface CachedFile {
