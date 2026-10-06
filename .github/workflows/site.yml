@@ -15,7 +15,14 @@ on:
     # business redeploying a static page.
     paths:
       - 'site/**'
+      - 'scripts/siteRelease.mjs'
+      - 'scripts/release/**'
       - '.github/workflows/site.yml'
+  # A new release changes the version, size and checksum the page shows. Runs
+  # after release-assets has given it papervoice.json, never alongside it.
+  workflow_run:
+    workflows: [release-assets]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -31,12 +38,17 @@ concurrency:
 
 jobs:
   deploy:
+    # After a release, only if its assets were actually added.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       # The endpoints are filled in here rather than committed.
       #
@@ -53,9 +65,13 @@ jobs:
         env:
           EARLY_ACCESS_ENDPOINT: ${{ secrets.EARLY_ACCESS_ENDPOINT }}
           BETA_OPT_IN_URL: ${{ secrets.BETA_OPT_IN_URL }}
-        run: |
-          set -euo pipefail
-          python3 scripts/fillEndpoints.py site/index.html             EARLY_ACCESS_ENDPOINT BETA_OPT_IN_URL
+        run: python3 scripts/fillEndpoints.py site/index.html EARLY_ACCESS_ENDPOINT BETA_OPT_IN_URL
+
+      # Version, size, checksum and minimum Android, from the latest release's
+      # papervoice.json. Fails -- and so stops the deploy -- when the stable APK
+      # the download buttons point at does not resolve.
+      - name: Fill in the release
+        run: node scripts/siteRelease.mjs
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

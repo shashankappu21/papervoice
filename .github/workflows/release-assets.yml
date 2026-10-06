@@ -1,0 +1,48 @@
+# Gives every published release the files papervoice.app depends on.
+#
+# The website's download buttons point at
+#   releases/latest/download/papervoice.apk
+# so each release needs the APK under that stable name, beside its versioned
+# one. This copies it from the release's own versioned APK, adds the checksums
+# and papervoice.json, and is the backstop for a release made by hand. A
+# release made with `npm run release -- --publish` already has them, and then
+# this finds nothing to do.
+#
+# Nothing here signs or builds anything, and no signing key is involved: the
+# APK is copied byte for byte from the asset already published, and checked
+# against GitHub's digest of it before anything is uploaded.
+name: release-assets
+
+on:
+  release:
+    types: [published]
+  # For filling in a release published before this existed.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, e.g. v1.0.0 (blank for the latest)
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-assets
+  cancel-in-progress: false
+
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # aapt2 reads the minimum Android version out of the APK. The runner's
+      # Android SDK provides it; without it the version is left unknown rather
+      # than guessed.
+      - name: Add the stable APK, checksums and metadata
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: node scripts/releaseAssets.mjs $TAG
