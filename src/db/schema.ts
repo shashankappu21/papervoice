@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bumped whenever the statements below change. The version lives in the
  * database itself, so an app that skipped a release still migrates in order.
  */
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 /**
  * Creates or upgrades the library.
@@ -100,6 +100,18 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
       ALTER TABLE books ADD COLUMN content_hash TEXT;
       CREATE INDEX IF NOT EXISTS books_content_hash ON books(content_hash);
     `);
+  }
+
+  if (version < 7) {
+    /*
+     * When the last sentence last finished playing.
+     *
+     * Without it a finished book was indistinguishable from one paused near the
+     * end: it stayed under "Continue listening" at a hundred percent, and
+     * reopening it landed on its final sentence. Null for every existing book,
+     * which is right -- none of them has been recorded as finished.
+     */
+    await db.execAsync(`ALTER TABLE books ADD COLUMN finished_at INTEGER`);
   }
 
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { listBooks, type Book } from '../../src/db/books';
+import { isFinished, isInProgress, percentRead, progressLabel } from '../../src/library/progress';
 import { bookIdsIn, listGroups, type Group } from '../../src/db/groups';
 import { BookMenu } from '../../src/ui/BookMenu';
 import { NewGroupSheet } from '../../src/ui/NewGroupSheet';
@@ -13,9 +14,6 @@ import { useTourTarget } from '../../src/tour/useTourTarget';
 import { useOfferTour } from '../../src/tour/TourProvider';
 import { BookCover } from '../../src/ui/BookCover';
 import { useTheme } from '../../src/ui/ThemeProvider';
-
-/** Books further along than this have been genuinely started. */
-const STARTED = 0;
 
 /** The library: what has been imported, and how far each one has been read. */
 export default function Library() {
@@ -70,7 +68,9 @@ export default function Library() {
   // filtered by something no longer in the list.
   const chosen = groups.some((candidate) => candidate.id === group) ? group : null;
   const shown = chosen === null ? books : books.filter((book) => inGroup?.has(book.id) ?? false);
-  const started = shown.filter((book) => book.position > STARTED);
+  // Started and not finished. A finished book leaves this row; starting it
+  // again brings it back.
+  const started = shown.filter(isInProgress);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -286,11 +286,15 @@ export default function Library() {
           )
         }
         renderItem={({ item }) => {
-          const percent = Math.round((item.position / Math.max(1, item.sentenceCount)) * 100);
+          const finished = isFinished(item);
           return (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${item.title}, ${percent} percent read`}
+              accessibilityLabel={
+                finished
+                  ? `${item.title}, finished`
+                  : `${item.title}, ${percentRead(item)} percent read`
+              }
               style={({ pressed }) => [
                 styles.row,
                 {
@@ -310,7 +314,7 @@ export default function Library() {
                   {item.title}
                 </Text>
                 <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 3 }}>
-                  {item.position > 0 ? `${percent}% · ` : ''}
+                  {progressLabel(item)}
                   {item.pageCount} pages
                 </Text>
               </View>

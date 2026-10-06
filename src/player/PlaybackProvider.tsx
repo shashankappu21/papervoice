@@ -3,6 +3,7 @@ import { readSentences, touchBook, type Book } from '../db/books';
 import type { Sentence } from '../extraction/types';
 import { usePlayback, type Playback } from './usePlayback';
 import { useSavedPosition } from './useSavedPosition';
+import { resumeIndex } from '../library/progress';
 
 const NO_SENTENCES: Sentence[] = [];
 
@@ -33,7 +34,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const playback = usePlayback(
     sentences,
     book?.title ?? '',
-    book?.position ?? 0,
+    // A finished book opens at the start, not on its last sentence.
+    book ? resumeIndex(book) : 0,
     book?.id ?? 0,
   );
   const { pause } = playback;

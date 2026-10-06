@@ -16,6 +16,11 @@ export interface Book {
   lastOpenedAt: number | null;
   /** Where the reader left off, or 0 for a book never opened. */
   position: number;
+  /**
+   * When the last sentence last finished playing, or null if it never has.
+   * What "finished" means for the library is decided in library/progress.ts.
+   */
+  finishedAt: number | null;
   /** Page one, drawn at import. Null for books added before covers existed. */
   coverPath: string | null;
   /**
@@ -99,6 +104,7 @@ export async function addBook(
     addedAt: stamp,
     lastOpenedAt: stamp,
     position: 0,
+    finishedAt: null,
     coverPath,
     outline: doc.outline ?? [],
   };
@@ -114,6 +120,7 @@ interface BookRow {
   added_at: number;
   last_opened_at: number | null;
   sentence_index: number | null;
+  finished_at: number | null;
   cover_path: string | null;
   outline: string | null;
 }
@@ -128,6 +135,7 @@ const toBook = (row: BookRow): Book => ({
   addedAt: row.added_at,
   lastOpenedAt: row.last_opened_at,
   position: row.sentence_index ?? 0,
+  finishedAt: row.finished_at ?? null,
   coverPath: row.cover_path,
   outline: readOutline(row.outline),
 });
@@ -187,6 +195,29 @@ export async function savePosition(bookId: number, sentenceIndex: number): Promi
     sentenceIndex,
     Date.now(),
   );
+}
+
+/**
+ * Records that the last sentence has finished playing.
+ *
+ * Writes the position back to the start in the same transaction, so a book
+ * finished just before the app is killed still reopens at the beginning. The
+ * five-second position timer can still land afterwards and store the final
+ * sentence; library/progress.ts treats that as finished too, so the outcome
+ * does not depend on which write lands last.
+ */
+export async function markFinished(bookId: number): Promise<void> {
+  const db = await database();
+  const now = Date.now();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE books SET finished_at = ? WHERE id = ?', now, bookId);
+    await db.runAsync(
+      `INSERT INTO positions (book_id, sentence_index, updated_at) VALUES (?, 0, ?)
+       ON CONFLICT(book_id) DO UPDATE SET sentence_index = 0, updated_at = excluded.updated_at`,
+      bookId,
+      now,
+    );
+  });
 }
 
 export async function touchBook(bookId: number): Promise<void> {

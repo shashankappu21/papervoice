@@ -8,6 +8,7 @@ import { SherpaTts } from '../../modules/sherpa-tts';
 import { createSynthQueue } from '../tts/synthQueue';
 import { openEngine, listAvailableVoices, type AvailableVoice, type SpeechEngine } from '../voices/engine';
 import { getSetting, setSetting, SETTING_RATE, SETTING_VOICE } from '../db/settings';
+import { markFinished } from '../db/books';
 import type { Sentence } from '../extraction/types';
 
 /**
@@ -103,6 +104,13 @@ export function usePlayback(
   const awaiting = useRef<number | null>(null);
   const index = useRef(initialIndex);
   const consecutiveFailures = useRef(0);
+  /*
+   * Read by advance() through a ref rather than listed as a dependency: advance
+   * is a dependency of the effect that creates the audio player, and a new
+   * player loses the lock screen controls.
+   */
+  const bookIdRef = useRef(bookId);
+  bookIdRef.current = bookId;
 
   /**
    * A new document arrives with its own place to start.
@@ -251,6 +259,24 @@ export function usePlayback(
     const next = index.current + 1;
     if (next >= sentences.length) {
       setPlaying(false);
+      /*
+       * Finished. It used to simply stop on the last sentence, which was saved
+       * as the place to resume -- so the book stayed under "Continue
+       * listening" at a hundred percent and reopened on its final line.
+       *
+       * Back to the start in memory as well as on disk, so tapping the book
+       * again while it is still the one loaded starts it over rather than
+       * replaying the last sentence. The queue is deliberately left alone: no
+       * synthesis is started for a book nobody has asked to hear again.
+       */
+      index.current = 0;
+      setCurrentIndex(0);
+      const finished = bookIdRef.current;
+      if (finished > 0) {
+        markFinished(finished).catch((cause: unknown) => {
+          console.log('[papervoice] could not record the finish:', String(cause));
+        });
+      }
       return;
     }
 
