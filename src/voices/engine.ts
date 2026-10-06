@@ -6,6 +6,8 @@ import type { Sentence } from '../extraction/types';
 import { speakable } from '../tts/speakable';
 import { chunk } from '../tts/chunk';
 import { pauseAfter } from '../tts/pauses';
+import { getSetting, SETTING_THREADS } from '../db/settings';
+import { parseThreads } from './threads';
 
 /**
  * Speaking a sentence, whichever voice is doing it.
@@ -31,6 +33,12 @@ const SEAM_MS = 90;
 export interface SpeechEngine {
   /** Human name for what is speaking, for the screen to show. */
   label: string;
+  /**
+   * Inference threads the engine was loaded with, for the logs: an RTF figure
+   * means nothing without it. Absent for the phone's own engine, which decides
+   * for itself.
+   */
+  threads?: number;
   speak(sentence: Sentence, outPath: string, rtf?: number): Promise<{ path: string; durationSec: number; rtf: number }>;
 }
 
@@ -152,6 +160,8 @@ export async function openEngine(chosenId: string | null): Promise<OpenedVoice> 
 
 async function neuralEngine(voice: VoiceMeta): Promise<SpeechEngine> {
   const paths = await voiceLoadPaths(voice);
+  // Read at load, so changing it takes effect the next time a voice loads.
+  const threads = parseThreads(await getSetting(SETTING_THREADS));
 
   if (voice.family === 'kitten') {
     const loaded = await SherpaTts.loadKitten(
@@ -159,7 +169,7 @@ async function neuralEngine(voice: VoiceMeta): Promise<SpeechEngine> {
       paths.voices,
       paths.tokens,
       paths.dataDir,
-      2,
+      threads,
     );
     // Worth knowing: it decides how many voices this one download can offer.
     console.log(`[papervoice] ${voice.name} loaded: ${loaded.numSpeakers} speaker(s)`);
@@ -172,16 +182,19 @@ async function neuralEngine(voice: VoiceMeta): Promise<SpeechEngine> {
       phonemes.useEspeak ? paths.dataDir : '',
       voice.lexiconUrl ? paths.lexicon : '',
       phonemes.lang,
-      2,
+      threads,
     );
   } else {
-    await SherpaTts.load(paths.model, paths.tokens, paths.dataDir, 2);
+    await SherpaTts.load(paths.model, paths.tokens, paths.dataDir, threads);
   }
+
+  console.log(`[papervoice] ${voice.name} loaded on ${threads} inference thread(s)`);
 
   const speaker = voice.speakerId ?? 0;
 
   return {
     label: voice.name,
+    threads,
     async speak(sentence, outPath, rtf) {
       const parts = chunk(speakable(sentence.text), CHUNK_LIMIT);
       const tailMs = pauseAfter({ kind: sentence.kind, endsSentence: true, rtf });

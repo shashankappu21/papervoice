@@ -182,14 +182,20 @@ export function usePlayback(
           const speaking = engine.current;
           if (!speaking) throw new Error('No voice is ready');
           ensureFolder(outPath);
+          const startedAt = Date.now();
           const result = await speaking.speak(sentence, outPath, recentRtf.current);
+          // Wall time for the whole call, bridge included. Summed over a run,
+          // threads x this is the most CPU synthesis could have used -- the
+          // figure to hold batterystats' CPU time against.
+          const synthMs = Date.now() - startedAt;
           recentRtf.current = result.rtf;
           setRtf(result.rtf);
           // Logged as well as shown: comparing voices means comparing runs of
           // numbers over real sentences, not glancing at whichever was last.
           console.log(
-            `[papervoice] rtf ${result.rtf.toFixed(3)} | ${result.durationSec.toFixed(1)}s audio` +
-              ` | ${sentence.text.length} chars | ${speaking.label}`,
+            `[papervoice] rtf ${result.rtf.toFixed(3)} | synth ${synthMs}ms` +
+              ` | ${result.durationSec.toFixed(1)}s audio | ${sentence.text.length} chars` +
+              ` | ${speaking.threads ?? '-'} threads | ${speaking.label}`,
           );
           consecutiveFailures.current = 0;
           return result;

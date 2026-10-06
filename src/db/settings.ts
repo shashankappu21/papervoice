@@ -31,3 +31,5 @@ export const SETTING_RATE = 'playback.rate';
 export const SETTING_VOICE = 'playback.voice';
 export const SETTING_THEME = 'reader.theme';
 export const SETTING_FONT_SIZE = 'reader.fontSize';
+/** Developer setting: inference threads for the neural engine. See voices/threads.ts. */
+export const SETTING_THREADS = 'dev.inferenceThreads';
