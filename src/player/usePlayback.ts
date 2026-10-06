@@ -362,6 +362,16 @@ export function usePlayback(
         voiceLoaded.current = true;
         // What actually loaded, which is not always what was asked for.
         loadedVoiceId.current = opened.voiceId;
+        /*
+         * Set here, not left to the next render. Audio paths are built from
+         * this ref, and whoever awaited this load asks for paths straight away
+         * -- before React has re-rendered. Left stale, a voice switch replayed
+         * the current sentence from the OLD voice's audio and could write the
+         * new voice's speech into the old voice's folder; and the first load
+         * after launch filed its opening sentences under "unset", then made
+         * them all again once the render caught up.
+         */
+        voiceRef.current = opened.voiceId;
         setVoiceId(opened.voiceId);
       } finally {
         setLoadingVoice(false);
@@ -405,9 +415,23 @@ export function usePlayback(
     setPlaying(false);
     awaiting.current = null;
     setBuffering(false);
+    // Shown at once. Finishing the sentence in flight and loading the new
+    // voice take seconds, and a plain paused button for that long reads as the
+    // switch having failed.
+    setLoadingVoice(true);
 
     try {
+      /*
+       * Nothing more in the old voice, and nothing in flight when its engine is
+       * released. Left running, the queue went on asking an engine that had
+       * just been set to null, failed three sentences in a row in a moment,
+       * and left "Speech failed" on screen after a switch that had worked.
+       */
+      queue.stop();
+      await queue.drain();
+
       setError(null);
+      consecutiveFailures.current = 0;
       await setSetting(SETTING_VOICE, id);
       // Each voice is measured on its own; the last one's figure means nothing
       // about this one.
@@ -416,6 +440,8 @@ export function usePlayback(
       await loadVoice(id);
       await queue.start(index.current);
 
+      // The sentence that was being spoken starts again, from its beginning,
+      // in the new voice -- rather than finishing in the old one.
       if (wasPlaying) {
         const path = queue.pathFor(index.current);
         if (path) startTrack(path);
@@ -427,6 +453,10 @@ export function usePlayback(
     } catch (cause) {
       console.log('[papervoice] voice switch failed:', String(cause));
       setError(`Voice unavailable: ${String(cause)}`);
+    } finally {
+      // loadVoice clears this itself, except when the voice chosen was already
+      // the one loaded and there was nothing to load.
+      setLoadingVoice(false);
     }
   };
 
