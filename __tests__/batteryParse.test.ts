@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error -- a plain .mjs script, with no type declarations
 import * as parse from '../scripts/battery/parse.mjs';
 
 /*
@@ -83,7 +82,8 @@ describe("the app's uid", () => {
 
 describe("the app's own block", () => {
   it('reads CPU time, wake locks, audio and the foreground service', () => {
-    const block = parse.parseUidBlock(BLOCK, 'u0a1191');
+    // Found, or the null check below would have failed first.
+    const block = parse.parseUidBlock(BLOCK, 'u0a1191')!;
 
     expect(block.cpuUserMs).toBe(19 * 60_000 + 27_000 + 170);
     expect(block.cpuSystemMs).toBe(3 * 60_000 + 18_000 + 569);
@@ -145,14 +145,14 @@ describe("the app's synthesis log", () => {
 describe('the comparison', () => {
   it('puts a ceiling on what synthesis could have used', () => {
     // 2 threads busy for 100s of synthesis can have used at most 200s of CPU.
-    const result = parse.compare({ cpuMs: 300_000, threads: 2, synthMs: 100_000 });
+    const result = parse.compare({ cpuMs: 300_000, threads: 2, synthMs: 100_000 })!;
     expect(result.ceilingMs).toBe(200_000);
     expect(result.ratio).toBe(1.5);
     expect(result.notSynthesisAtLeastMs).toBe(100_000);
   });
 
   it('says nothing is certainly elsewhere when CPU fits under the ceiling', () => {
-    expect(parse.compare({ cpuMs: 150_000, threads: 2, synthMs: 100_000 }).notSynthesisAtLeastMs).toBe(0);
+    expect(parse.compare({ cpuMs: 150_000, threads: 2, synthMs: 100_000 })!.notSynthesisAtLeastMs).toBe(0);
   });
 
   it('refuses to compare without the numbers', () => {
