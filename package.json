@@ -59,6 +59,7 @@
     "remotion:studio": "npm --prefix promo-remotion run studio",
     "assets": "python scripts/storeAssets.py",
     "site:assets": "python scripts/siteAssets.py",
+    "site:samples": "vite-node scripts/siteSamples.ts",
     "battery": "node scripts/battery.mjs"
   },
   "license": "GPL-3.0-or-later"

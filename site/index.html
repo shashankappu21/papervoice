@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Papervoice — finally get through the PDFs you keep meaning to read</title>
-<meta name="description" content="Turn the PDFs you already own into something you can listen to, with natural voices that work entirely on your phone. Free, offline, open source. Get early access to the Android beta.">
+<meta name="description" content="Turn the PDFs you already own into something you can listen to, with natural voices that work entirely on your phone. Free, offline, open source. Download the Android app.">
 <link rel="canonical" href="https://papervoice.app/">
 
 <meta property="og:title" content="Papervoice — finally get through the PDFs you keep meaning to read">
@@ -208,6 +208,8 @@
   @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
 
   .hero p.lede { margin-top: 22px; }
+  /* A little narrower here, so the two ways in sit side by side on a laptop. */
+  .hero .cta-row .btn { padding-inline: 22px; }
   .cta-row { display: flex; flex-wrap: wrap; gap: 13px; margin-top: 30px; }
 
   .trust {
@@ -261,6 +263,10 @@
     align-items: center;
   }
   @media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+  /* Grid items default to never shrinking below their content's minimum,
+     which let one wide child -- the sample list's three 150px tracks -- push a
+     whole column past the edge of a phone. */
+  .split > * { min-width: 0; }
   .split.flip > :first-child { order: 2; }
   @media (max-width: 860px) { .split.flip > :first-child { order: 0; } }
 
@@ -390,6 +396,175 @@
   .done p { color: var(--muted); margin: 0; }
   [hidden] { display: none !important; }
 
+  /* ---------- the download's facts, under each pair of buttons ---------- */
+
+  .facts { margin: 22px 0 0; font-size: 0.97rem; font-weight: 500; }
+  .facts-sub { margin: 4px 0 0; font-size: 0.88rem; color: var(--muted); }
+
+  /* ---------- install ---------- */
+
+  /* Starts close under the hero: it is the next step after its button. */
+  .install { padding: clamp(0px, 1vw, 12px) 0 clamp(44px, 6vw, 72px); }
+  .install-grid {
+    display: grid;
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: clamp(22px, 5vw, 64px);
+    align-items: start;
+  }
+  @media (max-width: 860px) { .install-grid { grid-template-columns: 1fr; } }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .steps li {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border-radius: 14px;
+  }
+  .steps .n {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+    display: grid;
+    place-items: center;
+    font-weight: 600;
+    font-size: 0.88rem;
+  }
+  .install .faq { margin-top: 18px; }
+  .install .aside-note { margin-top: 18px; padding-top: 18px; }
+  .sha {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    word-break: break-all;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1px 6px;
+    color: var(--ink);
+  }
+  .commands { list-style: none; padding: 0; margin: 0 0 1.1em; display: grid; gap: 4px; font-size: 0.92rem; }
+
+  /* ---------- voice samples ---------- */
+
+  .hear-wrap { text-align: center; margin-top: 22px; }
+  .hear, .sample {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--text);
+    color: var(--ink);
+    background: var(--paper);
+    cursor: pointer;
+  }
+  .hear {
+    padding: 8px 18px 8px 8px;
+    border: 1px solid #d8cfbc;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  .hear:hover, .sample:hover { background: var(--surface); }
+  .hear[aria-pressed='true'], .sample[aria-pressed='true'] { border-color: var(--accent); }
+  .sample-state { font-weight: 400; font-size: 0.82rem; color: var(--muted); }
+  [data-state='error'] .sample-state { color: #a4291f; }
+
+  /* Play, pause, loading and failed are four shapes, not four colours. */
+  .sample-icon {
+    position: relative;
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--teal);
+  }
+  .sample-icon::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 9px;
+    border-style: solid;
+    border-width: 6px 0 6px 10px;
+    border-color: transparent transparent transparent #fff;
+  }
+  [data-state='playing'] .sample-icon::before {
+    left: 9px;
+    width: 4px;
+    height: 12px;
+    border: 0;
+    background: #fff;
+    box-shadow: 8px 0 0 #fff;
+  }
+  [data-state='loading'] .sample-icon::before {
+    left: 8px;
+    top: 8px;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  [data-state='error'] .sample-icon { background: #a4291f; }
+  [data-state='error'] .sample-icon::before {
+    content: '!';
+    inset: 0;
+    width: auto;
+    height: auto;
+    border: 0;
+    color: #fff;
+    font-weight: 700;
+    text-align: center;
+    line-height: 30px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .samples-note { margin: 26px 0 0; font-size: 0.9rem; color: var(--muted); max-width: 34em; }
+  .sample-list {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+    display: grid;
+    /* min(), so a track is never wider than the space it is in. */
+    grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+    gap: 8px;
+    max-width: 480px;
+  }
+  .sample {
+    width: 100%;
+    padding: 7px 10px 7px 7px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    text-align: left;
+    font-size: 0.95rem;
+  }
+  .sample-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+  .sample-name { font-weight: 600; }
+  .sample-meta { font-size: 0.78rem; color: var(--muted); }
+  .sample .sample-state { margin-left: auto; padding-left: 6px; white-space: nowrap; }
+  .more-samples summary {
+    margin-top: 12px;
+    cursor: pointer;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* ---------- closing ---------- */
+
+  .closing { text-align: center; }
+  .closing .cta-row { justify-content: center; }
+
   /* ---------- faq ---------- */
 
   .faq { margin-top: 34px; border-top: 1px solid var(--line); }
@@ -441,12 +616,16 @@
     .js .rise { opacity: 1; transform: none; transition: none; }
     .mark { animation: none; background-size: 100% 88%; }
     .btn { transition: none; }
+    /* Still says "loading", without turning. */
+    [data-state='loading'] .sample-icon::before { animation: none; border-top-color: rgba(255, 255, 255, 0.4); border-right-color: #fff; }
   }
 </style>
 </head>
 <body>
 
 <a class="skip" href="#main">Skip to content</a>
+<!-- Says what a voice sample is doing, for anyone not looking at the button. -->
+<p class="visually-hidden" id="sample-status" aria-live="polite"></p>
 
 <div class="wrap">
   <header class="top">
@@ -473,22 +652,105 @@
           Turn the PDFs you already own into something you can listen to — with
           natural voices that work entirely on your phone.
         </p>
+        <!--
+          The download goes to the stable name on the latest release, which
+          every release carries (scripts/releaseAssets.mjs). The size and the
+          Android version beside it are written in at deploy from that same
+          release, by scripts/siteRelease.mjs.
+        -->
         <div class="cta-row">
-          <a class="btn btn-primary" href="#early-access" data-track="early_access_click" data-where="hero">Get early access</a>
-          <a class="btn btn-quiet" href="https://github.com/shashankappu21/papervoice" data-track="github_click" rel="noopener">View on GitHub</a>
+          <a class="btn btn-primary" href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="hero">Download for Android</a>
+          <a class="btn btn-quiet" href="#early-access" data-track="early_access_click" data-where="hero">Request a Play Store beta invite</a>
         </div>
-        <ul class="trust">
-          <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.6l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Free</li>
-          <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.6l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Offline</li>
-          <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.6l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>No uploads</li>
-          <li><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.6l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Open source</li>
-        </ul>
+        <p class="facts">Free. Android <span data-release="android">7.0</span>+. No account.</p>
+        <p class="facts-sub">Direct APK download · <span data-release="size">44.8 MB</span></p>
       </div>
 
       <div class="phone-stage">
         <div class="phone">
           <img src="/img/reader.webp" width="640" height="1422" fetchpriority="high"
                alt="Papervoice reading a book aloud. The sentence being spoken is highlighted in yellow, with playback controls and the selected voice below it.">
+        </div>
+        <!-- samples:hero (written by npm run site:samples; edits inside are replaced) -->
+<div class="hear-wrap">
+<button class="hear" type="button" data-sample="ljspeech-medium" data-name="Lyra"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span>Hear Lyra</span>
+  <span class="sample-state">4 s</span>
+</button>
+</div>
+        <!-- /samples:hero -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Installation, right under the button that starts it -->
+  <section class="install" id="install" aria-labelledby="install-heading">
+    <div class="wrap install-grid">
+      <div>
+        <p class="eyebrow">Install</p>
+        <h2 id="install-heading">Listening in three steps.</h2>
+      </div>
+      <div>
+        <ol class="steps">
+          <li><span class="n" aria-hidden="true">1</span><span>Download the Android app.</span></li>
+          <li><span class="n" aria-hidden="true">2</span><span>Open the downloaded file and follow Android’s installation prompts.</span></li>
+          <li><span class="n" aria-hidden="true">3</span><span>Open Papervoice and add a PDF.</span></li>
+        </ol>
+        <p class="aside-note">
+          Natural voices are downloaded separately, from inside the app, once
+          each. After that they work offline. Your phone’s own voice works
+          straight away, with nothing to download.
+        </p>
+
+        <div class="faq">
+          <details>
+            <summary>More help installing</summary>
+            <div class="answer">
+              <p>
+                Apps from outside Google Play install only if you allow the app
+                you downloaded with — usually your browser or file manager — to
+                install them. Android asks the first time, and opens a setting
+                called something like <em>Install unknown apps</em>. The wording
+                and the steps vary between Android versions and phone makers.
+              </p>
+              <p>
+                That permission stays on for that app until you turn it off. Once
+                Papervoice is installed you can switch it off again, in the same
+                setting: Settings → Apps → your browser → Install unknown apps.
+              </p>
+              <p>
+                Android may also show a warning about installing an app from
+                outside Google Play. Read what it says before continuing. If you
+                would rather not install this way,
+                <a href="#early-access" data-track="early_access_click" data-where="install">request a Play Store beta invite</a>
+                instead.
+              </p>
+              <p>
+                Version <span data-release="version">1.0.0</span>,
+                <span data-release="size">44.8 MB</span>. Its SHA-256 checksum is
+                <code class="sha" data-release="sha256">29a8f04927d905c6558e5bda10d13390d36058e13d016d70bec682fd1e8c92be</code>
+              </p>
+              <p>
+                To check that the file you downloaded matches the published one,
+                compute its checksum and compare it with the value above:
+              </p>
+              <ul class="commands">
+                <li>Windows: <code class="sha">certutil -hashfile papervoice.apk SHA256</code></li>
+                <li>macOS: <code class="sha">shasum -a 256 papervoice.apk</code></li>
+                <li>Linux: <code class="sha">sha256sum papervoice.apk</code></li>
+              </ul>
+              <p>
+                A match means your copy is the file published on the release page.
+                It does not, on its own, show how that file was built.
+              </p>
+              <p>
+                <a href="https://github.com/shashankappu21/papervoice/releases/latest" data-track="github_click" data-where="install" rel="noopener">Release page</a> ·
+                <a href="https://github.com/shashankappu21/papervoice" data-track="github_click" data-where="install" rel="noopener">Source code</a>
+              </p>
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -570,6 +832,106 @@
           and American, female and male — and your phone's own voice works too,
           with nothing to download.
         </p>
+        <!-- samples:voices (written by npm run site:samples; edits inside are replaced) -->
+<p class="samples-note">Hear them before you download one. Each reads the same line: “She paused, then asked: how far is it? About three miles.”</p>
+<ul class="sample-list">
+<li><button class="sample" type="button" data-sample="ljspeech-medium" data-name="Lyra"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Lyra</span><span class="sample-meta">US · female</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="en_US-kristin-medium" data-name="Kristin"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Kristin</span><span class="sample-meta">US · female</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="en_GB-cori-medium" data-name="Cori"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Cori</span><span class="sample-meta">UK · female</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-4" data-name="Mike"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Mike</span><span class="sample-meta">US · male</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-7" data-name="James"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">James</span><span class="sample-meta">US · male</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-10" data-name="Steve"
+        data-idle="5 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Steve</span><span class="sample-meta">UK · male</span></span>
+  <span class="sample-state">5 s</span>
+</button></li>
+</ul>
+<details class="more-samples">
+  <summary>All 15 voices</summary>
+  <ul class="sample-list">
+<li><button class="sample" type="button" data-sample="manyvoice-1" data-name="Kara"
+        data-idle="3 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Kara</span><span class="sample-meta">US · female</span></span>
+  <span class="sample-state">3 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-3" data-name="Maria"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Maria</span><span class="sample-meta">US · female</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-5" data-name="Mark"
+        data-idle="3 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Mark</span><span class="sample-meta">US · male</span></span>
+  <span class="sample-state">3 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-6" data-name="Michael"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Michael</span><span class="sample-meta">US · male</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-9" data-name="Wendell"
+        data-idle="3 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Wendell</span><span class="sample-meta">US · male</span></span>
+  <span class="sample-state">3 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-12" data-name="Paul"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Paul</span><span class="sample-meta">US · male</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-13" data-name="Jenny"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Jenny</span><span class="sample-meta">US · female</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-14" data-name="Emily"
+        data-idle="3 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Emily</span><span class="sample-meta">US · female</span></span>
+  <span class="sample-state">3 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-15" data-name="Martin"
+        data-idle="3 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Martin</span><span class="sample-meta">UK · male</span></span>
+  <span class="sample-state">3 s</span>
+</button></li>
+  </ul>
+</details>
+        <!-- /samples:voices -->
       </div>
       <div class="phone-stage rise">
         <div class="phone">
@@ -647,24 +1009,25 @@
     </div>
   </section>
 
-  <!-- 8. Early access -->
+  <!-- 8. The Google Play beta, for anyone who would rather not install an APK -->
   <section id="early-access">
     <div class="wrap split">
       <div class="rise">
-        <h2>Your PDFs.<br>Now listenable.</h2>
+        <h2 id="beta-heading">Prefer Google Play?</h2>
+        <!--
+          While the closed test is not confirmed live. Once it is, this becomes:
+          "The Google Play version is in testing. Enter the Google account you
+          use on your Android phone and I'll send you a beta invite."
+        -->
         <p class="lede" style="margin-top:20px">
-          Get early access to Papervoice on Android.
+          The Google Play version is coming. Enter the Google account you use on
+          your Android phone to request a beta invite.
         </p>
       </div>
 
       <div class="capture rise">
         <div id="capture-form">
-          <h2 id="early-access-heading">Get early access to Papervoice</h2>
-          <p class="why">
-            Enter the Google account you use on your Android phone. I'll use it
-            to invite you to the beta.
-          </p>
-          <form id="early-access-form" novalidate>
+          <form id="early-access-form" novalidate aria-labelledby="beta-heading">
             <div class="field">
               <label for="email">Email address</label>
               <input id="email" name="email" type="email" inputmode="email"
@@ -675,7 +1038,7 @@
               <label for="company">Company</label>
               <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
             </div>
-            <button class="btn btn-primary" type="submit" data-track="early_access_submit">Get early access</button>
+            <button class="btn btn-primary" type="submit" data-track="early_access_submit">Request an invite</button>
             <p class="status" id="status" role="status" aria-live="polite"></p>
             <p class="form-note" id="email-help">
               Your address is used to send a beta invite, and nothing else. No
@@ -699,7 +1062,7 @@
   <section class="band" id="faq">
     <div class="wrap narrow">
       <p class="eyebrow rise">Questions</p>
-      <h2 class="rise">Before you sign up.</h2>
+      <h2 class="rise">Before you start.</h2>
       <div class="faq rise">
         <details>
           <summary>Is Papervoice free?</summary>
@@ -715,17 +1078,30 @@
         </details>
         <details>
           <summary>Is it on Google Play?</summary>
-          <div class="answer"><p>Not publicly yet. Early-access users will be invited to the Android beta.</p></div>
+          <div class="answer"><p>Not publicly yet, and the Google Play beta is still being prepared. You can <a href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="faq">download the Android app</a> from this page now, or <a href="#early-access" data-track="early_access_click" data-where="faq">request a beta invite</a> and get one when testing opens.</p></div>
         </details>
         <details>
-          <summary>Can I install it from GitHub?</summary>
-          <div class="answer"><p>Yes, if you're comfortable sideloading an APK. Builds are published on the <a href="https://github.com/shashankappu21/papervoice/releases" data-track="github_click" rel="noopener">releases page</a>, each with a checksum you can verify.</p></div>
+          <summary>How do I install it?</summary>
+          <div class="answer"><p>Download the app, open the file, and follow Android’s prompts. <a href="#install">Listening in three steps</a> has the details, including the permission Android may ask for and how to check the download.</p></div>
         </details>
         <details>
           <summary>Which phones does it run on?</summary>
-          <div class="answer"><p>Android 7.0 and newer.</p></div>
+          <div class="answer"><p>Android <span data-release="android">7.0</span> and newer.</p></div>
         </details>
       </div>
+    </div>
+  </section>
+
+  <!-- 10. Closing: the same two ways in as the hero -->
+  <section class="closing" aria-labelledby="closing-heading">
+    <div class="wrap narrow rise">
+      <h2 id="closing-heading">Your PDFs.<br>Now listenable.</h2>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="closing">Download for Android</a>
+        <a class="btn btn-quiet" href="#early-access" data-track="early_access_click" data-where="closing">Request a Play Store beta invite</a>
+      </div>
+      <p class="facts">Free. Android <span data-release="android">7.0</span>+. No account.</p>
+      <p class="facts-sub">Direct APK download · <span data-release="size">44.8 MB</span></p>
     </div>
   </section>
 
@@ -936,6 +1312,97 @@
     });
   });
 
+  /* ---------- voice samples ----------
+   *
+   * Nothing is fetched until someone presses a sample. There is no <audio>
+   * element in the page and no preload: one player is made on the first
+   * press, and given a file only then. A visitor who never presses anything
+   * downloads no audio at all.
+   *
+   * Opus where the browser plays it -- most do, and it is a quarter the size --
+   * and AAC where it does not, chosen at the moment of the press so only one
+   * of the two is ever requested.
+   */
+  var player = null;
+  var playing = null;
+  var announce = document.getElementById('sample-status');
+
+  var STATE_TEXT = { loading: 'Loading…', playing: 'Playing', error: 'Couldn’t play' };
+
+  function nameOf(button) { return button.getAttribute('data-name') || 'this voice'; }
+
+  function show(button, state) {
+    button.setAttribute('data-state', state);
+    button.setAttribute('aria-pressed', state === 'playing' || state === 'loading' ? 'true' : 'false');
+    var text = button.querySelector('.sample-state');
+    if (text) text.textContent = STATE_TEXT[state] || button.getAttribute('data-idle') || '';
+    if (announce && state !== 'loading') {
+      announce.textContent =
+        state === 'playing' ? 'Playing ' + nameOf(button) :
+        state === 'error' ? 'Could not play ' + nameOf(button) + '’s sample.' : '';
+    }
+  }
+
+  function settle(state) {
+    if (!playing) return;
+    var button = playing;
+    if (state !== 'playing') playing = null;
+    show(button, state);
+  }
+
+  function sourceFor(id) {
+    var probe = document.createElement('audio');
+    var opus = probe.canPlayType && probe.canPlayType('audio/ogg; codecs="opus"');
+    return '/audio/' + id + (opus ? '.opus' : '.m4a');
+  }
+
+  document.addEventListener('click', function (e) {
+    var button = e.target.closest('[data-sample]');
+    if (!button) return;
+
+    // Pressing the one already playing stops it.
+    if (playing === button) {
+      if (player) player.pause();
+      settle('idle');
+      return;
+    }
+
+    // Starting one stops whatever was playing before.
+    if (playing) {
+      if (player) player.pause();
+      settle('idle');
+    }
+
+    if (!player) {
+      player = new Audio();
+      player.preload = 'none';
+      player.addEventListener('playing', function () { settle('playing'); });
+      player.addEventListener('waiting', function () { if (playing) show(playing, 'loading'); });
+      player.addEventListener('ended', function () { settle('idle'); });
+      player.addEventListener('error', function () {
+        // Only an error for the file asked for now. Swapping the source while
+        // the last one was still loading can report a late error for the old
+        // file, and that must not mark the new press as failed.
+        if (playing && player.src.indexOf('/audio/' + playing.getAttribute('data-sample') + '.') !== -1) {
+          settle('error');
+        }
+      });
+    }
+
+    playing = button;
+    show(button, 'loading');
+    track('sample_play', { voice: button.getAttribute('data-sample') });
+    player.src = sourceFor(button.getAttribute('data-sample'));
+    var started = player.play();
+    if (started && started.catch) {
+      started.catch(function (error) {
+        // Superseded by a newer press: not a failure of this one.
+        if (error && error.name === 'AbortError') return;
+        if (playing === button) settle('error');
+      });
+    }
+  });
+
   /* ---------- reveal on scroll ---------- */
   var rises = document.querySelectorAll('.rise');
   if (!window.IntersectionObserver || matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -961,6 +1428,9 @@
   "applicationCategory": "BooksApplication",
   "operatingSystem": "Android 7.0+",
   "url": "https://papervoice.app/",
+  "downloadUrl": "https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk",
+  "softwareVersion": "1.0.0",
+  "fileSize": "44.8 MB",
   "description": "Turn the PDFs you already own into something you can listen to, with natural voices that work entirely on your phone.",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },

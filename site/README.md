@@ -6,6 +6,7 @@ loaded from a third party — not a font, not a tracker.
     index.html     the landing page
     privacy.html   the privacy policy, which Play requires at a public URL
     img/           screenshots of the app, from design/raw/
+    audio/         voice samples: real Papervoice output, fetched only on a press
     fonts/         Playfair Display and Jost, subset to this page, with the
                    OFL notices that have to ship beside them
     og.png         the social card
@@ -13,8 +14,63 @@ loaded from a third party — not a font, not a tracker.
 
 The page sells the outcome first — getting through the PDFs you keep meaning
 to read — and treats the voices, the offline mode and the rest as the proof of
-it. The one conversion goal is **Get early access**; the APK and the source
-are kept as secondary links, for the people who want them.
+it. It offers two ways in, side by side: **Download for Android**, which is the
+APK straight from the latest GitHub release, and **Request a Play Store beta
+invite**, for anyone who would rather install from Google Play.
+
+## The download
+
+Every download button points at one URL:
+
+    https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk
+
+That only works if every release carries an APK under that exact name, so each
+release has, beside its versioned `papervoice-X.Y.Z.apk`:
+
+    papervoice.apk                byte-for-byte the same file
+    papervoice.apk.sha256         checksums, in sha256sum's format
+    papervoice-X.Y.Z.apk.sha256
+    papervoice.json               version, size, checksum, minimum Android
+
+`npm run release -- --publish` builds, signs, and publishes all of them, as a
+draft first, so "latest" never points at a release without `papervoice.apk`.
+For a release made by hand, the `release-assets` workflow copies the versioned
+APK under the stable name and adds the rest. `node scripts/releaseAssets.mjs`
+does the same from a laptop, and `--check` reports without changing anything.
+The APK is copied from the published asset and checked against GitHub's own
+digest; nothing is rebuilt or re-signed, and no key is involved.
+
+The version, size, checksum and minimum Android on the page come from
+`papervoice.json` and are written into the HTML at deploy, by
+`scripts/siteRelease.mjs` — so no visit asks GitHub for anything. The deploy
+fails if the stable APK does not resolve, rather than publishing a page whose
+main button is a 404. `node scripts/siteRelease.mjs --check` compares the page
+with the live release.
+
+## Voice samples
+
+    npm run site:samples
+
+Writes `audio/<voice-id>.opus` and `.m4a` for every voice the app offers, and
+rewrites the sample buttons — under the hero image and in the voices section —
+to match exactly the voices that have a recording. A voice without one gets no
+button, rather than a broken one.
+
+Recordings, first match wins:
+
+    design/site-audio/<voice-id>.{wav,flac,m4a,mp3,opus,ogg}   supplied by hand
+    assets/samples/<voice-id>.opus                             the app's own
+
+The app's own are its in-app previews: real output of each voice's model, every
+voice reading the same sentence, three to five seconds each. Longer samples —
+around ten seconds — go in `design/site-audio/`, named by voice id (Lyra is
+`ljspeech-medium`). **Every voice should read the same passage**, so they can
+be compared; the generator says so when they are mixed. Only Papervoice's own
+voices belong here — never another TTS service, never generated narration.
+
+Nothing is downloaded until a sample is pressed. There is no `<audio>` element
+and no preload: one player is created on the first press and given a file only
+then, Opus where the browser plays it and AAC where it does not.
 
 ## The two things to fill in
 
@@ -109,5 +165,6 @@ file, because the fonts and images are referenced from the site root.
 - Deploy `early-access/Code.gs` and set `EARLY_ACCESS_ENDPOINT`, or the form
   falls back to opening a mail client
 - Set `BETA_OPT_IN_URL` once internal testing has an opt-in link
-- The releases page is linked from the FAQ and the footer, and is empty until
-  a release is published
+- When the Google Play closed test is live, swap the beta section's line for
+  the "in testing" wording kept in a comment beside it
+- Longer voice samples, if wanted: see "Voice samples" above
