@@ -69,12 +69,27 @@ export default function Voices() {
 
   useFocusEffect(refresh);
 
+  /**
+   * Makes a voice the one in use -- for the book playing now, too.
+   *
+   * Saving the setting used to be all this did, so a book being listened to
+   * carried on in the old voice until the app was restarted. The book on the
+   * bar switches the same way it does from the reader: the ring, then the
+   * current sentence again in the new voice. A book restored at launch and not
+   * yet played loads nothing; play picks the choice up.
+   */
+  const choose = async (id: string) => {
+    await setSetting(SETTING_VOICE, id);
+    refresh();
+    await reading.playback.adoptVoice(id);
+  };
+
   const install = async (voice: VoiceMeta) => {
     setFailed(null);
     setProgress({ id: voice.id, fraction: 0 });
     try {
       await voiceStore().install(voice, (fraction) => setProgress({ id: voice.id, fraction }));
-      await setSetting(SETTING_VOICE, voice.id);
+      await choose(voice.id);
     } catch (cause) {
       setFailed(String(cause));
     } finally {
@@ -212,7 +227,7 @@ export default function Voices() {
               <Pressable
                 onPress={() =>
                   isInstalled
-                    ? void setSetting(SETTING_VOICE, item.id).then(refresh)
+                    ? void choose(item.id)
                     : void install(item)
                 }
                 disabled={progress !== null}
@@ -343,7 +358,7 @@ export default function Voices() {
                   return (
                     <Pressable
                       key={id}
-                      onPress={() => void setSetting(SETTING_VOICE, id).then(refresh)}
+                      onPress={() => void choose(id)}
                       accessibilityRole="button"
                       accessibilityState={{ selected: inUse }}
                       style={({ pressed }) => [

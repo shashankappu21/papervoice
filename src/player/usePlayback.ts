@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { Directory, File, Paths } from 'expo-file-system';
 import { audioPath } from '../tts/audioCache';
@@ -9,6 +8,7 @@ import { createSynthQueue } from '../tts/synthQueue';
 import { openEngine, listAvailableVoices, type AvailableVoice, type SpeechEngine } from '../voices/engine';
 import { getSetting, setSetting, SETTING_RATE, SETTING_VOICE } from '../db/settings';
 import { markFinished } from '../db/books';
+import { switchesNow } from './voiceSwitch';
 import type { Sentence } from '../extraction/types';
 
 /**
@@ -52,6 +52,11 @@ export interface Playback {
   /** The one currently loaded, or null before anything is. */
   voiceId: string | null;
   selectVoice(id: string): Promise<void>;
+  /**
+   * A voice chosen outside the reader. Switches the playing book like
+   * selectVoice, but loads nothing when no voice is loaded yet.
+   */
+  adoptVoice(id: string): Promise<void>;
   /** Re-reads the installed voices, for when one has just been downloaded. */
   refreshVoices(): void;
   play(from?: number): Promise<void>;
@@ -106,6 +111,16 @@ export function usePlayback(
   const loadedVoiceId = useRef<string | null>(null);
   /** Loads run one after another, so the last one asked for is the one that wins. */
   const voiceLoading = useRef<Promise<void>>(Promise.resolve());
+  /** Loads asked for and not yet finished, queued ones included. */
+  const loadsPending = useRef(0);
+  /**
+   * Voice switches arrive in bursts -- tapping through the Voices tab to hear
+   * each one. Only the latest may resume playback or clear the ring, and it
+   * resumes if playback was running when the burst began, not when it ended:
+   * by then the first switch had already paused it.
+   */
+  const latestSwitch = useRef(0);
+  const resumeAfterSwitch = useRef(false);
   const recentRtf = useRef<number | undefined>(undefined);
   /** The sentence playback is waiting on, when its audio is not ready yet. */
   const awaiting = useRef<number | null>(null);
@@ -345,6 +360,9 @@ export function usePlayback(
    * chosen. Whichever was asked for last is the one that ends up loaded.
    */
   const loadVoice = useCallback((target: string | null): Promise<void> => {
+    // Counted from the moment it is asked for, not when it starts: a load
+    // queued behind another is still one that will happen.
+    loadsPending.current += 1;
     const next = voiceLoading.current.then(async () => {
       if (voiceLoaded.current && loadedVoiceId.current === target) return;
 
@@ -376,6 +394,8 @@ export function usePlayback(
       } finally {
         setLoadingVoice(false);
       }
+    }).finally(() => {
+      loadsPending.current -= 1;
     });
 
     // A failure must not poison the chain for every later load.
@@ -410,7 +430,10 @@ export function usePlayback(
    * another is worse than a moment's wait.
    */
   const selectVoice = async (id: string) => {
-    const wasPlaying = playing;
+    const mine = ++latestSwitch.current;
+    // OR'd, not assigned: in a burst the first switch has already paused, so a
+    // later one sees nothing playing even though the listener was listening.
+    if (playing) resumeAfterSwitch.current = true;
     player.current?.pause();
     setPlaying(false);
     awaiting.current = null;
@@ -438,11 +461,16 @@ export function usePlayback(
       recentRtf.current = undefined;
       setRtf(null);
       await loadVoice(id);
+      // Another switch was asked for while this one loaded. It finishes the
+      // job; starting the queue or the voice here would only be undone.
+      if (mine !== latestSwitch.current) return;
       await queue.start(index.current);
 
       // The sentence that was being spoken starts again, from its beginning,
       // in the new voice -- rather than finishing in the old one.
-      if (wasPlaying) {
+      const resume = resumeAfterSwitch.current;
+      resumeAfterSwitch.current = false;
+      if (resume) {
         const path = queue.pathFor(index.current);
         if (path) startTrack(path);
         else {
@@ -451,13 +479,39 @@ export function usePlayback(
         }
       }
     } catch (cause) {
+      if (mine !== latestSwitch.current) return;
+      resumeAfterSwitch.current = false;
       console.log('[papervoice] voice switch failed:', String(cause));
       setError(`Voice unavailable: ${String(cause)}`);
     } finally {
       // loadVoice clears this itself, except when the voice chosen was already
-      // the one loaded and there was nothing to load.
-      setLoadingVoice(false);
+      // the one loaded and there was nothing to load. Only the latest switch
+      // clears it, so a burst shows one unbroken ring.
+      if (mine === latestSwitch.current) setLoadingVoice(false);
     }
+  };
+
+  /**
+   * A voice was chosen somewhere other than the reader -- the Voices tab.
+   *
+   * Switches the book on the bar exactly as choosing it in the reader does:
+   * the ring, then the current sentence again in the new voice. It used to go
+   * through a focus effect that called ensureVoice(), which returns at once
+   * whenever a voice is already loaded -- the only case it ran in -- so the
+   * choice was saved but never heard until the app restarted.
+   *
+   * Nothing loaded and nothing loading means a book restored at launch and
+   * not yet played, or no book at all. The choice is already saved and play()
+   * loads it; loading it here would undo the point of not loading at launch.
+   */
+  const adoptVoice = async (id: string) => {
+    const state = {
+      loaded: voiceLoaded.current,
+      pending: loadsPending.current,
+      loadedId: loadedVoiceId.current,
+    };
+    if (!switchesNow(state, id)) return;
+    await selectVoice(id);
   };
 
   // Load the voice as soon as a book is opened. It takes seconds, and doing it
@@ -471,41 +525,6 @@ export function usePlayback(
       setError(`Voice unavailable: ${String(cause)}`);
     });
   }, [sentences.length, ensureVoice, preload]);
-
-  /**
-   * Picks up a voice chosen while this screen was away.
-   *
-   * Everything already synthesised was spoken by the previous voice, so it is
-   * thrown away and made again: half a chapter in one voice and half in another
-   * is worse than a moment's wait.
-   */
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-
-      void (async () => {
-        const chosen = (await getSetting(SETTING_VOICE)) ?? null;
-        if (cancelled || !voiceLoaded.current || chosen === loadedVoiceId.current) return;
-
-        player.current?.pause();
-        setPlaying(false);
-        awaiting.current = null;
-        setBuffering(false);
-
-        try {
-          await ensureVoice();
-          if (cancelled) return;
-          await queue.start(index.current);
-        } catch (cause) {
-          if (!cancelled) setError(`Voice unavailable: ${String(cause)}`);
-        }
-      })();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [ensureVoice, queue]),
-  );
 
   const play = async (from = index.current) => {
     try {
@@ -578,6 +597,7 @@ export function usePlayback(
     refreshVoices,
     voiceId,
     selectVoice,
+    adoptVoice,
     play,
     pause,
     jumpTo,
