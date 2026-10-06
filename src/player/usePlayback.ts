@@ -112,14 +112,22 @@ export function usePlayback(
    * outlives them -- it is mounted at launch, before any book is open -- so
    * without this a book resumed from the library would begin at zero however
    * far it had been read.
+   *
+   * Adjusted during render, not in an effect. An effect runs a commit late, so
+   * the first render of a newly opened book carried the old index -- zero after
+   * launch, or the previous book's place -- and the sentence list, which reads
+   * where to open exactly once when it mounts, opened at the top and never
+   * looked again. Setting state while rendering makes React re-run this before
+   * committing anything, so no child ever sees the stale index.
    */
-  const loaded = useRef(sentences);
-  useEffect(() => {
-    if (loaded.current === sentences) return;
-    loaded.current = sentences;
-    index.current = initialIndex;
+  const [loadedSentences, setLoadedSentences] = useState(sentences);
+  if (loadedSentences !== sentences) {
+    setLoadedSentences(sentences);
     setCurrentIndex(initialIndex);
-  }, [sentences, initialIndex]);
+    // Idempotent, so safe to write while rendering: it is the same value
+    // however many times this runs for the same book.
+    index.current = initialIndex;
+  }
 
   const cacheRoot = useMemo(() => {
     const dir = new Directory(Paths.cache, 'synth');
