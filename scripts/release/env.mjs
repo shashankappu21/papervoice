@@ -23,14 +23,21 @@ export function parseEnv(text) {
   return values;
 }
 
-/** Sets anything not already in the environment. Returns the keys it set. */
-export function loadEnv(file = '.env') {
-  if (!existsSync(file)) return [];
+/**
+ * Sets anything not already in the environment. Returns the keys it set.
+ *
+ * .env.local first, as Expo orders them: it holds what belongs to this machine
+ * (GRADLE_USER_HOME), which Expo refuses to read from a plain .env.
+ */
+export function loadEnv(files = ['.env.local', '.env']) {
   const set = [];
-  for (const [key, value] of Object.entries(parseEnv(readFileSync(file, 'utf8')))) {
-    if (process.env[key] === undefined) {
-      process.env[key] = value;
-      set.push(key);
+  for (const file of files) {
+    if (!existsSync(file)) continue;
+    for (const [key, value] of Object.entries(parseEnv(readFileSync(file, 'utf8')))) {
+      if (process.env[key] === undefined) {
+        process.env[key] = value;
+        set.push(key);
+      }
     }
   }
   return set;
