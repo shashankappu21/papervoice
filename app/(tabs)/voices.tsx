@@ -5,7 +5,8 @@ import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OFFERED_VOICES, type VoiceMeta } from '../../src/voices/catalog';
 import { voiceStore, removeUnknownVoices } from '../../src/voices/deviceVoices';
-import { listUsableSystemVoices, systemVoiceId, systemVoiceLabel } from '../../src/voices/engine';
+import { labelledSystemVoices, listUsableSystemVoices, systemVoiceId } from '../../src/voices/engine';
+import { orderCatalog, type LabelledPhoneVoice } from '../../src/voices/order';
 import type { SystemVoice } from '../../modules/system-tts';
 import { getSetting, setSetting, SETTING_VOICE } from '../../src/db/settings';
 import { useTheme } from '../../src/ui/ThemeProvider';
@@ -29,7 +30,9 @@ export default function Voices() {
   const { colors, space, font, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const [installed, setInstalled] = useState<Set<string>>(new Set());
-  const [system, setSystem] = useState<SystemVoice[]>([]);
+  const [system, setSystem] = useState<Array<LabelledPhoneVoice<SystemVoice>>>([]);
+  /** Four phone voices show; the rest wait behind "Show all". */
+  const [allPhoneVoices, setAllPhoneVoices] = useState(false);
   const [hiddenVoices, setHiddenVoices] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ id: string; fraction: number } | null>(null);
@@ -60,7 +63,7 @@ export default function Voices() {
     getSetting(SETTING_VOICE).then(setSelected, () => undefined);
     listUsableSystemVoices().then(
       ({ usable, hiddenForNetwork }) => {
-        setSystem(usable);
+        setSystem(labelledSystemVoices(usable));
         setHiddenVoices(hiddenForNetwork);
       },
       () => setSystem([]),
@@ -104,12 +107,9 @@ export default function Voices() {
       (gender === 'all' || voice.gender === gender),
   );
 
-  // Installed first: a voice ready to use is more interesting than one that is
-  // a 63MB download away.
-  const ordered = [
-    ...shown.filter((voice) => installed.has(voice.id)),
-    ...shown.filter((voice) => !installed.has(voice.id)),
-  ];
+  // A fixed order: recommended first, then A to Z. Installed voices are
+  // marked, not moved -- moving them reshuffled the list on every download.
+  const ordered = orderCatalog(shown);
 
   const installedCount = OFFERED_VOICES.filter((voice) => installed.has(voice.id));
   const usedBytes = installedCount.reduce((total, voice) => total + voice.sizeBytes, 0);
@@ -352,7 +352,7 @@ export default function Voices() {
                 <Text style={[styles.section, { color: colors.textMuted, fontSize: font.xs }]}>
                   ALREADY ON THIS PHONE
                 </Text>
-                {system.slice(0, 4).map((voice) => {
+                {(allPhoneVoices ? system : system.slice(0, 4)).map(({ voice, label, detail }) => {
                   const id = systemVoiceId(voice);
                   const inUse = selected === id;
                   return (
@@ -374,15 +374,15 @@ export default function Voices() {
                         },
                       ]}
                     >
-                      <VoiceAvatar name={systemVoiceLabel(voice)} size={44} />
+                      <VoiceAvatar name={label} size={44} />
                       <View style={styles.cardText}>
                         <Text
                           style={{ color: colors.text, fontSize: font.lg, fontWeight: '600' }}
                         >
-                          {systemVoiceLabel(voice)}
+                          {label}
                         </Text>
                         <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 2 }}>
-                          System voice · nothing to download
+                          {detail} · nothing to download
                         </Text>
                       </View>
                       {inUse && (
@@ -391,6 +391,17 @@ export default function Voices() {
                     </Pressable>
                   );
                 })}
+                {system.length > 4 && (
+                  <Pressable
+                    onPress={() => setAllPhoneVoices((all) => !all)}
+                    accessibilityRole="button"
+                    style={({ pressed }) => ({ paddingVertical: space.sm, opacity: pressed ? 0.6 : 1 })}
+                  >
+                    <Text style={{ color: colors.accent, fontSize: font.md, fontWeight: '600' }}>
+                      {allPhoneVoices ? 'Show fewer' : `Show all ${system.length} phone voices`}
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             )}
 

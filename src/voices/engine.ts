@@ -8,6 +8,8 @@ import { chunk } from '../tts/chunk';
 import { pauseAfter } from '../tts/pauses';
 import { getSetting, SETTING_THREADS } from '../db/settings';
 import { parseThreads } from './threads';
+import { labelPhoneVoices, orderCatalog, type LabelledPhoneVoice } from './order';
+import { PHONE_VOICE_NAMES } from './phoneVoiceNames';
 
 /**
  * Speaking a sentence, whichever voice is doing it.
@@ -62,28 +64,9 @@ export async function listUsableSystemVoices(): Promise<SystemVoices> {
   return { usable, hiddenForNetwork: voices.length - usable.length };
 }
 
-/**
- * A name worth showing. Android names a voice things like `en-us-x-iom-local`,
- * which tells a reader nothing, so the locale is spelled out instead.
- */
-export function systemVoiceLabel(voice: SystemVoice): string {
-  const fallback = voice.locale || voice.id;
-  try {
-    const [language, region] = voice.locale.split('-');
-    // Android reports locales three-letter as well as two ("eng-NGA"), and
-    // DisplayNames answers undefined for names it does not know rather than
-    // throwing -- which is how a voice ended up displayed with no name at all.
-    const named = new Intl.DisplayNames(['en'], { type: 'language' }).of(language);
-    if (!named || named === language) return fallback;
-
-    const place = region
-      ? new Intl.DisplayNames(['en'], { type: 'region' }).of(region.toUpperCase())
-      : null;
-
-    return place && place !== region ? `${named} (${place})` : named;
-  } catch {
-    return fallback;
-  }
+/** The phone's usable voices, named and in their fixed order. */
+export function labelledSystemVoices(usable: SystemVoice[]): Array<LabelledPhoneVoice<SystemVoice>> {
+  return labelPhoneVoices(usable, PHONE_VOICE_NAMES);
 }
 
 export interface AvailableVoice {
@@ -99,17 +82,17 @@ export interface AvailableVoice {
  */
 export async function listAvailableVoices(): Promise<AvailableVoice[]> {
   const store = voiceStore();
-  const downloaded = OFFERED_VOICES.filter((voice) => store.isInstalled(voice)).map((voice) => ({
+  const downloaded = orderCatalog(OFFERED_VOICES.filter((voice) => store.isInstalled(voice))).map((voice) => ({
     id: voice.id,
     label: voice.name,
     detail: `${voice.accent} · ${voice.gender} · natural`,
   }));
 
   const { usable } = await listUsableSystemVoices();
-  const system = usable.map((voice) => ({
+  const system = labelledSystemVoices(usable).map(({ voice, label, detail }) => ({
     id: systemVoiceId(voice),
-    label: systemVoiceLabel(voice),
-    detail: 'system voice',
+    label,
+    detail,
   }));
 
   // Downloaded voices first: someone who took the trouble to install one is
