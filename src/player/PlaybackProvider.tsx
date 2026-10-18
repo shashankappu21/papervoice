@@ -40,6 +40,11 @@ const PlaybackContext = createContext<PlaybackContextValue | null>(null);
  */
 export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [book, setBook] = useState<Book | null>(null);
+  /** The book now, for callbacks that must not change identity when it does. */
+  const bookRef = useRef<Book | null>(null);
+  bookRef.current = book;
+  /** pause() changes identity every render; open() must not, or the reader re-opens in a loop. */
+  const pauseRef = useRef<() => void>(() => undefined);
   const [sentences, setSentences] = useState<Sentence[]>(NO_SENTENCES);
   /**
    * Whether the voice should load before play is pressed. Set when someone
@@ -57,6 +62,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     preload,
   );
   const { pause, onPlayed, stopBefore, setVolume } = playback;
+  pauseRef.current = pause;
 
   /*
    * The sleep timer.
@@ -236,6 +242,11 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       setPreload(true);
       // Re-opening the book already loaded would reset the place to whatever
       // was saved, which is behind where it has since been read to.
+      //
+      // A different book stops the one playing first, at once. Left to the
+      // player being rebuilt, the old book's sentence finished over the new
+      // book's opening.
+      if (bookRef.current && bookRef.current.id !== next.id) pauseRef.current();
       setBook((current) => {
         if (current?.id === next.id) return current;
         setSentences(readSentences(next));

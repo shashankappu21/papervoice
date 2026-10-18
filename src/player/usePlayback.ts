@@ -172,6 +172,11 @@ export function usePlayback(
   if (loadedSentences !== sentences) {
     setLoadedSentences(sentences);
     setCurrentIndex(initialIndex);
+    // A new book starts stopped, whatever the last one was doing.
+    setPlaying(false);
+    setBuffering(false);
+    awaiting.current = null;
+    lastPlayingAt.current = null;
     // Idempotent, so safe to write while rendering: it is the same value
     // however many times this runs for the same book.
     index.current = initialIndex;
@@ -371,6 +376,10 @@ export function usePlayback(
 
     return () => {
       subscription.remove();
+      // Silenced before it is let go. A player released mid-sentence went on
+      // sounding, so switching books played the old book's last sentence over
+      // the new one.
+      created.pause();
       created.clearLockScreenControls();
       created.remove();
       player.current = null;
