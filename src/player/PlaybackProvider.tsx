@@ -88,6 +88,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       setVolume(1);
+      // A chapter edge left from an earlier choice must not outlive it.
+      stopBefore(null);
       const next: SleepTimer =
         choice === 'chapter'
           ? { kind: 'chapter', stopBefore: nextChapterStart(sections, playback.currentIndex) }
@@ -95,7 +97,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       sleepRef.current = next;
       setSleepState(next);
     },
-    [clearSleep, setVolume, sections, playback.currentIndex],
+    [clearSleep, setVolume, stopBefore, sections, playback.currentIndex],
   );
 
   // A chapter timer follows the listener: jumping to another chapter moves the
