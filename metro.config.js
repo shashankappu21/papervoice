@@ -15,4 +15,7 @@ config.resolver.assetExts.push('txt');
 // app supports.
 config.resolver.assetExts.push('opus');
 
+// The starter book every new install begins with (import/starter.ts).
+config.resolver.assetExts.push('pdf');
+
 module.exports = config;

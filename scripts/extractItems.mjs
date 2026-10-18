@@ -34,7 +34,9 @@ export async function extractItems(pdfPath, root = process.cwd()) {
     new Function(script)();
   });
 
-  await extract(fs.readFileSync(pdfPath).toString('base64'));
+  // The page takes the document by location now, as the WebView hands it a
+  // file uri; under Node, pdf.js reads a plain path itself.
+  await extract(path.resolve(pdfPath));
   const items = messages.find((m) => m.type === 'items');
   if (!items) throw new Error(messages.find((m) => m.type === 'error')?.message ?? 'no items posted');
   return { items: items.items, pageHeight: items.pageHeight, pageCount: items.pageCount };

@@ -60,6 +60,8 @@
     "assets": "python scripts/storeAssets.py",
     "site:assets": "python scripts/siteAssets.py",
     "site:samples": "vite-node scripts/siteSamples.ts",
+    "starter-book": "node scripts/starterBook.mjs && node scripts/extractFixture.mjs assets/books/three-stories.pdf design/starter-book/items.json && vite-node scripts/checkStarterBook.ts",
+    "starter-book:check": "node scripts/extractFixture.mjs assets/books/three-stories.pdf design/starter-book/items.json && vite-node scripts/checkStarterBook.ts",
     "battery": "node scripts/battery.mjs"
   },
   "license": "GPL-3.0-or-later"

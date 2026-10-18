@@ -13,6 +13,9 @@ import { CoverBackfill } from '../../src/import/CoverBackfill';
 import { useTourTarget } from '../../src/tour/useTourTarget';
 import { useOfferTour } from '../../src/tour/TourProvider';
 import { BookCover } from '../../src/ui/BookCover';
+import { useImport } from '../../src/import/ImportProvider';
+import { showsStartHere, STARTER_BOOK_ID } from '../../src/import/starter';
+import { getSetting } from '../../src/db/settings';
 import { useTheme } from '../../src/ui/ThemeProvider';
 
 /** The library: what has been imported, and how far each one has been read. */
@@ -34,15 +37,26 @@ export default function Library() {
   const [backfilling, setBackfilling] = useState(true);
   const [naming, setNaming] = useState(false);
   const [editing, setEditing] = useState<Group | null>(null);
+  const [starterId, setStarterId] = useState<number | null>(null);
+  const { revision, preparingStarter } = useImport();
 
   // Progress changes while reading, so the list is refreshed on the way back
   // rather than only when it is first built.
   const reload = useCallback(() => {
     listBooks().then(setBooks, (cause: unknown) => setStatus(String(cause)));
     listGroups().then(setGroups, () => setGroups([]));
+    getSetting(STARTER_BOOK_ID).then(
+      (id) => setStarterId(id ? Number(id) : null),
+      () => setStarterId(null),
+    );
   }, []);
 
   useFocusEffect(reload);
+
+  // The starter book arrives on its own, while this screen may be open.
+  useEffect(() => {
+    if (revision > 0) reload();
+  }, [revision, reload]);
 
   // Which books are in the chosen group. Kept beside the books rather than
   // queried with them, so switching group does not re-read the whole library.
@@ -269,7 +283,7 @@ export default function Library() {
                 marginTop: space.lg,
               }}
             >
-              Nothing here yet
+              {preparingStarter ? 'Getting your first story ready…' : 'Nothing here yet'}
             </Text>
             <Text
               style={{
@@ -313,10 +327,16 @@ export default function Library() {
                 >
                   {item.title}
                 </Text>
-                <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 3 }}>
-                  {progressLabel(item)}
-                  {item.pageCount} pages
-                </Text>
+                {showsStartHere(item, starterId) ? (
+                  <Text style={{ color: colors.accent, fontSize: font.sm, fontWeight: '700', marginTop: 3 }}>
+                    Start here · about 50 min
+                  </Text>
+                ) : (
+                  <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 3 }}>
+                    {progressLabel(item)}
+                    {item.pageCount} pages
+                  </Text>
+                )}
               </View>
               <Pressable
                 onPress={() => setMenuFor(item)}

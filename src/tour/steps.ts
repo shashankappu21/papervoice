@@ -51,7 +51,7 @@ export const TOURS: Record<TourId, Step[]> = {
       target: 'import',
       title: 'Add a book',
       body:
-        'Tap the plus to bring in a PDF. You can also open one straight from your file manager and choose Papervoice.',
+        'Tap the plus to bring in a PDF. You can also open one straight from your file manager and choose Papervoice. Or start with the stories already in your library.',
     },
     {
       target: 'groups',

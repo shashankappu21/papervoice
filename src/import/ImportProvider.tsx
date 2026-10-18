@@ -1,5 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { File, Paths } from 'expo-file-system';
+import { Asset } from 'expo-asset';
+import { getSetting, setSetting } from '../db/settings';
+import {
+  afterFailure,
+  shouldImport,
+  STARTER_BOOK_ID,
+  STARTER_STATE,
+  STARTER_TITLE,
+} from './starter';
 
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
@@ -13,6 +22,10 @@ import { onImportOffered } from './pendingImport';
 interface ImportContextValue {
   start(): void;
   busy: boolean;
+  /** Goes up when a book arrives without anyone asking -- the starter book. */
+  revision: number;
+  /** True while the starter book is being prepared. */
+  preparingStarter: boolean;
 }
 
 const ImportContext = createContext<ImportContextValue | null>(null);
@@ -32,7 +45,14 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
     uri: string;
     title: string;
     hash: string | null;
+    /**
+     * The starter book: no progress card, no opening the reader, and failure
+     * is recorded for a later retry rather than shown.
+     */
+    silent?: boolean;
   } | null>(null);
+  const [revision, setRevision] = useState(0);
+  const [preparingStarter, setPreparingStarter] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   /** Pages read and pages in total, so the wait has a shape rather than a spinner. */
   const [pages, setPages] = useState({ page: 0, total: 0 });
@@ -118,8 +138,47 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
   // the router sees them first and would otherwise try to navigate to them.
   useEffect(() => onImportOffered(receive), [receive]);
 
+  /*
+   * The starter book, on a new install's first launches.
+   *
+   * Copied out of the app's assets and read by the same extractor as any
+   * other PDF, so it is a book like the rest: it can be deleted, grouped,
+   * and its place is saved.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const state = await getSetting(STARTER_STATE);
+      if (!shouldImport(state) || cancelled) return;
+      setPreparingStarter(true);
+      try {
+        const asset = Asset.fromModule(require('../../assets/books/three-stories.pdf'));
+        await asset.downloadAsync();
+        if (!asset.localUri) throw new Error('the starter book has no local copy');
+        const copy = new File(Paths.cache, `starter-${Date.now()}.pdf`);
+        new File(asset.localUri).copySync(copy);
+        if (!cancelled) setImporting({ uri: copy.uri, title: STARTER_TITLE, hash: null, silent: true });
+      } catch (cause) {
+        console.log('[papervoice] starter book could not be staged:', String(cause));
+        await setSetting(STARTER_STATE, afterFailure(state)).catch(() => undefined);
+        setPreparingStarter(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const start = () => {
-    if (importing) return;
+    // The starter book is quick, but someone may tap + while it is reading.
+    // It is set aside rather than made to wait: tried again next launch.
+    if (importing?.silent) {
+      setImporting(null);
+      setPreparingStarter(false);
+      void getSetting(STARTER_STATE).then((state) =>
+        setSetting(STARTER_STATE, afterFailure(state)),
+      );
+    } else if (importing) return;
     void DocumentPicker.getDocumentAsync({
       type: 'application/pdf',
       copyToCacheDirectory: true,
@@ -131,10 +190,12 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ImportContext.Provider value={{ start, busy: importing !== null }}>
+    <ImportContext.Provider
+      value={{ start, busy: importing !== null && !importing.silent, revision, preparingStarter }}
+    >
       {children}
 
-      {(importing || failed || saving) && (
+      {((importing && !importing.silent) || failed || saving) && (
         <ImportProgress
           title={importing?.title ?? ''}
           page={pages.page}
@@ -155,6 +216,21 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
           onDone={(doc) => {
             const { uri, title, hash } = importing;
             setImporting(null);
+            if (importing.silent) {
+              addBook(uri, title, doc, hash)
+                .then(async (book) => {
+                  await setSetting(STARTER_BOOK_ID, String(book.id));
+                  await setSetting(STARTER_STATE, 'done');
+                  setRevision((n) => n + 1);
+                })
+                .catch(async (cause: unknown) => {
+                  console.log('[papervoice] starter book could not be saved:', String(cause));
+                  const state = await getSetting(STARTER_STATE);
+                  await setSetting(STARTER_STATE, afterFailure(state));
+                })
+                .finally(() => setPreparingStarter(false));
+              return;
+            }
             setSaving(true);
             setStatus('Saving…');
             addBook(uri, title, doc, hash).then(
@@ -170,6 +246,15 @@ export function ImportProvider({ children }: { children: React.ReactNode }) {
             );
           }}
           onError={(message) => {
+            if (importing.silent) {
+              setImporting(null);
+              setPreparingStarter(false);
+              console.log('[papervoice] starter book could not be read:', message);
+              void getSetting(STARTER_STATE).then((state) =>
+                setSetting(STARTER_STATE, afterFailure(state)),
+              );
+              return;
+            }
             setImporting(null);
             setSaving(false);
             setFailed(message);

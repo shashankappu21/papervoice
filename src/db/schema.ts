@@ -114,6 +114,17 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
     await db.execAsync(`ALTER TABLE books ADD COLUMN finished_at INTEGER`);
   }
 
+  if (version === 0) {
+    /*
+     * A library created from nothing: a new install. It gets the starter book
+     * (import/starter.ts). An upgrade never reaches here with version 0, so
+     * nobody's existing library has a book added to it.
+     */
+    await db.runAsync(
+      `INSERT OR IGNORE INTO settings (key, value) VALUES ('starter.state', 'pending')`,
+    );
+  }
+
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 
   // Only when something changed, so it is one line per upgrade rather than one
