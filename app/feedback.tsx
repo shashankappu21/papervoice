@@ -96,14 +96,14 @@ export default function Feedback() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            placeholder="Your email, if you'd like a reply (optional)"
+            placeholder="Your email (optional)"
             placeholderTextColor={colors.textMuted}
             style={[field, { marginTop: space.md }]}
           />
 
           <Text style={{ color: colors.textMuted, fontSize: font.xs, marginTop: space.sm, lineHeight: 16 }}>
-            Sends your message, app version, Android version and phone model ({info.device}). Nothing
-            about your books.
+            Add your email if you'd like a reply. Sends your message, app version, Android version
+            and phone model ({info.device}). Nothing about your books.
           </Text>
 
           {state === 'failed' && (
