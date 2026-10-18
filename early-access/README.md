@@ -56,9 +56,31 @@ editing `Code.gs`: **Deploy → Manage deployments → ✏️ → Version: New v
 Deploy**. The URL stays the same. Deploying a *new deployment* instead gives a
 new URL, and the old one keeps running the old code.
 
+## The app's questionnaire and feedback (1.1 and later)
+
+The same script takes two more kinds of request from the app, each into its
+own tab, created on first use:
+
+    survey     received_at, use, source, comment, app_version, android_version, sent_at
+    feedback   received_at, message, email, app_version, android_version, device, sent_at
+
+`use` and `source` must be one of the app's fixed answers, every field has a
+length limit, and a body over 4 KB is refused -- the URL can be read out of the
+APK, so anything not shaped exactly like the app's own request is turned away.
+Text that would start a formula (= + - @) is stored with a leading apostrophe.
+`__tests__/earlyAccess.test.ts` runs this file in Node to check all of it.
+
+The app gets the URL from `EXPO_PUBLIC_FEEDBACK_ENDPOINT` in the repo's local,
+git-ignored `.env` -- the same URL as the site's `EARLY_ACCESS_ENDPOINT`:
+
+    EXPO_PUBLIC_FEEDBACK_ENDPOINT=https://script.google.com/macros/s/.../exec
+
+Without it, a build simply has no questionnaire, and feedback goes by email.
+After changing `Code.gs`, redeploy as below so the URL stays the same.
+
 ## What is stored
 
-One row per address:
+For the site's form, one row per address:
 
     timestamp     when the browser submitted
     email

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,9 @@ import { BookCover } from '../../src/ui/BookCover';
 import { useImport } from '../../src/import/ImportProvider';
 import { showsStartHere, STARTER_BOOK_ID } from '../../src/import/starter';
 import { getSetting } from '../../src/db/settings';
+import { useReading } from '../../src/player/PlaybackProvider';
+import { SurveyCard } from '../../src/ui/SurveyCard';
+import { maybeAskForRating, noteSurveyShown, retryPendingSurvey, surveyIsDue } from '../../src/feedback/asks';
 import { useTheme } from '../../src/ui/ThemeProvider';
 
 /** The library: what has been imported, and how far each one has been read. */
@@ -52,6 +55,44 @@ export default function Library() {
   }, []);
 
   useFocusEffect(reload);
+
+  /*
+   * The questionnaire and Play's rating prompt, checked each time the library
+   * comes into view -- never in the middle of listening, and never both on
+   * one day.
+   */
+  const [surveying, setSurveying] = useState(false);
+  const { playback } = useReading();
+  const playingNow = useRef(playback.playing);
+  playingNow.current = playback.playing;
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      let later: ReturnType<typeof setTimeout> | undefined;
+      surveyIsDue()
+        .then((due) => {
+          if (cancelled) return;
+          if (due) {
+            setSurveying(true);
+            void noteSurveyShown();
+          } else if (!playingNow.current) {
+            // A moment after arriving, rather than over the transition.
+            later = setTimeout(() => void maybeAskForRating().catch(() => undefined), 1500);
+          }
+        })
+        .catch(() => undefined);
+      return () => {
+        cancelled = true;
+        if (later) clearTimeout(later);
+      };
+    }, []),
+  );
+
+  // An answer that could not be sent last time gets another try.
+  useEffect(() => {
+    void retryPendingSurvey().catch(() => undefined);
+  }, []);
 
   // The starter book arrives on its own, while this screen may be open.
   useEffect(() => {
@@ -116,6 +157,7 @@ export default function Library() {
         contentContainerStyle={{ paddingBottom: space.xxxl }}
         ListHeaderComponent={
           <View>
+            {surveying && <SurveyCard onDone={() => setSurveying(false)} />}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}

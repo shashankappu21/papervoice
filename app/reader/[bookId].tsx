@@ -149,7 +149,7 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   // playing and reachable, which is why it exists.
   const leave = () => {
     if (router.canGoBack()) router.back();
-    else router.replace('/index');
+    else router.replace('/');
   };
 
   return (

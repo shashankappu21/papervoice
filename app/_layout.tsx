@@ -69,6 +69,10 @@ function Routes() {
         name="settings"
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
       />
+      <Stack.Screen
+        name="feedback"
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
     </Stack>
   );
 }

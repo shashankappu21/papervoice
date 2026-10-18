@@ -78,3 +78,14 @@ describe("the release facts written into the page", () => {
     expect(meta.readRelease(page)).toEqual({ version: '1.0.0', size: '44.8 MB', sha256: 'old', android: '7.0' });
   });
 });
+
+describe('reading .env for a build', async () => {
+  // @ts-ignore -- plain .mjs
+  const { parseEnv } = await import('../scripts/release/env.mjs');
+
+  it('reads KEY=value lines, skipping comments and trimming quotes', () => {
+    expect(
+      parseEnv('# local only\nEXPO_PUBLIC_FEEDBACK_ENDPOINT="https://example.test/exec"\n\nOTHER=1\n'),
+    ).toEqual({ EXPO_PUBLIC_FEEDBACK_ENDPOINT: 'https://example.test/exec', OTHER: '1' });
+  });
+});

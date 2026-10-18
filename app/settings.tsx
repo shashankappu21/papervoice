@@ -197,6 +197,25 @@ export default function Settings() {
             : 'Show me around again'}
         </Text>
       </Pressable>
+      <Pressable
+        onPress={() => router.push('/feedback')}
+        accessibilityRole="button"
+        style={({ pressed }) => [
+          styles.note,
+          {
+            backgroundColor: colors.surface,
+            borderRadius: radius.md,
+            padding: space.lg,
+            marginTop: space.sm,
+            opacity: pressed ? 0.8 : 1,
+          },
+        ]}
+      >
+        <Ionicons name="chatbubble-ellipses" size={20} color={colors.accent} />
+        <Text style={{ color: colors.text, fontSize: font.sm, lineHeight: 20, flex: 1 }}>
+          Send feedback
+        </Text>
+      </Pressable>
 
       <Text
         style={[
@@ -215,7 +234,8 @@ export default function Settings() {
         <Ionicons name="lock-closed" size={20} color={colors.accent} />
         <Text style={{ color: colors.text, fontSize: font.sm, lineHeight: 20, flex: 1 }}>
           Everything happens on this phone. Your documents are never uploaded, and voices that
-          would speak over the internet are not offered at all.
+          would speak over the internet are not offered at all. The optional questionnaire and
+          feedback send only what you choose to write, with your app and Android version.
         </Text>
       </View>
 

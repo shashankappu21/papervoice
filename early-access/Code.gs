@@ -1,8 +1,12 @@
 /**
- * The Papervoice early-access list.
+ * The Papervoice early-access list, and the app's questionnaire and feedback.
  *
- * A Google Apps Script web app that takes one email address from the form on
- * papervoice.app and appends a row to the Sheet this script is bound to.
+ * A Google Apps Script web app bound to one Sheet. Without a `kind` it takes
+ * one email address from the form on papervoice.app and appends it to
+ * `signups`, exactly as it always has. From the app (1.1 and later):
+ *
+ *   kind: 'survey'    -> the `survey` tab
+ *   kind: 'feedback'  -> the `feedback` tab
  *
  * It is deliberately the whole backend. There is no account system, no vendor,
  * and nothing to pay for: the list is a spreadsheet, and the only thing kept
@@ -32,6 +36,74 @@ function looksLikeEmail(value) {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value) && value.length <= 254;
 }
 
+/*
+ * The app's messages, checked as strictly as the app writes them
+ * (src/feedback/payload.ts). The URL can be read out of the APK, so anything
+ * that does not look exactly like the app's own request is refused.
+ */
+var MAX_BODY = 4096;
+var USES = ['study', 'books', 'articles', 'access', 'other'];
+var SOURCES = ['friend', 'play', 'site', 'social', 'testers', 'other'];
+var LIMITS = { comment: 500, message: 2000, email: 254, version: 32, device: 80 };
+
+var SURVEY_HEADERS = ['received_at', 'use', 'source', 'comment', 'app_version', 'android_version', 'sent_at'];
+var FEEDBACK_HEADERS = ['received_at', 'message', 'email', 'app_version', 'android_version', 'device', 'sent_at'];
+
+/**
+ * Text that stays text. A cell starting with = + - or @ would be read by
+ * Sheets as a formula; a leading apostrophe makes it plain.
+ */
+function plain(value) {
+  var text = String(value == null ? '' : value);
+  return /^[=+\-@]/.test(text) ? "'" + text : text;
+}
+
+function fits(value, limit) {
+  return typeof value === 'string' && value.length <= limit;
+}
+
+/** The survey row, or null when the request is not the app's survey. */
+function surveyRow(body) {
+  if (USES.indexOf(body.use) === -1 || SOURCES.indexOf(body.source) === -1) return null;
+  if (!fits(body.comment || '', LIMITS.comment)) return null;
+  if (!fits(body.appVersion, LIMITS.version) || !fits(body.androidVersion, LIMITS.version)) return null;
+  return [new Date().toISOString(), body.use, body.source, plain(body.comment || ''),
+          plain(body.appVersion), plain(body.androidVersion), plain(body.sentAt || '')];
+}
+
+/** The feedback row, or null when the request is not the app's feedback. */
+function feedbackRow(body) {
+  if (!fits(body.message, LIMITS.message) || !String(body.message).trim()) return null;
+  var email = String(body.email || '');
+  if (!fits(email, LIMITS.email) || (email && !looksLikeEmail(email))) return null;
+  if (!fits(body.appVersion, LIMITS.version) || !fits(body.androidVersion, LIMITS.version)) return null;
+  if (!fits(body.device || '', LIMITS.device)) return null;
+  return [new Date().toISOString(), plain(body.message), plain(email), plain(body.appVersion),
+          plain(body.androidVersion), plain(body.device || ''), plain(body.sentAt || '')];
+}
+
+/** Appends one of the app's messages to its own tab. */
+function saveFromApp(body) {
+  var row = body.kind === 'survey' ? surveyRow(body) : body.kind === 'feedback' ? feedbackRow(body) : null;
+  if (!row) return reply({ ok: false, error: 'That request was not understood.' });
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(20000);
+  } catch (err) {
+    return reply({ ok: false, error: 'Busy just now — please try again.' });
+  }
+  try {
+    var sheet = body.kind === 'survey'
+      ? tab(body.kind, SURVEY_HEADERS)
+      : tab(body.kind, FEEDBACK_HEADERS);
+    sheet.appendRow(row);
+    return reply({ ok: true });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function reply(payload) {
   return ContentService
     .createTextOutput(JSON.stringify(payload))
@@ -49,12 +121,20 @@ function doPost(e) {
       return reply({ ok: false, error: 'Empty request.' });
     }
 
+    if (e.postData.contents.length > MAX_BODY) {
+      return reply({ ok: false, error: 'That request is too large.' });
+    }
+
     var body;
     try {
       body = JSON.parse(e.postData.contents);
     } catch (err) {
       return reply({ ok: false, error: 'Could not read that request.' });
     }
+
+    // The app's questionnaire and feedback. Anything without a kind is the
+    // site's form, handled below exactly as before.
+    if (body && body.kind !== undefined) return saveFromApp(body);
 
     // The hidden field on the form. A person never sees it, so anything in it
     // came from a bot. Answer as though it worked -- telling a bot why it
@@ -108,6 +188,17 @@ function doPost(e) {
     console.error(err);
     return reply({ ok: false, error: 'Could not save that. Please try again.' });
   }
+}
+
+/** A tab by name, created with its header row on first use. */
+function tab(name, headers) {
+  var book = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = book.getSheetByName(name) || book.insertSheet(name);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
 }
 
 function getSheet() {

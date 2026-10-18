@@ -12,6 +12,11 @@
 import { spawn } from 'node:child_process';
 import { statSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import { loadEnv, reportFeedbackEndpoint } from './release/env.mjs';
+
+// The feedback endpoint is inlined into the bundle Gradle builds.
+loadEnv();
+reportFeedbackEndpoint();
 
 /**
  * Both, so the APK installs on older and cheaper phones too.
