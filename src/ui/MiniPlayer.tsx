@@ -7,6 +7,7 @@ import { BookCover } from './BookCover';
 import { Spinner } from './Spinner';
 import { useReading } from '../player/PlaybackProvider';
 import { secondsBetween, spokenLengths, wordDuration } from '../player/listeningTime';
+import { sleepLabel } from '../player/sleepTimer';
 
 /**
  * The book being read, kept in reach of every screen.
@@ -18,7 +19,7 @@ import { secondsBetween, spokenLengths, wordDuration } from '../player/listening
 export function MiniPlayer() {
   const router = useRouter();
   const { colors, space, radius, font } = useTheme();
-  const { playback, book, sentences, close } = useReading();
+  const { playback, book, sentences, close, sleep } = useReading();
 
   const showing = book !== null;
   const rise = useRef(new Animated.Value(0)).current;
@@ -84,6 +85,7 @@ export function MiniPlayer() {
           </Text>
           <Text numberOfLines={1} style={{ color: colors.textMuted, fontSize: font.xs, marginTop: 1 }}>
             {left ? `${left} remaining` : 'Ready'}
+            {sleep ? ` · sleep ${sleep.kind === 'chapter' ? 'at chapter end' : `in ${sleepLabel(sleep)}`}` : ''}
           </Text>
         </View>
 

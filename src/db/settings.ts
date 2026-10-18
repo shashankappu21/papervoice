@@ -35,3 +35,7 @@ export const SETTING_FONT_SIZE = 'reader.fontSize';
 export const SETTING_LAST_BOOK = 'playback.lastBook';
 /** Developer setting: inference threads for the neural engine. See voices/threads.ts. */
 export const SETTING_THREADS = 'dev.inferenceThreads';
+/** Seconds of audio actually played, ever. See stats/listening.ts. */
+export const STAT_LISTENED = 'stats.listenedSeconds';
+/** Books listened to the end, ever: the rating prompt waits for one. */
+export const STAT_FINISHED = 'stats.booksFinished';

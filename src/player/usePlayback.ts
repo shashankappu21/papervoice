@@ -9,6 +9,7 @@ import { openEngine, listAvailableVoices, type AvailableVoice, type SpeechEngine
 import { getSetting, setSetting, SETTING_RATE, SETTING_VOICE } from '../db/settings';
 import { markFinished } from '../db/books';
 import { switchesNow } from './voiceSwitch';
+import { playedBetween } from '../stats/listening';
 import type { Sentence } from '../extraction/types';
 
 /**
@@ -63,6 +64,19 @@ export interface Playback {
   pause(): void;
   jumpTo(index: number): Promise<void>;
   setRate(rate: number): void;
+  /**
+   * Listens for seconds actually played, as the player reports progress. The
+   * reports keep coming with the screen off, which a JavaScript timer is not
+   * promised to do -- so the sleep timer and the listening count run on these.
+   */
+  onPlayed(listener: (seconds: number) => void): () => void;
+  /**
+   * Pauses instead of starting this sentence, and calls back when it does.
+   * Null clears it. The end-of-chapter sleep timer is this.
+   */
+  stopBefore(index: number | null, onStopped?: () => void): void;
+  /** 0 to 1. The sleep timer fades with it; it stays where it is set. */
+  setVolume(volume: number): void;
 }
 
 /** The range worth offering: below this is a drawl, above it is unintelligible. */
@@ -126,6 +140,10 @@ export function usePlayback(
   const awaiting = useRef<number | null>(null);
   const index = useRef(initialIndex);
   const consecutiveFailures = useRef(0);
+  const playedListeners = useRef(new Set<(seconds: number) => void>());
+  /** When the player last reported playing, so the next report can be measured. */
+  const lastPlayingAt = useRef<number | null>(null);
+  const stopAt = useRef<{ index: number; onStopped?: () => void } | null>(null);
   /*
    * Read by advance() through a ref rather than listed as a dependency: advance
    * is a dependency of the effect that creates the audio player, and a new
@@ -302,6 +320,20 @@ export function usePlayback(
       return;
     }
 
+    // The sleep timer's chapter edge: the place moves on, so play resumes at
+    // the new chapter, but nothing more is spoken tonight.
+    const stop = stopAt.current;
+    if (stop && stop.index === next) {
+      stopAt.current = null;
+      index.current = next;
+      setCurrentIndex(next);
+      queue.setCurrent(next);
+      setPlaying(false);
+      lastPlayingAt.current = null;
+      stop.onStopped?.();
+      return;
+    }
+
     index.current = next;
     setCurrentIndex(next);
     queue.setCurrent(next);
@@ -326,6 +358,14 @@ export function usePlayback(
     player.current = created;
 
     const subscription = created.addListener('playbackStatusUpdate', (status) => {
+      if (status.playing) {
+        // Not reset between sentences: the gap rule in playedBetween is what
+        // keeps a pause or a long wait from being counted.
+        const now = Date.now();
+        const seconds = playedBetween(lastPlayingAt.current, now);
+        lastPlayingAt.current = now;
+        if (seconds > 0) playedListeners.current.forEach((listener) => listener(seconds));
+      }
       if (status.didJustFinish) advance();
     });
 
@@ -564,7 +604,23 @@ export function usePlayback(
   const pause = () => {
     player.current?.pause();
     setPlaying(false);
+    lastPlayingAt.current = null;
   };
+
+  const onPlayed = useCallback((listener: (seconds: number) => void) => {
+    playedListeners.current.add(listener);
+    return () => {
+      playedListeners.current.delete(listener);
+    };
+  }, []);
+
+  const stopBefore = useCallback((at: number | null, onStopped?: () => void) => {
+    stopAt.current = at === null ? null : { index: at, onStopped };
+  }, []);
+
+  const setVolume = useCallback((volume: number) => {
+    if (player.current) player.current.volume = Math.min(1, Math.max(0, volume));
+  }, []);
 
   /**
    * Changes speed without re-synthesising: the engine could speak faster, but
@@ -602,5 +658,8 @@ export function usePlayback(
     pause,
     jumpTo,
     setRate,
+    onPlayed,
+    stopBefore,
+    setVolume,
   };
 }

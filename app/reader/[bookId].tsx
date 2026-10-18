@@ -14,6 +14,8 @@ import { Player } from '../../src/ui/Player';
 import { VoicePicker } from '../../src/ui/VoicePicker';
 import { SpeedSheet } from '../../src/ui/SpeedSheet';
 import { SectionsSheet } from '../../src/ui/SectionsSheet';
+import { SleepSheet } from '../../src/ui/SleepSheet';
+import { sleepLabel } from '../../src/player/sleepTimer';
 import { PageSkeleton } from '../../src/ui/PageSkeleton';
 import { useTourTarget } from '../../src/tour/useTourTarget';
 import { useOfferTour } from '../../src/tour/TourProvider';
@@ -59,7 +61,8 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
   const insets = useSafeAreaInsets();
   const { fontSize } = useFontSize();
   // The position is saved by the provider, which outlives this screen.
-  const { playback } = useReading();
+  const { playback, sleep, setSleep, hasChapters } = useReading();
+  const [choosingSleep, setChoosingSleep] = useState(false);
 
   const [skipTo] = useState(() => findMainContentStart(sentences));
   const [choosingVoice, setChoosingVoice] = useState(false);
@@ -185,6 +188,21 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
             <Ionicons name="return-down-forward" size={22} color={colors.accent} />
           </Pressable>
         )}
+        {/* The sleep timer. With one running, the moon says how long is left. */}
+        <Pressable
+          onPress={() => setChoosingSleep(true)}
+          accessibilityRole="button"
+          accessibilityLabel={sleep ? `Sleep timer: ${sleepLabel(sleep)}. Change it.` : 'Sleep timer'}
+          hitSlop={10}
+          style={[styles.headerButton, sleep ? styles.sleepOn : null]}
+        >
+          <Ionicons name={sleep ? 'moon' : 'moon-outline'} size={20} color={sleep ? colors.accent : colors.text} />
+          {sleep && (
+            <Text style={{ color: colors.accent, fontSize: font.xs, fontWeight: '700' }}>
+              {sleep.kind === 'chapter' ? 'Ch.' : sleepLabel(sleep)}
+            </Text>
+          )}
+        </Pressable>
         {/* Only where there is something to navigate. A book with no contents
             and no headings gets no button rather than an empty list. */}
         {sections.length > 0 ? (
@@ -288,6 +306,14 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
         onJump={(index) => void playback.jumpTo(index)}
       />
 
+      <SleepSheet
+        visible={choosingSleep}
+        timer={sleep}
+        hasChapters={hasChapters}
+        onChoose={setSleep}
+        onClose={() => setChoosingSleep(false)}
+      />
+
       <SpeedSheet
         visible={choosingSpeed}
         rate={playback.rate}
@@ -325,6 +351,8 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   header: { flexDirection: 'row', alignItems: 'center', paddingBottom: 8 },
   headerButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  // Wide enough for "45 min" under the moon.
+  sleepOn: { width: 56 },
   headerTitle: { flex: 1, textAlign: 'center', fontWeight: '600' },
   message: { paddingBottom: 6 },
 });

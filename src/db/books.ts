@@ -217,6 +217,12 @@ export async function markFinished(bookId: number): Promise<void> {
       bookId,
       now,
     );
+    // Counted for the rating prompt, which waits for someone to have finished
+    // something before asking what they thought.
+    await db.runAsync(
+      `INSERT INTO settings (key, value) VALUES ('stats.booksFinished', '1')
+       ON CONFLICT(key) DO UPDATE SET value = CAST(value AS INTEGER) + 1`,
+    );
   });
 }
 

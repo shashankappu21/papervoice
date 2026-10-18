@@ -1,6 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { getBook, listBooks, readSentences, touchBook, type Book } from '../db/books';
-import { getSetting, setSetting, SETTING_LAST_BOOK } from '../db/settings';
+import { getSetting, setSetting, SETTING_LAST_BOOK, STAT_LISTENED } from '../db/settings';
+import { buildSections } from '../extraction/sections';
+import { nextChapterStart, sleepLabel, startMinutes, tick, type SleepTimer } from './sleepTimer';
+import { add, dueForWrite, flush, type Counter } from '../stats/listening';
 import type { Sentence } from '../extraction/types';
 import { usePlayback, type Playback } from './usePlayback';
 import { useSavedPosition } from './useSavedPosition';
@@ -17,6 +20,12 @@ interface PlaybackContextValue {
   open(book: Book): void;
   /** Stops and forgets the book, so the mini player goes away. */
   close(): void;
+  /** The sleep timer, or null when none is set. */
+  sleep: SleepTimer | null;
+  /** Minutes, the end of the chapter, or null to cancel. */
+  setSleep(choice: { minutes: number } | 'chapter' | null): void;
+  /** Whether the open book has chapters, so "End of chapter" can be offered. */
+  hasChapters: boolean;
 }
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
@@ -47,7 +56,134 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     book?.id ?? 0,
     preload,
   );
-  const { pause } = playback;
+  const { pause, onPlayed, stopBefore, setVolume } = playback;
+
+  /*
+   * The sleep timer.
+   *
+   * Held here, not in the reader, so it keeps counting from the mini player and
+   * with the screen off. The exact seconds live in a ref, advanced by the
+   * player's own progress reports; state changes only when what is shown
+   * changes, so the whole tree is not redrawn twice a second for a countdown.
+   */
+  const [sleep, setSleepState] = useState<SleepTimer | null>(null);
+  const sleepRef = useRef<SleepTimer | null>(null);
+
+  const clearSleep = useCallback(() => {
+    sleepRef.current = null;
+    setSleepState(null);
+    stopBefore(null);
+    setVolume(1);
+  }, [stopBefore, setVolume]);
+
+  const sections = useMemo(
+    () => buildSections(sentences, book?.outline),
+    [sentences, book?.outline],
+  );
+
+  const setSleep = useCallback(
+    (choice: { minutes: number } | 'chapter' | null) => {
+      if (choice === null) {
+        clearSleep();
+        return;
+      }
+      setVolume(1);
+      const next: SleepTimer =
+        choice === 'chapter'
+          ? { kind: 'chapter', stopBefore: nextChapterStart(sections, playback.currentIndex) }
+          : startMinutes(choice.minutes);
+      sleepRef.current = next;
+      setSleepState(next);
+    },
+    [clearSleep, setVolume, sections, playback.currentIndex],
+  );
+
+  // A chapter timer follows the listener: jumping to another chapter moves the
+  // edge it stops at. In the last chapter there is no edge, and the end of the
+  // book -- or the listener pausing -- ends it.
+  const chapterTimer = sleep?.kind === 'chapter';
+  useEffect(() => {
+    if (!chapterTimer) return;
+    const edge = nextChapterStart(sections, playback.currentIndex);
+    sleepRef.current = { kind: 'chapter', stopBefore: edge };
+    stopBefore(edge, clearSleep);
+  }, [chapterTimer, sections, playback.currentIndex, stopBefore, clearSleep]);
+
+  const wasPlaying = useRef(false);
+  useEffect(() => {
+    const current = sleepRef.current;
+    // Only on playing turning to stopped: setting the timer while paused must
+    // not cancel it on the spot.
+    if (wasPlaying.current && !playback.playing && current?.kind === 'chapter' && current.stopBefore === null) {
+      clearSleep();
+    }
+    wasPlaying.current = playback.playing;
+  }, [playback.playing, clearSleep]);
+
+  // A minutes timer counts only what is played, and fades out at the end.
+  useEffect(
+    () =>
+      onPlayed((seconds) => {
+        const current = sleepRef.current;
+        if (current?.kind !== 'minutes') return;
+        const after = tick(current, seconds);
+        sleepRef.current = after.timer;
+        setVolume(after.volume);
+        if (after.stop) {
+          pause();
+          clearSleep();
+          return;
+        }
+        // Redrawn only when the shown minute changes.
+        if (sleepLabel(after.timer) !== sleepLabel(current)) setSleepState(after.timer);
+      }),
+    [onPlayed, setVolume, pause, clearSleep],
+  );
+
+  // A timer belongs to a listening session; a different book starts without one.
+  useEffect(() => clearSleep, [book?.id, clearSleep]);
+
+  /*
+   * How long has been listened to, in total. The questionnaire and the rating
+   * prompt wait on it. Written every half minute and whenever playback stops,
+   * rather than on every report.
+   */
+  const listened = useRef<Counter>({ stored: 0, pending: 0 });
+  /** Nothing is written until the stored total is known, or it would be overwritten. */
+  const listenedLoaded = useRef(false);
+  useEffect(() => {
+    getSetting(STAT_LISTENED)
+      .then((stored) => {
+        listened.current = { ...listened.current, stored: Number(stored) || 0 };
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        listenedLoaded.current = true;
+      });
+  }, []);
+
+  const writeListened = useCallback(() => {
+    const counter = listened.current;
+    if (!listenedLoaded.current || counter.pending <= 0) return;
+    const written = flush(counter);
+    listened.current = written.counter;
+    void setSetting(STAT_LISTENED, String(written.total)).catch(() => undefined);
+  }, []);
+
+  useEffect(
+    () =>
+      onPlayed((seconds) => {
+        // Before the stored total has loaded, seconds wait in `pending`.
+        const counter = add(listened.current, seconds);
+        listened.current = counter;
+        if (dueForWrite(counter)) writeListened();
+      }),
+    [onPlayed, writeListened],
+  );
+
+  useEffect(() => {
+    if (!playback.playing) writeListened();
+  }, [playback.playing, writeListened]);
 
   /*
    * Cold start: put the last book back on the bar, paused, voice not loaded.
@@ -118,9 +254,11 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     void setSetting(SETTING_LAST_BOOK, '').catch(() => undefined);
   }, [pause]);
 
+  const hasChapters = sections.some((section) => section.depth === 0);
+
   const value = useMemo<PlaybackContextValue>(
-    () => ({ playback, book, sentences, open, close }),
-    [playback, book, sentences, open, close],
+    () => ({ playback, book, sentences, open, close, sleep, setSleep, hasChapters }),
+    [playback, book, sentences, open, close, sleep, setSleep, hasChapters],
   );
 
   return <PlaybackContext.Provider value={value}>{children}</PlaybackContext.Provider>;
