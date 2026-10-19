@@ -10,23 +10,28 @@
  * Every voice in the main list, in the order it is listed -- one list to edit,
  * by ear, when the order should change.
  *
- * Lyra, Kristin and Cori first. Then the American voices, a man and a woman
- * in turn, the phone's best ones among the downloadable ones; then British,
- * Australian, and Indian last. Within each, better-sounding earlier as far as
- * anyone has judged -- the phone voices were picked by ear on 2026-10-19, the
- * rest of the order inside a group is a first guess.
+ * The first eight are the best of everything, chosen for range as much as
+ * quality, so someone who looks no further still hears what there is: Lyra,
+ * Kristin and Cori, then a man and a woman in turn across the American,
+ * British and Australian accents, from bright to deep. After them the rest by
+ * accent -- American (a man and a woman in turn), British, Australian -- and
+ * Indian last, since even the best Indian voice is not as good. The phone
+ * voices were picked by ear on 2026-10-19; the order inside each accent is a
+ * first guess.
  *
  * Phone voices are written as the app saves them: `system:` and the engine's
  * id. A voice not named here is listed after all of these, A to Z.
  */
 export const VOICE_ORDER: readonly string[] = [
-  'ljspeech-medium', // Lyra
-  'en_US-kristin-medium', // Kristin
-  'en_GB-cori-medium', // Cori
+  'ljspeech-medium', // Lyra -- US, bright, expressive storyteller
+  'en_US-kristin-medium', // Kristin -- US, low and steady
+  'en_GB-cori-medium', // Cori -- UK, light and crisp
+  'system:en-us-x-iom-local', // Ethan -- US, lively but unhurried
+  'system:en-au-x-auc-local', // Charlotte -- AU, bright and lively
+  'system:en-gb-x-gbb-local', // Oliver -- UK, expressive and unhurried
+  'system:en-us-x-iob-local', // Ava -- US, expressive and unhurried
+  'manyvoice-6', // Michael -- US, deep and steady
 
-  'system:en-us-x-iom-local', // Ethan
-  'system:en-us-x-iob-local', // Ava
-  'manyvoice-6', // Michael
   'manyvoice-13', // Jenny
   'manyvoice-4', // Mike
   'system:en-us-x-tpc-local', // Grace
@@ -38,13 +43,11 @@ export const VOICE_ORDER: readonly string[] = [
   'manyvoice-14', // Emily
   'manyvoice-9', // Wendell
 
-  'system:en-gb-x-gbb-local', // Oliver
   'manyvoice-10', // Steve
   'system:en-gb-x-gbd-local', // Arthur
   'manyvoice-15', // Martin
 
   'system:en-au-x-aub-local', // Jack
-  'system:en-au-x-auc-local', // Charlotte
   'system:en-au-x-aud-local', // Lachlan
 
   'system:en-in-x-ene-local', // Arjun

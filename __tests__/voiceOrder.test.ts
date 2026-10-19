@@ -49,23 +49,33 @@ describe('the order of downloadable voices', () => {
     expect(new Set(VOICE_ORDER).size).toBe(VOICE_ORDER.length);
   });
 
-  it('alternates men and women through the US voices, then UK, AU and India', () => {
-    const regionOf = (id: string) => {
-      const natural = OFFERED_VOICES.find((v) => v.id === id);
-      if (natural) return natural.accent;
-      return id.split('-')[1].toUpperCase();
-    };
-    const regions = VOICE_ORDER.slice(3).map(regionOf);
-    const firstOf = (r: string) => regions.indexOf(r);
+  const regionOf = (id: string) => {
+    const natural = OFFERED_VOICES.find((v) => v.id === id);
+    if (natural) return natural.accent;
+    return id.split('-')[1].toUpperCase();
+  };
+  const genderOf = (id: string) =>
+    OFFERED_VOICES.find((v) => v.id === id)?.gender ?? PHONE_VOICE_NAMES[id.replace('system:', '')]?.gender;
+
+  it('opens with eight of the best, across the US, UK and Australian accents and both genders', () => {
+    const top = VOICE_ORDER.slice(0, 8);
+    expect(top.slice(0, 3)).toEqual(['ljspeech-medium', 'en_US-kristin-medium', 'en_GB-cori-medium']);
+    expect(new Set(top.map(regionOf))).toEqual(new Set(['US', 'GB', 'AU']));
+    const genders = top.slice(3).map(genderOf);
+    for (let i = 1; i < genders.length; i++) expect(genders[i]).not.toBe(genders[i - 1]);
+  });
+
+  it('then the rest by accent -- US alternating men and women, UK, AU -- and India last', () => {
+    const rest = VOICE_ORDER.slice(8);
+    const regions = rest.map(regionOf);
     const lastOf = (r: string) => regions.lastIndexOf(r);
+    const firstOf = (r: string) => regions.indexOf(r);
     expect(lastOf('US')).toBeLessThan(firstOf('GB'));
     expect(lastOf('GB')).toBeLessThan(firstOf('AU'));
-    expect(lastOf('AU')).toBeLessThan(firstOf('IN'));
-
-    const genderOf = (id: string) =>
-      OFFERED_VOICES.find((v) => v.id === id)?.gender ?? PHONE_VOICE_NAMES[id.replace('system:', '')]?.gender;
-    const us = VOICE_ORDER.slice(3).filter((id) => regionOf(id) === 'US').map(genderOf);
-    for (let i = 1; i < us.length - 1; i++) expect(us[i]).not.toBe(us[i - 1]);
+    expect(regions[regions.length - 1]).toBe('IN');
+    expect(VOICE_ORDER.slice(0, 8).map(regionOf)).not.toContain('IN');
+    const us = rest.filter((id) => regionOf(id) === 'US').map(genderOf);
+    for (let i = 1; i < us.length; i++) expect(us[i]).not.toBe(us[i - 1]);
   });
 });
 
