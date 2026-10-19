@@ -17,7 +17,7 @@ import { useImport } from '../../src/import/ImportProvider';
 import { showsStartHere, STARTER_BOOK_ID } from '../../src/import/starter';
 import { getSetting } from '../../src/db/settings';
 import { useReading } from '../../src/player/PlaybackProvider';
-import { SurveyCard } from '../../src/ui/SurveyCard';
+import { SurveySheet } from '../../src/ui/SurveySheet';
 import { maybeAskForRating, noteSurveyShown, retryPendingSurvey, surveyIsDue } from '../../src/feedback/asks';
 import { useTheme } from '../../src/ui/ThemeProvider';
 
@@ -157,7 +157,6 @@ export default function Library() {
         contentContainerStyle={{ paddingBottom: space.xxxl }}
         ListHeaderComponent={
           <View>
-            {surveying && <SurveyCard onDone={() => setSurveying(false)} />}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -427,6 +426,8 @@ export default function Library() {
           }}
         />
       )}
+
+      {surveying && <SurveySheet onDone={() => setSurveying(false)} />}
     </View>
   );
 }
