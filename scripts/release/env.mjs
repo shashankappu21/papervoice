@@ -43,6 +43,16 @@ export function loadEnv(files = ['.env.local', '.env']) {
   return set;
 }
 
+/**
+ * Gradle arguments that rebuild the JS bundle on every build.
+ *
+ * Gradle does not count .env among the bundle task's inputs, so after the
+ * feedback address changed it called the old bundle up to date and shipped it
+ * without the address (2026-10-19). Re-bundling costs a minute or two; a build
+ * silently missing what .env says costs a test round on the phone.
+ */
+export const REBUNDLE = [':app:createBundleReleaseJsAndAssets', '--rerun'];
+
 /** Says, without the value, whether the app will be able to send feedback. */
 export function reportFeedbackEndpoint() {
   if (process.env[FEEDBACK_KEY]) {

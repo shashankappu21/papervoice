@@ -12,7 +12,7 @@
 import { spawn } from 'node:child_process';
 import { statSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { loadEnv, reportFeedbackEndpoint } from './release/env.mjs';
+import { loadEnv, REBUNDLE, reportFeedbackEndpoint } from './release/env.mjs';
 
 // The feedback endpoint is inlined into the bundle Gradle builds.
 loadEnv();
@@ -47,7 +47,7 @@ console.log(`\nBuilding the release APK for ${ABIS}\n`);
  */
 const gradle = spawn(
   path.join('android', process.platform === 'win32' ? 'gradlew.bat' : 'gradlew'),
-  ['-p', 'android', ':app:assembleRelease', `-PreactNativeArchitectures=${ABIS}`, '--console=plain'],
+  ['-p', 'android', ...REBUNDLE, ':app:assembleRelease', `-PreactNativeArchitectures=${ABIS}`, '--console=plain'],
   { stdio: 'inherit', shell: process.platform === 'win32' },
 );
 

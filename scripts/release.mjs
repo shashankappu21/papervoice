@@ -30,7 +30,7 @@ import path from 'node:path';
 import { createDraft, publishDraft, releaseExists, token, uploadAsset } from './release/github.mjs';
 import { assetSet, formatSize } from './release/meta.mjs';
 import { apkFacts } from './release/apk.mjs';
-import { loadEnv, reportFeedbackEndpoint } from './release/env.mjs';
+import { loadEnv, REBUNDLE, reportFeedbackEndpoint } from './release/env.mjs';
 
 // The feedback endpoint is inlined into the bundle Gradle builds.
 loadEnv();
@@ -94,6 +94,7 @@ const gradle = spawnSync(
   [
     '-p',
     'android',
+    ...REBUNDLE,
     ':app:assembleRelease',
     '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a',
     '--console=plain',

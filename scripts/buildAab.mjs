@@ -17,7 +17,7 @@
 import { spawn } from 'node:child_process';
 import { statSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { loadEnv, reportFeedbackEndpoint } from './release/env.mjs';
+import { loadEnv, REBUNDLE, reportFeedbackEndpoint } from './release/env.mjs';
 
 // The feedback endpoint is inlined into the bundle Gradle builds.
 loadEnv();
@@ -42,6 +42,7 @@ const gradle = spawn(
   [
     '-p',
     'android',
+    ...REBUNDLE,
     ':app:bundleRelease',
     '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a',
     '-Pexpo.useLegacyPackaging=false',
