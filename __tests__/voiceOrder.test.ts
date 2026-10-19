@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { isLanguageAlias, labelPhoneVoices, orderCatalog } from '../src/voices/order';
+import { isLanguageAlias, labelPhoneVoices, orderCatalog, VOICE_ORDER } from '../src/voices/order';
+import { OFFERED_VOICES } from '../src/voices/catalog';
+import { PHONE_VOICE_NAMES } from '../src/voices/phoneVoiceNames';
 
 describe('the order of downloadable voices', () => {
   const voices = [
@@ -11,15 +13,20 @@ describe('the order of downloadable voices', () => {
     { id: 'manyvoice-4', name: 'Mike' },
   ];
 
-  it('puts the recommended voices first, then A to Z', () => {
+  it('follows the one fixed list: Lyra, Kristin and Cori first', () => {
     expect(orderCatalog(voices).map((v) => v.name)).toEqual([
       'Lyra',
       'Kristin',
       'Cori',
+      'Mike',
       'James',
       'Kara',
-      'Mike',
     ]);
+  });
+
+  it('puts anything the list does not name after it, A to Z', () => {
+    const extra = [...voices, { id: 'new-b', name: 'Bea' }, { id: 'new-a', name: 'Abe' }];
+    expect(orderCatalog(extra).slice(-2).map((v) => v.name)).toEqual(['Abe', 'Bea']);
   });
 
   it('does not depend on what is installed or the order it came in', () => {
@@ -28,7 +35,37 @@ describe('the order of downloadable voices', () => {
 
   it('keeps the order through a filter', () => {
     const us = voices.filter((v) => v.id !== 'en_GB-cori-medium');
-    expect(orderCatalog(us).map((v) => v.name)).toEqual(['Lyra', 'Kristin', 'James', 'Kara', 'Mike']);
+    expect(orderCatalog(us).map((v) => v.name)).toEqual(['Lyra', 'Kristin', 'Mike', 'James', 'Kara']);
+  });
+
+  it('every offered voice and every featured phone voice is in the list, once', () => {
+    const missing = [
+      ...OFFERED_VOICES.map((v) => v.id),
+      ...Object.entries(PHONE_VOICE_NAMES)
+        .filter(([, name]) => name.featured)
+        .map(([id]) => `system:${id}`),
+    ].filter((id) => !VOICE_ORDER.includes(id));
+    expect(missing).toEqual([]);
+    expect(new Set(VOICE_ORDER).size).toBe(VOICE_ORDER.length);
+  });
+
+  it('alternates men and women through the US voices, then UK, AU and India', () => {
+    const regionOf = (id: string) => {
+      const natural = OFFERED_VOICES.find((v) => v.id === id);
+      if (natural) return natural.accent;
+      return id.split('-')[1].toUpperCase();
+    };
+    const regions = VOICE_ORDER.slice(3).map(regionOf);
+    const firstOf = (r: string) => regions.indexOf(r);
+    const lastOf = (r: string) => regions.lastIndexOf(r);
+    expect(lastOf('US')).toBeLessThan(firstOf('GB'));
+    expect(lastOf('GB')).toBeLessThan(firstOf('AU'));
+    expect(lastOf('AU')).toBeLessThan(firstOf('IN'));
+
+    const genderOf = (id: string) =>
+      OFFERED_VOICES.find((v) => v.id === id)?.gender ?? PHONE_VOICE_NAMES[id.replace('system:', '')]?.gender;
+    const us = VOICE_ORDER.slice(3).filter((id) => regionOf(id) === 'US').map(genderOf);
+    for (let i = 1; i < us.length - 1; i++) expect(us[i]).not.toBe(us[i - 1]);
   });
 });
 

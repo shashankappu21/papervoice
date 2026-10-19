@@ -30,13 +30,13 @@ describe('the main list of voices', () => {
     expect(ids).toContain('ljspeech-medium');
   });
 
-  it('orders them together: recommended first, then A to Z', () => {
+  it('orders them together by the one fixed list: US before UK before AU', () => {
     expect(mainList(natural, phone, systemId).map((voice) => voice.name)).toEqual([
       'Lyra',
       'Cori',
-      'Jack',
-      'James',
       'Mike',
+      'James',
+      'Jack',
     ]);
   });
 
