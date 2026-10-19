@@ -18,8 +18,9 @@ export const FEEDBACK_ENDPOINT: string = process.env.EXPO_PUBLIC_FEEDBACK_ENDPOI
 
 /**
  * A preview build, made by `npm run apk -- --show-survey`: the questionnaire
- * slides up once every launch, answered or not, and sends and records nothing.
- * It exists so the sheet can be looked at. Release and Play builds refuse it.
+ * slides up once every launch, answered or not, and the voice report the next
+ * time the Library comes into view; both send and record nothing. It exists so
+ * the sheets can be looked at. Release and Play builds refuse it.
  */
 export const SURVEY_PREVIEW: boolean = process.env.EXPO_PUBLIC_SURVEY_PREVIEW === '1';
 

@@ -18,7 +18,15 @@ import { showsStartHere, STARTER_BOOK_ID } from '../../src/import/starter';
 import { getSetting } from '../../src/db/settings';
 import { useReading } from '../../src/player/PlaybackProvider';
 import { SurveySheet } from '../../src/ui/SurveySheet';
-import { maybeAskForRating, noteSurveyShown, retryPendingSurvey, surveyIsDue } from '../../src/feedback/asks';
+import { VoiceReportSheet } from '../../src/ui/VoiceReportSheet';
+import {
+  maybeAskForRating,
+  noteSurveyShown,
+  noteVoiceReportShown,
+  retryPendingSurvey,
+  surveyIsDue,
+  voiceReportIsDue,
+} from '../../src/feedback/asks';
 import { useTheme } from '../../src/ui/ThemeProvider';
 
 /** The library: what has been imported, and how far each one has been read. */
@@ -57,11 +65,12 @@ export default function Library() {
   useFocusEffect(reload);
 
   /*
-   * The questionnaire and Play's rating prompt, checked each time the library
-   * comes into view -- never in the middle of listening, and never both on
-   * one day.
+   * The questionnaire, the voice report and Play's rating prompt, checked in
+   * that order each time the library comes into view -- the report and the
+   * rating never in the middle of listening, and only one of them a day.
    */
   const [surveying, setSurveying] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const { playback } = useReading();
   const playingNow = useRef(playback.playing);
   playingNow.current = playback.playing;
@@ -70,18 +79,24 @@ export default function Library() {
     useCallback(() => {
       let cancelled = false;
       let later: ReturnType<typeof setTimeout> | undefined;
-      surveyIsDue()
-        .then((due) => {
+      (async () => {
+        if (await surveyIsDue()) {
           if (cancelled) return;
-          if (due) {
-            setSurveying(true);
-            void noteSurveyShown();
-          } else if (!playingNow.current) {
-            // A moment after arriving, rather than over the transition.
-            later = setTimeout(() => void maybeAskForRating().catch(() => undefined), 1500);
-          }
-        })
-        .catch(() => undefined);
+          setSurveying(true);
+          void noteSurveyShown();
+          return;
+        }
+        if (cancelled || playingNow.current) return;
+        if (await voiceReportIsDue()) {
+          if (cancelled) return;
+          setReporting(true);
+          void noteVoiceReportShown();
+          return;
+        }
+        if (cancelled) return;
+        // A moment after arriving, rather than over the transition.
+        later = setTimeout(() => void maybeAskForRating().catch(() => undefined), 1500);
+      })().catch(() => undefined);
       return () => {
         cancelled = true;
         if (later) clearTimeout(later);
@@ -428,6 +443,7 @@ export default function Library() {
       )}
 
       {surveying && <SurveySheet onDone={() => setSurveying(false)} />}
+      {reporting && <VoiceReportSheet onDone={() => setReporting(false)} />}
     </View>
   );
 }

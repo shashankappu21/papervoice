@@ -1,4 +1,4 @@
-import type { VoiceMeta } from './catalog';
+import { VOICES, type VoiceMeta } from './catalog';
 import { orderCatalog, type LabelledPhoneVoice, type PhoneVoice } from './order';
 
 /**
@@ -66,3 +66,16 @@ export function regionsIn(list: ListedVoice[]): Region[] {
 const REGION_LABELS: Record<string, string> = { US: 'US', GB: 'UK', AU: 'AU', IN: 'India' };
 
 export const regionLabel = (region: Region): string => REGION_LABELS[region] ?? region;
+
+/**
+ * What to call any saved voice id: its catalog name (hidden voices included,
+ * since someone may still be using one), its label on this phone, or -- for a
+ * phone voice no longer offered -- just that.
+ */
+export function voiceDisplayName(id: string, phoneLabels: Map<string, string>): string {
+  const natural = VOICES.find((voice) => voice.id === id);
+  if (natural) return natural.name;
+  const phone = phoneLabels.get(id);
+  if (phone) return phone;
+  return id.startsWith('system:') ? 'a phone voice' : id;
+}

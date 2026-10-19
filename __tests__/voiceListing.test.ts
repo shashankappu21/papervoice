@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OFFERED_VOICES } from '../src/voices/catalog';
-import { mainList, regionLabel, regionsIn } from '../src/voices/listing';
+import { mainList, regionLabel, regionsIn, voiceDisplayName } from '../src/voices/listing';
 import { labelPhoneVoices } from '../src/voices/order';
 
 const systemId = (voice: { id: string }) => `system:${voice.id}`;
@@ -66,3 +66,23 @@ describe('natural voice descriptions', () => {
     expect(missing).toEqual([]);
   });
 });
+
+describe('a voice by name', () => {
+  const phoneLabels = new Map([['system:en-us-x-iob-local', 'Ava'], ['system:en-us-x-iol-local', 'US English · voice 4']]);
+
+  it('is the catalog name, hidden voices included', () => {
+    expect(voiceDisplayName('ljspeech-medium', phoneLabels)).toBe('Lyra');
+    expect(voiceDisplayName('en_US-norman-medium', phoneLabels)).toBe('Norman');
+  });
+
+  it('is the phone label for a phone voice, named or numbered', () => {
+    expect(voiceDisplayName('system:en-us-x-iob-local', phoneLabels)).toBe('Ava');
+    expect(voiceDisplayName('system:en-us-x-iol-local', phoneLabels)).toBe('US English · voice 4');
+  });
+
+  it('falls back to a plain description for anything else', () => {
+    expect(voiceDisplayName('system:en-US-language', phoneLabels)).toBe('a phone voice');
+    expect(voiceDisplayName('gone-voice', phoneLabels)).toBe('gone-voice');
+  });
+});
+

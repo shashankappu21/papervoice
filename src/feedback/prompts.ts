@@ -9,6 +9,8 @@
 export const SURVEY_AFTER_SEC = 5 * 60;
 /** Listening before Play's rating prompt, when no book has been finished. */
 export const RATING_AFTER_SEC = 60 * 60;
+/** Listening, counted per voice, before the voice report asks. */
+export const VOICE_REPORT_AFTER_SEC = 60 * 60;
 
 /** Local calendar day, so "the same day" means the listener's day. */
 export const dayOf = (date: Date): string =>
@@ -30,13 +32,30 @@ export function ratingDue(state: {
   /** The app version the prompt was last shown in, if ever. */
   askedVersion: string | null;
   appVersion: string;
-  /** The day the questionnaire was shown, if ever. */
-  surveyDay: string | null;
+  /** The last day the questionnaire or the voice report was shown, if ever. */
+  askedDay: string | null;
   today: string;
 }): boolean {
   if (state.askedVersion === state.appVersion) return false;
-  if (state.surveyDay === state.today) return false;
+  if (state.askedDay === state.today) return false;
   return state.booksFinished > 0 || state.listenedSec >= RATING_AFTER_SEC;
+}
+
+export function voiceReportDue(state: {
+  hasEndpoint: boolean;
+  /** Seconds listened across voices, counted per voice from 1.1. */
+  listenedSec: number;
+  /** answered · dismissed · null */
+  report: string | null;
+  /** The questionnaire or the rating prompt was shown today. */
+  askedToday: boolean;
+}): boolean {
+  return (
+    state.hasEndpoint &&
+    state.report === null &&
+    !state.askedToday &&
+    state.listenedSec >= VOICE_REPORT_AFTER_SEC
+  );
 }
 
 /** An answer that could not be sent, kept to try again on later launches. */

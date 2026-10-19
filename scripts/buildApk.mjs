@@ -5,8 +5,9 @@
  *   npm run apk -- --fast    arm64 only, for testing a release build quickly
  *   npm run apk -- --emu     x86_64 only, the only one an emulator will install
  *   npm run apk -- --fast --show-survey
- *                            a preview: the questionnaire shows every launch
- *                            and sends nothing. Never for anyone else's phone.
+ *                            a preview: the questionnaire, then the voice
+ *                            report, show every launch and send nothing.
+ *                            Never for anyone else's phone.
  *
  * Gradle's output goes straight to the terminal rather than into a file, so a
  * forty-minute build is something you can watch rather than something you have
@@ -25,7 +26,7 @@ reportFeedbackEndpoint();
 const PREVIEW = process.argv.includes('--show-survey');
 if (PREVIEW) {
   process.env[PREVIEW_KEY] = '1';
-  console.log('PREVIEW BUILD: the questionnaire shows every launch and sends nothing.');
+  console.log('PREVIEW BUILD: the questionnaire and voice report show every launch and send nothing.');
 }
 
 /**

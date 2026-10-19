@@ -1,5 +1,7 @@
+import { topVoices, voicesTried } from '../stats/listening';
+
 /**
- * What the questionnaire and feedback send, and nothing more.
+ * What the questionnaire, the voice report and feedback send, and nothing more.
  *
  * The lists and limits here are the same ones the Apps Script checks
  * (early-access/Code.gs), so anything the app sends is accepted and anything
@@ -52,7 +54,43 @@ export interface FeedbackPayload extends AppInfo {
   sentAt: string;
 }
 
+/**
+ * The voice report: which voices someone stays with, by id and whole minutes,
+ * and anything they want to say about voices. No Android version or device --
+ * it is about the voices, not the phone.
+ */
+export interface VoicesPayload {
+  kind: 'voices';
+  voices: Array<{ id: string; minutes: number }>;
+  /** How many voices were listened to at all. */
+  tried: number;
+  comment: string;
+  appVersion: string;
+  sentAt: string;
+}
+
+/** At most this many voices go in a report; the Apps Script refuses more. */
+export const REPORT_VOICES = 5;
+
 const clip = (text: string, limit: number) => text.trim().slice(0, limit);
+
+export function voicesPayload(
+  input: { totals: Record<string, number>; comment: string },
+  info: { appVersion: string },
+  now = new Date(),
+): VoicesPayload {
+  return {
+    kind: 'voices',
+    voices: topVoices(input.totals, REPORT_VOICES).map(({ id, seconds }) => ({
+      id,
+      minutes: Math.round(seconds / 60),
+    })),
+    tried: voicesTried(input.totals),
+    comment: clip(input.comment, LIMITS.comment),
+    appVersion: info.appVersion,
+    sentAt: now.toISOString(),
+  };
+}
 
 export function surveyPayload(
   answers: { use: Use; source: Source; comment: string },
