@@ -140,10 +140,6 @@ export function SurveyCard({ onDone }: { onDone: () => void }) {
           <Text style={{ color: colors.accentOn, fontSize: font.md, fontWeight: '700' }}>Send</Text>
         </Pressable>
       </View>
-
-      <Text style={{ color: colors.textMuted, fontSize: font.xs, marginTop: space.sm, lineHeight: 16 }}>
-        Sent to the Papervoice team with your app and Android version. Nothing about you or your books.
-      </Text>
     </View>
   );
 }

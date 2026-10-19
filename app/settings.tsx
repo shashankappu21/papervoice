@@ -235,7 +235,7 @@ export default function Settings() {
         <Text style={{ color: colors.text, fontSize: font.sm, lineHeight: 20, flex: 1 }}>
           Everything happens on this phone. Your documents are never uploaded, and voices that
           would speak over the internet are not offered at all. The optional questionnaire and
-          feedback send only what you choose to write, with your app and Android version.
+          feedback send only when you press Send, and never anything about your books.
         </Text>
       </View>
 

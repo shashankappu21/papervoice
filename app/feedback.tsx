@@ -102,8 +102,7 @@ export default function Feedback() {
           />
 
           <Text style={{ color: colors.textMuted, fontSize: font.xs, marginTop: space.sm, lineHeight: 16 }}>
-            Add your email if you'd like a reply. Sends your message, app version, Android version
-            and phone model ({info.device}). Nothing about your books.
+            Add your email if you'd like a reply.
           </Text>
 
           {state === 'failed' && (
