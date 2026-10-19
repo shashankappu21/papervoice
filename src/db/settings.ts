@@ -37,5 +37,7 @@ export const SETTING_LAST_BOOK = 'playback.lastBook';
 export const SETTING_THREADS = 'dev.inferenceThreads';
 /** Seconds of audio actually played, ever. See stats/listening.ts. */
 export const STAT_LISTENED = 'stats.listenedSeconds';
+/** Seconds listened per voice id, as JSON; counted from 1.1. See VoiceCounter. */
+export const STAT_LISTENED_BY_VOICE = 'stats.listenedSecondsByVoice';
 /** Books listened to the end, ever: the rating prompt waits for one. */
 export const STAT_FINISHED = 'stats.booksFinished';

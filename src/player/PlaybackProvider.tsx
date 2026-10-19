@@ -1,9 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { getBook, listBooks, readSentences, touchBook, type Book } from '../db/books';
-import { getSetting, setSetting, SETTING_LAST_BOOK, STAT_LISTENED } from '../db/settings';
+import { getSetting, setSetting, SETTING_LAST_BOOK, STAT_LISTENED, STAT_LISTENED_BY_VOICE } from '../db/settings';
 import { buildSections } from '../extraction/sections';
 import { nextChapterStart, sleepLabel, startMinutes, tick, type SleepTimer } from './sleepTimer';
-import { add, dueForWrite, flush, type Counter } from '../stats/listening';
+import {
+  add,
+  addForVoice,
+  dueForWrite,
+  flush,
+  flushVoices,
+  voicesDueForWrite,
+  type Counter,
+  type VoiceCounter,
+} from '../stats/listening';
 import type { Sentence } from '../extraction/types';
 import { usePlayback, type Playback } from './usePlayback';
 import { useSavedPosition } from './useSavedPosition';
@@ -170,21 +179,44 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
       });
   }, []);
 
+  /** The same, split by the voice that was reading, for the voice report. */
+  const byVoice = useRef<VoiceCounter>({ stored: {}, pending: {} });
+  const byVoiceLoaded = useRef(false);
+  useEffect(() => {
+    getSetting(STAT_LISTENED_BY_VOICE)
+      .then((stored) => {
+        const parsed: unknown = stored ? JSON.parse(stored) : {};
+        if (parsed && typeof parsed === 'object') {
+          byVoice.current = { ...byVoice.current, stored: parsed as Record<string, number> };
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        byVoiceLoaded.current = true;
+      });
+  }, []);
+
   const writeListened = useCallback(() => {
     const counter = listened.current;
     if (!listenedLoaded.current || counter.pending <= 0) return;
     const written = flush(counter);
     listened.current = written.counter;
     void setSetting(STAT_LISTENED, String(written.total)).catch(() => undefined);
+
+    if (!byVoiceLoaded.current || Object.keys(byVoice.current.pending).length === 0) return;
+    const voices = flushVoices(byVoice.current);
+    byVoice.current = voices.counter;
+    void setSetting(STAT_LISTENED_BY_VOICE, JSON.stringify(voices.totals)).catch(() => undefined);
   }, []);
 
   useEffect(
     () =>
-      onPlayed((seconds) => {
+      onPlayed((seconds, voiceId) => {
         // Before the stored total has loaded, seconds wait in `pending`.
         const counter = add(listened.current, seconds);
         listened.current = counter;
-        if (dueForWrite(counter)) writeListened();
+        if (voiceId) byVoice.current = addForVoice(byVoice.current, voiceId, seconds);
+        if (dueForWrite(counter) || voicesDueForWrite(byVoice.current)) writeListened();
       }),
     [onPlayed, writeListened],
   );

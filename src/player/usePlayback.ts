@@ -69,7 +69,8 @@ export interface Playback {
    * reports keep coming with the screen off, which a JavaScript timer is not
    * promised to do -- so the sleep timer and the listening count run on these.
    */
-  onPlayed(listener: (seconds: number) => void): () => void;
+  /** `voiceId` is the voice loaded when it played, or null before one is. */
+  onPlayed(listener: (seconds: number, voiceId: string | null) => void): () => void;
   /**
    * Pauses instead of starting this sentence, and calls back when it does.
    * Null clears it. The end-of-chapter sleep timer is this.
@@ -140,7 +141,7 @@ export function usePlayback(
   const awaiting = useRef<number | null>(null);
   const index = useRef(initialIndex);
   const consecutiveFailures = useRef(0);
-  const playedListeners = useRef(new Set<(seconds: number) => void>());
+  const playedListeners = useRef(new Set<(seconds: number, voiceId: string | null) => void>());
   /** When the player last reported playing, so the next report can be measured. */
   const lastPlayingAt = useRef<number | null>(null);
   const stopAt = useRef<{ index: number; onStopped?: () => void } | null>(null);
@@ -369,7 +370,10 @@ export function usePlayback(
         const now = Date.now();
         const seconds = playedBetween(lastPlayingAt.current, now);
         lastPlayingAt.current = now;
-        if (seconds > 0) playedListeners.current.forEach((listener) => listener(seconds));
+        if (seconds > 0) {
+          const voice = loadedVoiceId.current;
+          playedListeners.current.forEach((listener) => listener(seconds, voice));
+        }
       }
       if (status.didJustFinish) advance();
     });
@@ -616,7 +620,7 @@ export function usePlayback(
     lastPlayingAt.current = null;
   };
 
-  const onPlayed = useCallback((listener: (seconds: number) => void) => {
+  const onPlayed = useCallback((listener: (seconds: number, voiceId: string | null) => void) => {
     playedListeners.current.add(listener);
     return () => {
       playedListeners.current.delete(listener);
