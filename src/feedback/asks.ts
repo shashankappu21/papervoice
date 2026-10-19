@@ -1,7 +1,7 @@
 import * as StoreReview from 'expo-store-review';
 import { getSetting, setSetting, STAT_FINISHED, STAT_LISTENED } from '../db/settings';
 import { dayOf, ratingDue, retryLater, surveyDue, type PendingSurvey } from './prompts';
-import { appInfo, FEEDBACK_ENDPOINT, send } from './send';
+import { appInfo, FEEDBACK_ENDPOINT, send, SURVEY_PREVIEW } from './send';
 import type { SurveyPayload } from './payload';
 
 /**
@@ -15,8 +15,16 @@ const SURVEY_DAY = 'survey.day';
 const SURVEY_PENDING = 'survey.pending';
 const RATING_ASKED = 'rating.askedVersion';
 
-/** Whether the questionnaire card should be on the Library now. */
+/** A preview build shows the questionnaire once per launch; see SURVEY_PREVIEW. */
+let previewed = false;
+
+/** Whether the questionnaire should slide up over the Library now. */
 export async function surveyIsDue(): Promise<boolean> {
+  if (SURVEY_PREVIEW) {
+    const due = !previewed;
+    previewed = true;
+    return due;
+  }
   const [listened, survey] = await Promise.all([getSetting(STAT_LISTENED), getSetting(SURVEY_STATE)]);
   return surveyDue({
     hasEndpoint: FEEDBACK_ENDPOINT !== '',
@@ -25,12 +33,14 @@ export async function surveyIsDue(): Promise<boolean> {
   });
 }
 
-/** The card was shown today, which keeps the rating prompt away until tomorrow. */
+/** It was shown today, which keeps the rating prompt away until tomorrow. */
 export async function noteSurveyShown(): Promise<void> {
+  if (SURVEY_PREVIEW) return;
   await setSetting(SURVEY_DAY, dayOf(new Date()));
 }
 
 export async function dismissSurvey(): Promise<void> {
+  if (SURVEY_PREVIEW) return;
   await setSetting(SURVEY_STATE, 'dismissed');
 }
 
@@ -39,6 +49,7 @@ export async function dismissSurvey(): Promise<void> {
  * done -- and an answer that could not be sent waits for a later launch.
  */
 export async function answerSurvey(payload: SurveyPayload): Promise<void> {
+  if (SURVEY_PREVIEW) return;
   await setSetting(SURVEY_STATE, 'answered');
   try {
     await send(payload);

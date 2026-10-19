@@ -17,10 +17,11 @@
 import { spawn } from 'node:child_process';
 import { statSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { loadEnv, REBUNDLE, reportFeedbackEndpoint } from './release/env.mjs';
+import { loadEnv, REBUNDLE, refusePreviewFromEnv, reportFeedbackEndpoint } from './release/env.mjs';
 
 // The feedback endpoint is inlined into the bundle Gradle builds.
 loadEnv();
+refusePreviewFromEnv();
 reportFeedbackEndpoint();
 
 const AAB = 'android/app/build/outputs/bundle/release/app-release.aab';

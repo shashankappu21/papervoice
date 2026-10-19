@@ -4,6 +4,9 @@
  *   npm run apk              both ABIs, the one to send to people
  *   npm run apk -- --fast    arm64 only, for testing a release build quickly
  *   npm run apk -- --emu     x86_64 only, the only one an emulator will install
+ *   npm run apk -- --fast --show-survey
+ *                            a preview: the questionnaire shows every launch
+ *                            and sends nothing. Never for anyone else's phone.
  *
  * Gradle's output goes straight to the terminal rather than into a file, so a
  * forty-minute build is something you can watch rather than something you have
@@ -12,11 +15,18 @@
 import { spawn } from 'node:child_process';
 import { statSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { loadEnv, REBUNDLE, reportFeedbackEndpoint } from './release/env.mjs';
+import { loadEnv, PREVIEW_KEY, REBUNDLE, refusePreviewFromEnv, reportFeedbackEndpoint } from './release/env.mjs';
 
 // The feedback endpoint is inlined into the bundle Gradle builds.
 loadEnv();
+refusePreviewFromEnv();
 reportFeedbackEndpoint();
+
+const PREVIEW = process.argv.includes('--show-survey');
+if (PREVIEW) {
+  process.env[PREVIEW_KEY] = '1';
+  console.log('PREVIEW BUILD: the questionnaire shows every launch and sends nothing.');
+}
 
 /**
  * Both, so the APK installs on older and cheaper phones too.
@@ -68,4 +78,5 @@ gradle.on('exit', (code) => {
 
   const megabytes = (statSync(APK).size / 1_048_576).toFixed(1);
   console.log(`\nDone in ${minutes} minutes.\n\n  ${APK}\n  ${megabytes} MB\n`);
+  if (PREVIEW) console.log('This is a PREVIEW build. Install a normal one afterwards.\n');
 });

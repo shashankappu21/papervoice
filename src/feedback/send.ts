@@ -16,6 +16,13 @@ import type { AppInfo } from './payload';
  */
 export const FEEDBACK_ENDPOINT: string = process.env.EXPO_PUBLIC_FEEDBACK_ENDPOINT ?? '';
 
+/**
+ * A preview build, made by `npm run apk -- --show-survey`: the questionnaire
+ * slides up once every launch, answered or not, and sends and records nothing.
+ * It exists so the sheet can be looked at. Release and Play builds refuse it.
+ */
+export const SURVEY_PREVIEW: boolean = process.env.EXPO_PUBLIC_SURVEY_PREVIEW === '1';
+
 export function appInfo(): AppInfo {
   return {
     appVersion: Constants.expoConfig?.version ?? 'unknown',

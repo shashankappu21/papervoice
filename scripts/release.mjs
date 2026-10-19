@@ -30,10 +30,11 @@ import path from 'node:path';
 import { createDraft, publishDraft, releaseExists, token, uploadAsset } from './release/github.mjs';
 import { assetSet, formatSize } from './release/meta.mjs';
 import { apkFacts } from './release/apk.mjs';
-import { loadEnv, REBUNDLE, reportFeedbackEndpoint } from './release/env.mjs';
+import { loadEnv, REBUNDLE, refusePreviewFromEnv, reportFeedbackEndpoint } from './release/env.mjs';
 
 // The feedback endpoint is inlined into the bundle Gradle builds.
 loadEnv();
+refusePreviewFromEnv();
 reportFeedbackEndpoint();
 
 const APK = 'android/app/build/outputs/apk/release/app-release.apk';

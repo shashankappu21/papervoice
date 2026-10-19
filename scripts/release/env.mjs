@@ -53,6 +53,25 @@ export function loadEnv(files = ['.env.local', '.env']) {
  */
 export const REBUNDLE = [':app:createBundleReleaseJsAndAssets', '--rerun'];
 
+/** Set only by `npm run apk -- --show-survey`; see SURVEY_PREVIEW in src/feedback/send.ts. */
+export const PREVIEW_KEY = 'EXPO_PUBLIC_SURVEY_PREVIEW';
+
+/**
+ * Stops a build if the questionnaire preview came from .env or the shell.
+ *
+ * Metro reads .env by itself, so a line left there would turn every build
+ * into a preview, release builds included. Only the APK script's flag may
+ * turn it on, and it does so after this check.
+ */
+export function refusePreviewFromEnv() {
+  if (process.env[PREVIEW_KEY] === undefined) return;
+  console.error(
+    `\n${PREVIEW_KEY} is set in .env or the environment. Remove it: a preview build\n` +
+      'is made only with `npm run apk -- --fast --show-survey`.\n',
+  );
+  process.exit(1);
+}
+
 /** Says, without the value, whether the app will be able to send feedback. */
 export function reportFeedbackEndpoint() {
   if (process.env[FEEDBACK_KEY]) {
