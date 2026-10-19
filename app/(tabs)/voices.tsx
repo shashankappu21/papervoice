@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OFFERED_VOICES, type VoiceMeta } from '../../src/voices/catalog';
 import { voiceStore, removeUnknownVoices } from '../../src/voices/deviceVoices';
 import { labelledSystemVoices, listUsableSystemVoices, systemVoiceId } from '../../src/voices/engine';
-import { orderCatalog, type LabelledPhoneVoice } from '../../src/voices/order';
+import type { LabelledPhoneVoice } from '../../src/voices/order';
+import { mainList, regionLabel, regionsIn } from '../../src/voices/listing';
 import type { SystemVoice } from '../../modules/system-tts';
 import { getSetting, setSetting, SETTING_VOICE } from '../../src/db/settings';
 import { useTheme } from '../../src/ui/ThemeProvider';
@@ -17,7 +18,8 @@ import { SAMPLE_SENTENCE } from '../../src/voices/samples';
 
 const megabytes = (bytes: number) => `${Math.round(bytes / 1_000_000)} MB`;
 
-type Accent = 'all' | 'US' | 'GB';
+/** 'all', or a region as `regionsIn` reports it: US, GB, AU, IN. */
+type Accent = string;
 type Gender = 'all' | 'female' | 'male';
 
 /**
@@ -101,15 +103,18 @@ export default function Voices() {
     }
   };
 
-  const shown = OFFERED_VOICES.filter(
+  // The natural voices and the phone voices good enough to stand beside them,
+  // in one fixed order: recommended first, then A to Z. Installed voices are
+  // marked, not moved -- moving them reshuffled the list on every download.
+  const everyVoice = mainList(OFFERED_VOICES, system, systemVoiceId);
+  const regions = regionsIn(everyVoice);
+  const ordered = everyVoice.filter(
     (voice) =>
-      (accent === 'all' || voice.accent === accent) &&
+      (accent === 'all' || voice.region === accent) &&
       (gender === 'all' || voice.gender === gender),
   );
-
-  // A fixed order: recommended first, then A to Z. Installed voices are
-  // marked, not moved -- moving them reshuffled the list on every download.
-  const ordered = orderCatalog(shown);
+  // Every phone voice that is not already up there, for the section below.
+  const otherPhoneVoices = system.filter((entry) => !entry.featured);
 
   const installedCount = OFFERED_VOICES.filter((voice) => installed.has(voice.id));
   const usedBytes = installedCount.reduce((total, voice) => total + voice.sizeBytes, 0);
@@ -193,8 +198,14 @@ export default function Voices() {
                   setAccent('all');
                   setGender('all');
                 }} />
-                <Chip label="US" on={accent === 'US'} onPress={() => setAccent('US')} />
-                <Chip label="UK" on={accent === 'GB'} onPress={() => setAccent('GB')} />
+                {regions.map((region) => (
+                  <Chip
+                    key={region}
+                    label={regionLabel(region)}
+                    on={accent === region}
+                    onPress={() => setAccent(region)}
+                  />
+                ))}
                 <Chip
                   label="Female"
                   on={gender === 'female'}
@@ -218,7 +229,9 @@ export default function Voices() {
           </View>
         }
         renderItem={({ item }) => {
-          const isInstalled = installed.has(item.id);
+          // A phone voice is always there: nothing to download or remove.
+          const natural = item.natural;
+          const isInstalled = natural ? installed.has(item.id) : true;
           const inUse = selected === item.id;
           const busy = progress?.id === item.id;
 
@@ -226,17 +239,15 @@ export default function Voices() {
             <View style={{ paddingHorizontal: space.xl }}>
               <Pressable
                 onPress={() =>
-                  isInstalled
-                    ? void choose(item.id)
-                    : void install(item)
+                  isInstalled || !natural ? void choose(item.id) : void install(natural)
                 }
                 disabled={progress !== null}
                 accessibilityRole="button"
                 accessibilityState={{ selected: inUse, disabled: progress !== null }}
                 accessibilityLabel={
-                  isInstalled
-                    ? `${item.name}, ${item.accent} ${item.gender}${inUse ? ', in use' : ''}`
-                    : `Download ${item.name}, ${megabytes(item.sizeBytes)}`
+                  isInstalled || !natural
+                    ? `${item.name}, ${regionLabel(item.region)} ${item.gender}${inUse ? ', in use' : ''}`
+                    : `Download ${item.name}, ${megabytes(natural.sizeBytes)}`
                 }
                 style={({ pressed }) => [
                   styles.card,
@@ -256,9 +267,18 @@ export default function Voices() {
                   <Text style={{ color: colors.text, fontSize: font.lg, fontWeight: '600' }}>
                     {item.name}
                   </Text>
+                  {item.description && (
+                    <Text style={{ color: colors.text, fontSize: font.sm, marginTop: 2 }}>
+                      {item.description}
+                    </Text>
+                  )}
                   <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 2 }}>
-                    {item.accent === 'GB' ? 'UK' : 'US'} · {item.gender}
-                    {isInstalled ? '' : ` · ${megabytes(item.sizeBytes)}`}
+                    {regionLabel(item.region)} · {item.gender}
+                    {natural
+                      ? isInstalled
+                        ? ''
+                        : ` · ${megabytes(natural.sizeBytes)}`
+                      : ' · on this phone'}
                   </Text>
 
                   {busy && (
@@ -306,10 +326,10 @@ export default function Voices() {
                   <ActivityIndicator size="small" color={colors.accent} />
                 ) : inUse ? (
                   <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
-                ) : isInstalled ? (
+                ) : !natural ? null : isInstalled ? (
                   <Pressable
                     onPress={() => {
-                      voiceStore().remove(item);
+                      voiceStore().remove(natural);
                       refresh();
                     }}
                     accessibilityRole="button"
@@ -347,12 +367,12 @@ export default function Voices() {
               {installedCount.length} installed · {megabytes(usedBytes)} used offline
             </Text>
 
-            {system.length > 0 && (
+            {otherPhoneVoices.length > 0 && (
               <View style={{ paddingHorizontal: space.xl, marginTop: space.xl }}>
                 <Text style={[styles.section, { color: colors.textMuted, fontSize: font.xs }]}>
                   ALREADY ON THIS PHONE
                 </Text>
-                {(allPhoneVoices ? system : system.slice(0, 4)).map(({ voice, label, detail }) => {
+                {(allPhoneVoices ? otherPhoneVoices : otherPhoneVoices.slice(0, 4)).map(({ voice, label, detail, description }) => {
                   const id = systemVoiceId(voice);
                   const inUse = selected === id;
                   return (
@@ -381,8 +401,13 @@ export default function Voices() {
                         >
                           {label}
                         </Text>
+                        {description && (
+                          <Text style={{ color: colors.text, fontSize: font.sm, marginTop: 2 }}>
+                            {description}
+                          </Text>
+                        )}
                         <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 2 }}>
-                          {detail} · nothing to download
+                          {detail}
                         </Text>
                       </View>
                       <Pressable
@@ -412,14 +437,14 @@ export default function Voices() {
                     </Pressable>
                   );
                 })}
-                {system.length > 4 && (
+                {otherPhoneVoices.length > 4 && (
                   <Pressable
                     onPress={() => setAllPhoneVoices((all) => !all)}
                     accessibilityRole="button"
                     style={({ pressed }) => ({ paddingVertical: space.sm, opacity: pressed ? 0.6 : 1 })}
                   >
                     <Text style={{ color: colors.accent, fontSize: font.md, fontWeight: '600' }}>
-                      {allPhoneVoices ? 'Show fewer' : `Show all ${system.length} phone voices`}
+                      {allPhoneVoices ? 'Show fewer' : `Show all ${otherPhoneVoices.length} phone voices`}
                     </Text>
                   </Pressable>
                 )}

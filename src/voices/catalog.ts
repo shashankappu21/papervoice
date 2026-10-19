@@ -22,6 +22,13 @@ export interface VoiceMeta {
   name: string;
   accent: 'US' | 'GB';
   gender: 'female' | 'male';
+  /**
+   * How it sounds, in a few words, shown under the name. Written from
+   * measuring each sample -- pitch, how much it moves, how fast the sentence
+   * goes -- rather than adjectives that need an ear to judge. Hidden voices
+   * need none.
+   */
+  description?: string;
   /** Bytes, so the app can say "63 MB" before asking for the download. */
   sizeBytes: number;
   modelUrl: string;
@@ -124,6 +131,7 @@ const PIPER: Array<{
   name: string;
   accent: 'US' | 'GB';
   gender: 'female' | 'male';
+  description?: string;
   sizeBytes: number;
   sha256: string;
   licence: string;
@@ -137,6 +145,7 @@ const PIPER: Array<{
     name: 'Lyra',
     accent: 'US',
     gender: 'female',
+    description: 'Bright, expressive storyteller',
     sizeBytes: 63_531_507,
     sha256: '8ceba58a4b540d4e7e7e24ad079cf0d92762a4fd334e059f12940787c6c37b3d',
     licence: 'LJ Speech, public domain',
@@ -146,6 +155,7 @@ const PIPER: Array<{
     name: 'Kristin',
     accent: 'US',
     gender: 'female',
+    description: 'Low and steady',
     sizeBytes: 63_531_507,
     sha256: 'f9a5c375c70ddc33ccdb3969c76a4d7cc5255ac08119a312b0034a1d07041be6',
     licence: 'LibriVox, public domain',
@@ -186,6 +196,7 @@ const PIPER: Array<{
     name: 'Cori',
     accent: 'GB',
     gender: 'female',
+    description: 'Light and crisp',
     sizeBytes: 63_531_507,
     sha256: '8b0d3cdd77f2878e0aa2048103eabb4d01b334783f99629f042bcf703aeba487',
     licence: 'Public domain',
@@ -210,6 +221,7 @@ export const VOICES: VoiceMeta[] = PIPER.map((voice) => ({
   name: voice.name,
   accent: voice.accent,
   gender: voice.gender,
+  description: voice.description,
   sizeBytes: voice.sizeBytes,
   // Every Piper voice is the same two files under a predictable name, so the
   // URLs are derived rather than written out eleven times.
@@ -355,6 +367,7 @@ const MANYVOICE_SPEAKERS: Array<{
   name: string;
   gender: 'female' | 'male';
   accent: 'US' | 'GB';
+  description?: string;
   /** True where the name does not settle the gender or accent. */
   unsure?: boolean;
   /** Kept out of the list: auditioned and not good enough to offer. */
@@ -368,14 +381,14 @@ const MANYVOICE_SPEAKERS: Array<{
    * epochs against ManyVoice's 400, so the dedicated one is the one to keep.
    */
   { speakerId: 0, reader: 'Cori_Samuel', name: 'Cora', gender: 'female', accent: 'GB', hidden: true },
-  { speakerId: 1, reader: 'Kara_Shallenberg', name: 'Kara', gender: 'female', accent: 'US' },
+  { speakerId: 1, reader: 'Kara_Shallenberg', name: 'Kara', gender: 'female', accent: 'US', description: 'Low, even and quick' },
   // Duplicate of Kristin, as above.
   { speakerId: 2, reader: 'Kristin_Hughes', name: 'Kris', gender: 'female', accent: 'US', hidden: true },
-  { speakerId: 3, reader: 'Maria_Kasper', name: 'Maria', gender: 'female', accent: 'US' },
-  { speakerId: 4, reader: 'Mike_Pelton', name: 'Mike', gender: 'male', accent: 'US' },
-  { speakerId: 5, reader: 'Mark_Nelson', name: 'Mark', gender: 'male', accent: 'US' },
-  { speakerId: 6, reader: 'Michael_Scherer', name: 'Michael', gender: 'male', accent: 'US' },
-  { speakerId: 7, reader: 'James_K_White', name: 'James', gender: 'male', accent: 'US' },
+  { speakerId: 3, reader: 'Maria_Kasper', name: 'Maria', gender: 'female', accent: 'US', description: 'Smooth and even' },
+  { speakerId: 4, reader: 'Mike_Pelton', name: 'Mike', gender: 'male', accent: 'US', description: 'Light and easy-going' },
+  { speakerId: 5, reader: 'Mark_Nelson', name: 'Mark', gender: 'male', accent: 'US', description: 'Lively and fast-flowing' },
+  { speakerId: 6, reader: 'Michael_Scherer', name: 'Michael', gender: 'male', accent: 'US', description: 'Deep and steady' },
+  { speakerId: 7, reader: 'James_K_White', name: 'James', gender: 'male', accent: 'US', description: 'Lively, with natural pauses' },
   // Auditioned and rejected: does not read cleanly enough to offer.
   { speakerId: 8, reader: 'Rose_Ibex', name: 'Rose', gender: 'female', accent: 'US', hidden: true },
   {
@@ -384,18 +397,19 @@ const MANYVOICE_SPEAKERS: Array<{
     name: 'Wendell',
     gender: 'male',
     accent: 'US',
+    description: 'Low, even and brisk',
     unsure: true,
   },
-  { speakerId: 10, reader: 'Steve_C', name: 'Steve', gender: 'male', accent: 'GB' },
+  { speakerId: 10, reader: 'Steve_C', name: 'Steve', gender: 'male', accent: 'GB', description: 'Deep and unhurried' },
   // Auditioned and rejected, as above.
   { speakerId: 11, reader: 'Owlivia', name: 'Olive', gender: 'female', accent: 'GB', hidden: true },
-  { speakerId: 12, reader: 'Paul_Hampton', name: 'Paul', gender: 'male', accent: 'US' },
-  { speakerId: 13, reader: 'Jennifer_Dorr', name: 'Jenny', gender: 'female', accent: 'US' },
-  { speakerId: 14, reader: 'Emily_Cripps', name: 'Emily', gender: 'female', accent: 'US' },
-  { speakerId: 15, reader: 'Martin_Clifton', name: 'Martin', gender: 'male', accent: 'GB' },
+  { speakerId: 12, reader: 'Paul_Hampton', name: 'Paul', gender: 'male', accent: 'US', description: 'Low and very even' },
+  { speakerId: 13, reader: 'Jennifer_Dorr', name: 'Jenny', gender: 'female', accent: 'US', description: 'Natural, mid-pitched' },
+  { speakerId: 14, reader: 'Emily_Cripps', name: 'Emily', gender: 'female', accent: 'US', description: 'Even and brisk' },
+  { speakerId: 15, reader: 'Martin_Clifton', name: 'Martin', gender: 'male', accent: 'GB', description: 'Very deep and even' },
 ];
 
-MANYVOICE_SPEAKERS.forEach(({ speakerId, name, gender, accent, hidden }) => {
+MANYVOICE_SPEAKERS.forEach(({ speakerId, name, gender, accent, description, hidden }) => {
   VOICES.push({
     id: `manyvoice-${speakerId}`,
     packId: 'manyvoice',
@@ -404,6 +418,7 @@ MANYVOICE_SPEAKERS.forEach(({ speakerId, name, gender, accent, hidden }) => {
     accent,
     hidden,
     gender,
+    description,
     sizeBytes: 77_100_232,
     modelUrl: `${BRYCE}/mv2.onnx`,
     /*
