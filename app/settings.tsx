@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { FONT_SIZE_RANGE, type ThemeSetting } from '../src/ui/theme';
 import { OFFERED_VOICES } from '../src/voices/catalog';
 import { useTour } from '../src/tour/TourProvider';
 import { getSetting, setSetting as saveSetting, SETTING_THREADS } from '../src/db/settings';
+import { PRIVACY_URL } from '../src/feedback/privacy';
 import { DEFAULT_THREADS, THREAD_CHOICES, parseThreads } from '../src/voices/threads';
 
 /** Taps on the title that open the developer section. */
@@ -234,8 +235,15 @@ export default function Settings() {
         <Ionicons name="lock-closed" size={20} color={colors.accent} />
         <Text style={{ color: colors.text, fontSize: font.sm, lineHeight: 20, flex: 1 }}>
           Everything happens on this phone. Your documents are never uploaded, and voices that
-          would speak over the internet are not offered at all. The optional questionnaire and
-          feedback send only when you press Send, and never anything about your books.
+          would speak over the internet are not offered at all. The optional questionnaire, voice
+          report and feedback send only when you press Send, and never anything about your books.{' '}
+          <Text
+            onPress={() => void Linking.openURL(PRIVACY_URL)}
+            accessibilityRole="link"
+            style={{ color: colors.accent, fontWeight: '600' }}
+          >
+            Read the privacy policy
+          </Text>
         </Text>
       </View>
 

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
 import { LIMITS, SOURCES, USES, surveyPayload, type Source, type Use } from '../feedback/payload';
 import { answerSurvey, dismissSurvey } from '../feedback/asks';
 import { appInfo } from '../feedback/send';
+import { PRIVACY_URL } from '../feedback/privacy';
 
 /**
  * Two questions and a comment, once, after some real listening.
@@ -198,6 +199,17 @@ export function SurveySheet({ onDone }: { onDone: () => void }) {
                   >
                     <Text style={{ color: colors.textMuted, fontSize: font.md, fontWeight: '600' }}>No thanks</Text>
                   </Pressable>
+
+                  <Text style={{ color: colors.textMuted, fontSize: font.xs, textAlign: 'center' }}>
+                    Anonymous. Nothing about your books. ·{' '}
+                    <Text
+                      onPress={() => void Linking.openURL(PRIVACY_URL)}
+                      accessibilityRole="link"
+                      style={{ color: colors.accent, fontWeight: '600' }}
+                    >
+                      Privacy
+                    </Text>
+                  </Text>
                 </>
               )}
             </ScrollView>

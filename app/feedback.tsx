@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../src/ui/ThemeProvider';
 import { feedbackEmail, feedbackPayload, LIMITS } from '../src/feedback/payload';
 import { appInfo, deviceName, FEEDBACK_ENDPOINT, send } from '../src/feedback/send';
+import { PRIVACY_URL } from '../src/feedback/privacy';
 
 /**
  * Telling us something, from Settings.
@@ -102,7 +103,14 @@ export default function Feedback() {
           />
 
           <Text style={{ color: colors.textMuted, fontSize: font.xs, marginTop: space.sm, lineHeight: 16 }}>
-            Add your email if you'd like a reply.
+            Add your email if you'd like a reply. ·{' '}
+            <Text
+              onPress={() => void Linking.openURL(PRIVACY_URL)}
+              accessibilityRole="link"
+              style={{ color: colors.accent, fontWeight: '600' }}
+            >
+              Privacy
+            </Text>
           </Text>
 
           {state === 'failed' && (
