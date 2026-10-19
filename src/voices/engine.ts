@@ -61,6 +61,12 @@ export async function listUsableSystemVoices(): Promise<SystemVoices> {
     .filter((voice) => !voice.needsNetwork)
     .sort((a, b) => b.quality - a.quality);
 
+  // Which phone voices this is, for naming them: scripts/phoneVoices.mjs reads
+  // this line off a connected phone and prints each label beside its id.
+  console.log(
+    `[papervoice] phone voices: ${JSON.stringify(usable.map(({ id, locale }) => ({ id, locale })))}`,
+  );
+
   return { usable, hiddenForNetwork: voices.length - usable.length };
 }
 

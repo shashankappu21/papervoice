@@ -385,6 +385,27 @@ export default function Voices() {
                           {detail} · nothing to download
                         </Text>
                       </View>
+                      <Pressable
+                        onPress={() => hear(id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={sample.playing === id ? `Stop the sample of ${label}` : `Hear ${label}`}
+                        hitSlop={10}
+                        style={({ pressed }) => [
+                          styles.sample,
+                          {
+                            borderColor: colors.border,
+                            borderRadius: radius.pill,
+                            opacity: pressed ? 0.6 : 1,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={sample.playing === id ? 'stop' : 'play'}
+                          size={16}
+                          color={colors.accent}
+                          style={sample.playing === id ? undefined : { marginLeft: 2 }}
+                        />
+                      </Pressable>
                       {inUse && (
                         <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
                       )}
