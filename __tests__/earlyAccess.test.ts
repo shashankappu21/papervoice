@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { surveyPayload, feedbackPayload } from '../src/feedback/payload';
+import { surveyPayload, feedbackPayload, voicesPayload } from '../src/feedback/payload';
 
 /*
  * The Apps Script itself, run in Node with Google's services stubbed, so the
@@ -83,5 +83,39 @@ describe('the Apps Script behind the questionnaire and feedback', () => {
     const { post, rows } = loadScript();
     expect(post({ email: 'reader@example.com', timestamp: 't' })).toEqual({ ok: true });
     expect(rows.signups[1][1]).toBe('reader@example.com');
+  });
+});
+
+describe('the Apps Script behind the voice report', () => {
+  const totals = { 'system:en-us-x-iob-local': 2040, 'ljspeech-medium': 720 };
+
+  it('accepts exactly what the app sends, into a voices tab', () => {
+    const { post, rows } = loadScript();
+    expect(post(voicesPayload({ totals, comment: 'Ava is lovely' }, { appVersion: '1.1.0' }))).toEqual({ ok: true });
+    expect(rows.voices[0].slice(0, 6)).toEqual(['received_at', 'voices', 'tried', 'comment', 'app_version', 'sent_at']);
+    expect(rows.voices[1].slice(1, 5)).toEqual([
+      'system:en-us-x-iob-local:34, ljspeech-medium:12',
+      2,
+      'Ava is lovely',
+      '1.1.0',
+    ]);
+  });
+
+  it('refuses more than five voices, odd ids and impossible minutes', () => {
+    const { post } = loadScript();
+    const sent = voicesPayload({ totals, comment: '' }, { appVersion: '1.1.0' });
+    const six = Array.from({ length: 6 }, (_, i) => ({ id: `manyvoice-${i}`, minutes: 1 }));
+    expect(post({ ...sent, voices: six }).ok).toBe(false);
+    expect(post({ ...sent, voices: [{ id: 'bad id!', minutes: 1 }] }).ok).toBe(false);
+    expect(post({ ...sent, voices: [{ id: 'ljspeech-medium', minutes: -1 }] }).ok).toBe(false);
+    expect(post({ ...sent, voices: [{ id: 'ljspeech-medium', minutes: 1.5 }] }).ok).toBe(false);
+    expect(post({ ...sent, tried: 'many' }).ok).toBe(false);
+    expect(post({ ...sent, comment: 'x'.repeat(501) }).ok).toBe(false);
+  });
+
+  it('never lets the comment become a formula', () => {
+    const { post, rows } = loadScript();
+    post(voicesPayload({ totals, comment: '=IMPORTXML("x")' }, { appVersion: '1.1.0' }));
+    expect(rows.voices[1][3]).toBe('\'=IMPORTXML("x")');
   });
 });

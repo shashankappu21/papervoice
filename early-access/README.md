@@ -58,11 +58,16 @@ new URL, and the old one keeps running the old code.
 
 ## The app's questionnaire and feedback (1.1 and later)
 
-The same script takes two more kinds of request from the app, each into its
+The same script takes three more kinds of request from the app, each into its
 own tab, created on first use:
 
     survey     received_at, use, source, comment, app_version, android_version, sent_at
     feedback   received_at, message, email, app_version, android_version, device, sent_at
+    voices     received_at, voices, tried, comment, app_version, sent_at
+
+`voices` is the voice report, sent once after an hour of listening if the
+listener presses Send: up to five voice ids with whole minutes, written as
+`id:minutes, id:minutes`, most listened first, and how many voices were tried.
 
 `use` and `source` must be one of the app's fixed answers, every field has a
 length limit, and a body over 4 KB is refused -- the URL can be read out of the

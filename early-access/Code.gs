@@ -7,6 +7,7 @@
  *
  *   kind: 'survey'    -> the `survey` tab
  *   kind: 'feedback'  -> the `feedback` tab
+ *   kind: 'voices'    -> the `voices` tab (the voice report)
  *
  * It is deliberately the whole backend. There is no account system, no vendor,
  * and nothing to pay for: the list is a spreadsheet, and the only thing kept
@@ -48,6 +49,16 @@ var LIMITS = { comment: 500, message: 2000, email: 254, version: 32, device: 80 
 
 var SURVEY_HEADERS = ['received_at', 'use', 'source', 'comment', 'app_version', 'android_version', 'sent_at'];
 var FEEDBACK_HEADERS = ['received_at', 'message', 'email', 'app_version', 'android_version', 'device', 'sent_at'];
+var VOICES_HEADERS = ['received_at', 'voices', 'tried', 'comment', 'app_version', 'sent_at'];
+
+/** The voice report's bounds: at most five voices, ids as the app writes them. */
+var REPORT_VOICES = 5;
+var VOICE_ID = /^[\w:.-]{1,80}$/;
+var MOST_MINUTES = 100000;
+
+function wholeWithin(value, most) {
+  return typeof value === 'number' && Math.floor(value) === value && value >= 0 && value <= most;
+}
 
 /**
  * Text that stays text. A cell starting with = + - or @ would be read by
@@ -82,9 +93,36 @@ function feedbackRow(body) {
           plain(body.androidVersion), plain(body.device || ''), plain(body.sentAt || '')];
 }
 
+/**
+ * The voice report row, or null when the request is not the app's report.
+ * Voices are written as "id:minutes, id:minutes", most listened first.
+ */
+function voicesRow(body) {
+  var voices = body.voices;
+  if (!Array.isArray(voices) || voices.length > REPORT_VOICES) return null;
+  for (var i = 0; i < voices.length; i++) {
+    var voice = voices[i];
+    if (!voice || typeof voice.id !== 'string' || !VOICE_ID.test(voice.id)) return null;
+    if (!wholeWithin(voice.minutes, MOST_MINUTES)) return null;
+  }
+  if (!wholeWithin(body.tried, 1000)) return null;
+  if (!fits(body.comment || '', LIMITS.comment)) return null;
+  if (!fits(body.appVersion, LIMITS.version)) return null;
+  var list = voices.map(function (voice) { return voice.id + ':' + voice.minutes; }).join(', ');
+  return [new Date().toISOString(), plain(list), body.tried, plain(body.comment || ''),
+          plain(body.appVersion), plain(body.sentAt || '')];
+}
+
+var TABS = {
+  survey: { row: surveyRow, headers: SURVEY_HEADERS },
+  feedback: { row: feedbackRow, headers: FEEDBACK_HEADERS },
+  voices: { row: voicesRow, headers: VOICES_HEADERS }
+};
+
 /** Appends one of the app's messages to its own tab. */
 function saveFromApp(body) {
-  var row = body.kind === 'survey' ? surveyRow(body) : body.kind === 'feedback' ? feedbackRow(body) : null;
+  var known = Object.prototype.hasOwnProperty.call(TABS, body.kind) ? TABS[body.kind] : null;
+  var row = known ? known.row(body) : null;
   if (!row) return reply({ ok: false, error: 'That request was not understood.' });
 
   var lock = LockService.getScriptLock();
@@ -94,9 +132,7 @@ function saveFromApp(body) {
     return reply({ ok: false, error: 'Busy just now — please try again.' });
   }
   try {
-    var sheet = body.kind === 'survey'
-      ? tab(body.kind, SURVEY_HEADERS)
-      : tab(body.kind, FEEDBACK_HEADERS);
+    var sheet = tab(body.kind, known.headers);
     sheet.appendRow(row);
     return reply({ ok: true });
   } finally {
