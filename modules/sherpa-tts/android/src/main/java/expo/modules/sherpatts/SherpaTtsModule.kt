@@ -12,6 +12,11 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
 import java.security.MessageDigest
+import kotlin.math.abs
+import kotlin.math.log10
+import kotlin.math.sign
+import kotlin.math.sqrt
+import kotlin.math.tanh
 
 /**
  * Wraps sherpa-onnx so a Piper voice can turn one sentence into a WAV on disk.
@@ -20,6 +25,9 @@ import java.security.MessageDigest
  * are downloaded or pushed there, never bundled, and never read over a network.
  */
 private const val ESPEAK_ASSET = "espeak-ng-data"
+
+/** Where the soft limit starts bending: about -1 dBFS. Quieter samples pass untouched. */
+private const val KNEE = 0.89f
 
 class SherpaTtsModule : Module() {
   private var tts: OfflineTts? = null
@@ -148,7 +156,7 @@ class SherpaTtsModule : Module() {
       )
     }
 
-    AsyncFunction("synthesize") { parts: List<String>, sid: Int, speed: Float, outPath: String, seamMs: Int, tailMs: Int, trim: Float ->
+    AsyncFunction("synthesize") { parts: List<String>, sid: Int, speed: Float, outPath: String, seamMs: Int, tailMs: Int, trim: Float, gain: Float ->
       val engine = tts ?: throw CodedException("SherpaTts.load() must be called first")
       if (parts.isEmpty()) throw CodedException("Nothing to synthesize")
 
@@ -171,6 +179,7 @@ class SherpaTtsModule : Module() {
         // which cannot be relied on to leave a gap of any particular length.
         if (i < pieces.size - 1) at += seam
       }
+      boost(samples, gain)
 
       if (!GeneratedAudio(samples, sampleRate).save(outPath)) {
         throw CodedException("Could not write the WAV file: $outPath")
@@ -183,6 +192,9 @@ class SherpaTtsModule : Module() {
         // Real-time factor, measured against the speech alone: padding the
         // audio must not be allowed to flatter the number.
         "rtf" to if (speechSamples > 0) elapsedSec / (speechSamples.toDouble() / sampleRate) else 0.0,
+        // How loud the speech came out, in dBFS, so levelling can be checked
+        // on a phone rather than assumed.
+        "levelDb" to speechLevelDb(samples, sampleRate),
       )
     }
 
@@ -227,6 +239,45 @@ class SherpaTtsModule : Module() {
       tts?.release()
       tts = null
     }
+  }
+
+  /**
+   * Raises a voice to the loudness of the others.
+   *
+   * The natural voices come out of their models 1 to 9 dB quieter than the
+   * phone's own, and a player cannot be turned past full volume to make up for
+   * it, so each is multiplied by a fixed gain measured once from its sample.
+   * Above KNEE the curve bends smoothly towards full scale instead of clipping:
+   * only the loudest peaks of the boosted voices ever reach it, and a hard clip
+   * there is a crackle while a soft one is not heard.
+   */
+  private fun boost(samples: FloatArray, gain: Float) {
+    if (gain == 1f) return
+    for (i in samples.indices) {
+      val x = samples[i] * gain
+      val magnitude = abs(x)
+      samples[i] = if (magnitude <= KNEE) x else sign(x) * (KNEE + (1f - KNEE) * tanh((magnitude - KNEE) / (1f - KNEE)))
+    }
+  }
+
+  /**
+   * The RMS of the 30 ms frames louder than a tenth of the loudest, in dBFS --
+   * the speaking, not the silence around it. The same measure as
+   * scripts/voiceLevels.py, so the two can be compared.
+   */
+  private fun speechLevelDb(samples: FloatArray, sampleRate: Int): Double {
+    val frame = sampleRate * 30 / 1000
+    if (frame <= 0 || samples.size < frame) return -120.0
+    val rms = DoubleArray(samples.size / frame) { f ->
+      var sum = 0.0
+      for (i in f * frame until (f + 1) * frame) sum += samples[i] * samples[i].toDouble()
+      sqrt(sum / frame)
+    }
+    val loudest = rms.maxOrNull() ?: return -120.0
+    val speech = rms.filter { it > 0.1 * loudest }
+    if (speech.isEmpty() || loudest <= 0.0) return -120.0
+    val level = sqrt(speech.sumOf { it * it } / speech.size)
+    return 20 * log10(level)
   }
 
   /** Recursively copies an asset directory to the filesystem. */

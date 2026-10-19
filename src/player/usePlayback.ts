@@ -257,7 +257,8 @@ export function usePlayback(
           console.log(
             `[papervoice] rtf ${result.rtf.toFixed(3)} | synth ${synthMs}ms` +
               ` | ${result.durationSec.toFixed(1)}s audio | ${sentence.text.length} chars` +
-              ` | ${speaking.threads ?? '-'} threads | ${speaking.label}`,
+              ` | ${speaking.threads ?? '-'} threads | ${speaking.label}` +
+              (result.levelDb !== undefined ? ` | ${result.levelDb.toFixed(1)} dBFS` : ''),
           );
           consecutiveFailures.current = 0;
           return result;

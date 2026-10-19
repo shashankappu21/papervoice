@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OFFERED_VOICES } from '../src/voices/catalog';
+import { linearGain, OFFERED_VOICES } from '../src/voices/catalog';
 import { mainList, regionLabel, regionsIn, voiceDisplayName } from '../src/voices/listing';
 import { labelPhoneVoices } from '../src/voices/order';
 
@@ -86,3 +86,20 @@ describe('a voice by name', () => {
   });
 });
 
+
+describe('evening out the natural voices', () => {
+  it('every offered voice has a boost, within what a soft limit can carry', () => {
+    const out = OFFERED_VOICES.filter((voice) => voice.gainDb === undefined || voice.gainDb < 0 || voice.gainDb > 12);
+    expect(out.map((voice) => voice.name)).toEqual([]);
+  });
+
+  it('turns decibels into the factor the engine multiplies by', () => {
+    expect(linearGain(0)).toBe(1);
+    expect(linearGain(6)).toBeCloseTo(1.995, 3);
+    expect(linearGain(undefined)).toBe(1);
+  });
+
+  it('brings the quietest, Cori, up by the 9 dB measured', () => {
+    expect(OFFERED_VOICES.find((voice) => voice.name === 'Cori')?.gainDb).toBe(9);
+  });
+});

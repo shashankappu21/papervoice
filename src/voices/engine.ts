@@ -1,6 +1,6 @@
 import { SherpaTts } from '../../modules/sherpa-tts';
 import { SystemTts, type SystemVoice } from '../../modules/system-tts';
-import { OFFERED_VOICES, findVoice, type VoiceMeta } from './catalog';
+import { OFFERED_VOICES, findVoice, linearGain, type VoiceMeta } from './catalog';
 import { voiceStore, voiceLoadPaths } from './deviceVoices';
 import type { Sentence } from '../extraction/types';
 import { speakable } from '../tts/speakable';
@@ -41,7 +41,7 @@ export interface SpeechEngine {
    * for itself.
    */
   threads?: number;
-  speak(sentence: Sentence, outPath: string, rtf?: number): Promise<{ path: string; durationSec: number; rtf: number }>;
+  speak(sentence: Sentence, outPath: string, rtf?: number): Promise<{ path: string; durationSec: number; rtf: number; levelDb?: number }>;
 }
 
 export interface SystemVoices {
@@ -195,6 +195,7 @@ async function neuralEngine(voice: VoiceMeta): Promise<SpeechEngine> {
         SEAM_MS,
         tailMs,
         voice.trimTail ?? 0,
+        linearGain(voice.gainDb),
       );
     },
   };

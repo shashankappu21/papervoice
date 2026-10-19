@@ -12,6 +12,8 @@ export interface SynthResult {
   durationSec: number;
   /** Real-time factor: below 1 means synthesis outruns playback. */
   rtf: number;
+  /** How loud the speech came out, dBFS; the phone's voices speak at about -17. */
+  levelDb?: number;
 }
 
 interface SherpaTtsNative {
@@ -64,6 +66,8 @@ interface SherpaTtsNative {
      * silence does not hide. Zero turns it off.
      */
     trim: number,
+    /** Multiplies the audio, softly limited near full scale; 1 leaves it as the model made it. */
+    gain: number,
   ): Promise<SynthResult>;
   /**
    * Unpacks the bundled phonemiser data to `destination` if it is not already
