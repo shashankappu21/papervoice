@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
@@ -26,6 +26,14 @@ export function SurveySheet({ onDone }: { onDone: () => void }) {
   const [source, setSource] = useState<Source | null>(null);
   const [comment, setComment] = useState('');
   const [thanked, setThanked] = useState(false);
+  const scroller = useRef<ScrollView>(null);
+
+  // The comment is the only field, so the keyboard opening means it is being
+  // typed in. Once the sheet has shrunk, bring the box and Send into view.
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', () => scroller.current?.scrollToEnd());
+    return () => shown.remove();
+  }, []);
 
   /** Slides the sheet away, then lets the library forget it. */
   const close = (after = 0) => {
@@ -88,7 +96,12 @@ export function SurveySheet({ onDone }: { onDone: () => void }) {
       onRequestClose={noThanks}
     >
       <KeyboardAvoidingView behavior="padding" style={styles.fill}>
-        <Pressable style={styles.backdrop} onPress={thanked ? undefined : noThanks}>
+        {/* Never above the status bar: with large text, or with the keyboard up,
+            the questions scroll inside the sheet instead. */}
+        <Pressable
+          style={[styles.backdrop, { paddingTop: insets.top + space.lg }]}
+          onPress={thanked ? undefined : noThanks}
+        >
           <Pressable
             onPress={() => undefined}
             style={{
@@ -98,88 +111,96 @@ export function SurveySheet({ onDone }: { onDone: () => void }) {
               paddingTop: space.md,
               paddingHorizontal: space.xl,
               paddingBottom: insets.bottom + space.lg,
+              flexShrink: 1,
             }}
           >
             <View style={[styles.grip, { backgroundColor: colors.divider }]} />
 
-            {thanked ? (
-              <View style={[styles.thanks, { paddingVertical: space.xxxl }]}>
-                <Ionicons name="checkmark-circle" size={48} color={colors.accent} />
-                <Text style={{ color: colors.text, fontSize: font.xl, fontWeight: '700', marginTop: space.md }}>
-                  Thank you!
-                </Text>
-                <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: space.xs }}>
-                  It really helps decide what comes next.
-                </Text>
-              </View>
-            ) : (
-              <>
-                <Text style={{ color: colors.text, fontSize: font.xl, fontWeight: '700' }}>Help shape Papervoice</Text>
-                <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 2, marginBottom: space.lg }}>
-                  Two quick questions, about 30 seconds.
-                </Text>
+            <ScrollView
+              ref={scroller}
+              style={styles.scroll}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {thanked ? (
+                <View style={[styles.thanks, { paddingVertical: space.xxxl }]}>
+                  <Ionicons name="checkmark-circle" size={48} color={colors.accent} />
+                  <Text style={{ color: colors.text, fontSize: font.xl, fontWeight: '700', marginTop: space.md }}>
+                    Thank you!
+                  </Text>
+                  <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: space.xs }}>
+                    It really helps decide what comes next.
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={{ color: colors.text, fontSize: font.xl, fontWeight: '700' }}>Help shape Papervoice</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: font.sm, marginTop: 2, marginBottom: space.lg }}>
+                    Two quick questions, about 30 seconds.
+                  </Text>
 
-                <Text style={[styles.question, { color: colors.text, fontSize: font.md }]}>
-                  What will you mostly listen to?
-                </Text>
-                <Chips options={USES} chosen={use} onChoose={setUse} />
+                  <Text style={[styles.question, { color: colors.text, fontSize: font.md }]}>
+                    What will you mostly listen to?
+                  </Text>
+                  <Chips options={USES} chosen={use} onChoose={setUse} />
 
-                <Text style={[styles.question, { color: colors.text, fontSize: font.md, marginTop: space.lg }]}>
-                  How did you find Papervoice?
-                </Text>
-                <Chips options={SOURCES} chosen={source} onChoose={setSource} />
+                  <Text style={[styles.question, { color: colors.text, fontSize: font.md, marginTop: space.lg }]}>
+                    How did you find Papervoice?
+                  </Text>
+                  <Chips options={SOURCES} chosen={source} onChoose={setSource} />
 
-                <TextInput
-                  value={comment}
-                  onChangeText={setComment}
-                  maxLength={LIMITS.comment}
-                  multiline
-                  placeholder="Anything that would make you use it more? (optional)"
-                  placeholderTextColor={colors.textMuted}
-                  style={{
-                    color: colors.text,
-                    backgroundColor: colors.surface,
-                    borderRadius: radius.md,
-                    padding: space.md,
-                    marginTop: space.lg,
-                    minHeight: 72,
-                    fontSize: font.sm,
-                    textAlignVertical: 'top',
-                  }}
-                />
-
-                <Pressable
-                  disabled={!ready}
-                  onPress={() => {
-                    if (!use || !source) return;
-                    void answerSurvey(surveyPayload({ use, source, comment }, appInfo()));
-                    setThanked(true);
-                    close(1800);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: !ready }}
-                  style={({ pressed }) => [
-                    styles.send,
-                    {
+                  <TextInput
+                    value={comment}
+                    onChangeText={setComment}
+                    maxLength={LIMITS.comment}
+                    multiline
+                    placeholder="Anything that would make you use it more? (optional)"
+                    placeholderTextColor={colors.textMuted}
+                    style={{
+                      color: colors.text,
+                      backgroundColor: colors.surface,
+                      borderRadius: radius.md,
+                      padding: space.md,
                       marginTop: space.lg,
-                      backgroundColor: colors.accent,
-                      borderRadius: radius.pill,
-                      opacity: !ready ? 0.4 : pressed ? 0.75 : 1,
-                    },
-                  ]}
-                >
-                  <Text style={{ color: colors.accentOn, fontSize: font.md, fontWeight: '700' }}>Send</Text>
-                </Pressable>
+                      minHeight: 72,
+                      fontSize: font.sm,
+                      textAlignVertical: 'top',
+                    }}
+                  />
 
-                <Pressable
-                  onPress={noThanks}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [styles.noThanks, { opacity: pressed ? 0.6 : 1 }]}
-                >
-                  <Text style={{ color: colors.textMuted, fontSize: font.md, fontWeight: '600' }}>No thanks</Text>
-                </Pressable>
-              </>
-            )}
+                  <Pressable
+                    disabled={!ready}
+                    onPress={() => {
+                      if (!use || !source) return;
+                      void answerSurvey(surveyPayload({ use, source, comment }, appInfo()));
+                      setThanked(true);
+                      close(1800);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: !ready }}
+                    style={({ pressed }) => [
+                      styles.send,
+                      {
+                        marginTop: space.lg,
+                        backgroundColor: colors.accent,
+                        borderRadius: radius.pill,
+                        opacity: !ready ? 0.4 : pressed ? 0.75 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={{ color: colors.accentOn, fontSize: font.md, fontWeight: '700' }}>Send</Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={noThanks}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.noThanks, { opacity: pressed ? 0.6 : 1 }]}
+                  >
+                    <Text style={{ color: colors.textMuted, fontSize: font.md, fontWeight: '600' }}>No thanks</Text>
+                  </Pressable>
+                </>
+              )}
+            </ScrollView>
           </Pressable>
         </Pressable>
       </KeyboardAvoidingView>
@@ -189,6 +210,7 @@ export function SurveySheet({ onDone }: { onDone: () => void }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  scroll: { flexGrow: 0 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
   grip: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   thanks: { alignItems: 'center' },
