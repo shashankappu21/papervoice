@@ -10,6 +10,19 @@
 export type ThemeName = 'light' | 'paper' | 'dark';
 export type ThemeSetting = ThemeName | 'system';
 
+/**
+ * Paper until someone chooses otherwise: it is what the app is for -- reading
+ * -- and it looks like a page. System stays a choice, not the default.
+ */
+export const DEFAULT_THEME_SETTING: ThemeSetting = 'paper';
+
+const THEME_SETTINGS: readonly ThemeSetting[] = ['system', 'light', 'paper', 'dark'];
+
+/** The stored choice, or the default when there is none or it is not one. */
+export function themeSettingFrom(stored: string | null): ThemeSetting {
+  return THEME_SETTINGS.includes(stored as ThemeSetting) ? (stored as ThemeSetting) : DEFAULT_THEME_SETTING;
+}
+
 export interface Colors {
   bg: string;
   surface: string;

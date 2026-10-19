@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { THEMES, resolveTheme, clampFontSize, FONT_SIZE_RANGE } from '../src/ui/theme';
+import { THEMES, resolveTheme, clampFontSize, FONT_SIZE_RANGE, themeSettingFrom } from '../src/ui/theme';
 
 /**
  * The test brings its own contrast maths rather than importing the app's.
@@ -91,5 +91,22 @@ describe('clampFontSize', () => {
 
   it('survives a corrupt stored value', () => {
     expect(clampFontSize(Number.NaN)).toBe(FONT_SIZE_RANGE.default);
+  });
+});
+
+describe('the appearance someone gets', () => {
+  it('is Paper until they choose another', () => {
+    expect(themeSettingFrom(null)).toBe('paper');
+    expect(themeSettingFrom('')).toBe('paper');
+  });
+
+  it('is whatever they chose, System included', () => {
+    expect(themeSettingFrom('system')).toBe('system');
+    expect(themeSettingFrom('dark')).toBe('dark');
+    expect(themeSettingFrom('light')).toBe('light');
+  });
+
+  it('falls back to Paper for anything not a setting', () => {
+    expect(themeSettingFrom('sepia')).toBe('paper');
   });
 });

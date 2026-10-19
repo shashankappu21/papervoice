@@ -5,6 +5,8 @@ import {
   clampFontSize,
   resolveTheme,
   FONT_SIZE_RANGE,
+  DEFAULT_THEME_SETTING,
+  themeSettingFrom,
   type Theme,
   type ThemeSetting,
 } from './theme';
@@ -29,12 +31,12 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const system = useColorScheme();
-  const [setting, setSettingState] = useState<ThemeSetting>('system');
+  const [setting, setSettingState] = useState<ThemeSetting>(DEFAULT_THEME_SETTING);
   const [fontSize, setFontSizeState] = useState<number>(FONT_SIZE_RANGE.default);
 
   useEffect(() => {
     getSetting(SETTING_THEME).then(
-      (stored) => setSettingState((stored as ThemeSetting) ?? 'system'),
+      (stored) => setSettingState(themeSettingFrom(stored)),
       () => undefined,
     );
     getSetting(SETTING_FONT_SIZE).then(
