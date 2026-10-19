@@ -287,9 +287,10 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
 
       <VoicePicker
         visible={choosingVoice}
-        voices={playback.voices}
         chosenId={playback.voiceId}
+        sentences={sentences}
         onClose={() => setChoosingVoice(false)}
+        onInstalled={() => playback.refreshVoices()}
         onChoose={(id) => {
           setChoosingVoice(false);
           // Changing voice re-reads from here in the new voice; what was

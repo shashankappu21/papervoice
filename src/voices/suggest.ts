@@ -98,8 +98,8 @@ const REASONS: Record<Exclude<BookKind, 'unknown'>, { GB: string; other: string 
     other: 'A story with plenty of dialogue suits an expressive storyteller',
   },
   study: {
-    GB: 'Non-fiction in British English reads best in a steady voice',
-    other: 'Non-fiction and study text reads best in a steady voice',
+    GB: 'Factual writing with British spelling reads best in a steady voice',
+    other: 'Factual writing reads best in a steady voice',
   },
   form: { GB: 'Short, form-like text needs a clear, steady voice', other: 'Short, form-like text needs a clear, steady voice' },
 };

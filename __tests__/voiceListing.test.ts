@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linearGain, OFFERED_VOICES } from '../src/voices/catalog';
-import { mainList, regionLabel, regionsIn, voiceDisplayName } from '../src/voices/listing';
+import { mainList, pickerSections, regionLabel, regionsIn, voiceDisplayName } from '../src/voices/listing';
 import { labelPhoneVoices } from '../src/voices/order';
 
 const systemId = (voice: { id: string }) => `system:${voice.id}`;
@@ -101,5 +101,41 @@ describe('evening out the natural voices', () => {
 
   it('brings the quietest, Cori, up by the 9 dB measured', () => {
     expect(OFFERED_VOICES.find((voice) => voice.name === 'Cori')?.gainDb).toBe(9);
+  });
+});
+
+describe('the reader voice sheet', () => {
+  const list = mainList(OFFERED_VOICES, phone, systemId);
+  const ids = (voices: Array<{ id: string }>) => voices.map((voice) => voice.id);
+
+  it('suggests first, never the voice already reading', () => {
+    const sheet = pickerSections(list, {
+      chosenId: 'ljspeech-medium',
+      suggested: ['ljspeech-medium', 'system:en-au-x-aub-local'],
+      installed: new Set(['ljspeech-medium']),
+    });
+    expect(ids(sheet.suggested)).toEqual(['system:en-au-x-aub-local']);
+  });
+
+  it('then the top of the list to try, without the current or suggested ones', () => {
+    const sheet = pickerSections(list, {
+      chosenId: 'en_US-kristin-medium',
+      suggested: ['ljspeech-medium'],
+      installed: new Set(),
+    });
+    const tryThese = ids(sheet.tryThese);
+    expect(tryThese).not.toContain('en_US-kristin-medium');
+    expect(tryThese).not.toContain('ljspeech-medium');
+    expect(tryThese.length).toBeLessThanOrEqual(8);
+    expect(tryThese[0]).toBe('en_GB-cori-medium');
+  });
+
+  it('keeps downloaded voices from further down within reach', () => {
+    const sheet = pickerSections(list, {
+      chosenId: null,
+      suggested: [],
+      installed: new Set(['manyvoice-15']),
+    });
+    expect(ids(sheet.yours)).toEqual(['manyvoice-15']);
   });
 });

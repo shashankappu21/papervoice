@@ -79,3 +79,28 @@ export function voiceDisplayName(id: string, phoneLabels: Map<string, string>): 
   if (phone) return phone;
   return id.startsWith('system:') ? 'a phone voice' : id;
 }
+
+/** How many of the top of the list the reader's sheet offers to try. */
+export const TRY_THESE = 8;
+
+/**
+ * What the reader's voice sheet shows besides the voice reading now: the
+ * book's suggestions, the top of the list to try, and any other downloaded
+ * voice, so switching between voices already on the phone stays one tap.
+ * Nothing appears twice, and the voice reading now appears in none of them.
+ */
+export function pickerSections(
+  list: ListedVoice[],
+  options: { chosenId: string | null; suggested: string[]; installed: Set<string> },
+): { suggested: ListedVoice[]; tryThese: ListedVoice[]; yours: ListedVoice[] } {
+  const byId = new Map(list.map((voice) => [voice.id, voice]));
+  const suggested = options.suggested
+    .filter((id) => id !== options.chosenId)
+    .map((id) => byId.get(id))
+    .filter((voice): voice is ListedVoice => voice !== undefined);
+  const taken = new Set([options.chosenId, ...suggested.map((voice) => voice.id)]);
+  const tryThese = list.slice(0, TRY_THESE).filter((voice) => !taken.has(voice.id));
+  tryThese.forEach((voice) => taken.add(voice.id));
+  const yours = list.filter((voice) => voice.natural && options.installed.has(voice.id) && !taken.has(voice.id));
+  return { suggested, tryThese, yours };
+}
