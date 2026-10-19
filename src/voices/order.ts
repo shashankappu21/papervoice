@@ -28,6 +28,10 @@ export interface PhoneVoice {
 export interface PhoneVoiceName {
   name: string;
   gender: 'female' | 'male';
+  /** How it sounds, in a few words, shown under the name. */
+  description: string;
+  /** Good enough to list beside the natural voices, not only among the phone's. */
+  featured?: boolean;
 }
 
 export interface LabelledPhoneVoice<T extends PhoneVoice> {
@@ -36,6 +40,22 @@ export interface LabelledPhoneVoice<T extends PhoneVoice> {
   label: string;
   /** "US · female · phone voice", or just "phone voice". */
   detail: string;
+  /** The locale's region, upper case: US, GB, AU, IN. Empty when it has none. */
+  region: string;
+  /** Only for a voice we have named. */
+  gender?: 'female' | 'male';
+  description?: string;
+  featured: boolean;
+}
+
+/**
+ * Google's per-language alias, `en-US-language`: the language's default voice
+ * under a second id. Measured on a phone, its audio is byte-identical to one
+ * of the named voices of the same language, so listing it only lists that
+ * voice twice.
+ */
+export function isLanguageAlias(id: string): boolean {
+  return /^[a-z]{2}-[A-Z]{2}-language$/.test(id);
 }
 
 const ENGLISHES: Record<string, string> = {
@@ -49,9 +69,11 @@ const ENGLISHES: Record<string, string> = {
   ZA: 'South African English',
 };
 
+const regionOf = (locale: string): string => (locale.split('-')[1] ?? '').toUpperCase();
+
 /** The accent as the rest of the app writes it: UK, not GB. */
 const accentOf = (locale: string): string => {
-  const region = (locale.split('-')[1] ?? '').toUpperCase();
+  const region = regionOf(locale);
   return region === 'GB' ? 'UK' : region;
 };
 
@@ -69,6 +91,9 @@ const englishOf = (locale: string): string => {
  * numbered within its accent, in a stable order, so the same phone always
  * shows the same names. "phone voice" is always said, so none is mistaken for
  * one of Papervoice's own.
+ *
+ * This is the list of voices *offered*, so Google's aliases are left out. A
+ * saved alias still opens -- that check does not come through here.
  */
 export function labelPhoneVoices<T extends PhoneVoice>(
   voices: T[],
@@ -78,6 +103,7 @@ export function labelPhoneVoices<T extends PhoneVoice>(
   const unnamed: T[] = [];
 
   for (const voice of voices) {
+    if (isLanguageAlias(voice.id)) continue;
     const known = names[voice.id];
     if (known) {
       const accent = accentOf(voice.locale);
@@ -85,6 +111,10 @@ export function labelPhoneVoices<T extends PhoneVoice>(
         voice,
         label: known.name,
         detail: `${accent ? `${accent} · ` : ''}${known.gender} · phone voice`,
+        region: regionOf(voice.locale),
+        gender: known.gender,
+        description: known.description,
+        featured: known.featured === true,
       });
     } else {
       unnamed.push(voice);
@@ -101,7 +131,13 @@ export function labelPhoneVoices<T extends PhoneVoice>(
     const english = englishOf(voice.locale);
     const n = (counts.get(english) ?? 0) + 1;
     counts.set(english, n);
-    return { voice, label: `${english} · voice ${n}`, detail: 'phone voice' };
+    return {
+      voice,
+      label: `${english} · voice ${n}`,
+      detail: 'phone voice',
+      region: regionOf(voice.locale),
+      featured: false,
+    };
   });
 
   return [...named, ...numbered];

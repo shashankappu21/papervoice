@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { labelPhoneVoices, orderCatalog } from '../src/voices/order';
+import { isLanguageAlias, labelPhoneVoices, orderCatalog } from '../src/voices/order';
 
 describe('the order of downloadable voices', () => {
   const voices = [
@@ -41,8 +41,8 @@ describe('phone voice names', () => {
     { id: 'en-in-x-ahp-local', locale: 'en-IN' },
   ];
   const names = {
-    'en-us-x-sfg-local': { name: 'Sophie', gender: 'female' as const },
-    'en-gb-x-rjs-local': { name: 'Oliver', gender: 'male' as const },
+    'en-us-x-sfg-local': { name: 'Sophie', gender: 'female' as const, description: 'Bright and lively', featured: true },
+    'en-gb-x-rjs-local': { name: 'Oliver', gender: 'male' as const, description: 'Deep and even' },
   };
 
   it('uses the name we gave, with accent and gender, and says it is a phone voice', () => {
@@ -68,5 +68,57 @@ describe('phone voice names', () => {
 
   it('gives the same names whatever order the phone lists them in', () => {
     expect(labelPhoneVoices([...phone].reverse(), names)).toEqual(labelPhoneVoices(phone, names));
+  });
+});
+
+describe("Google's per-language aliases", () => {
+  it('recognises the alias form and nothing else', () => {
+    expect(isLanguageAlias('en-US-language')).toBe(true);
+    expect(isLanguageAlias('en-AU-language')).toBe(true);
+    expect(isLanguageAlias('en-us-x-iob-local')).toBe(false);
+    expect(isLanguageAlias('en-US')).toBe(false);
+    expect(isLanguageAlias('en-us-language')).toBe(false);
+  });
+
+  it('are left out of the list, and the rest numbered from 1', () => {
+    const labelled = labelPhoneVoices(
+      [
+        { id: 'en-US-language', locale: 'en-US' },
+        { id: 'en-us-x-iog-local', locale: 'en-US' },
+        { id: 'en-us-x-iol-local', locale: 'en-US' },
+      ],
+      {},
+    );
+    expect(labelled.map((v) => [v.voice.id, v.label])).toEqual([
+      ['en-us-x-iog-local', 'US English · voice 1'],
+      ['en-us-x-iol-local', 'US English · voice 2'],
+    ]);
+  });
+});
+
+describe('what a phone voice carries', () => {
+  const phone = [
+    { id: 'en-au-x-aub-local', locale: 'en-AU' },
+    { id: 'en-in-x-end-local', locale: 'en-IN' },
+  ];
+  const names = {
+    'en-au-x-aub-local': { name: 'Jack', gender: 'male' as const, description: 'Light and even', featured: true },
+  };
+
+  it('a named one: its description, whether it is featured, gender and region', () => {
+    expect(labelPhoneVoices(phone, names)[0]).toMatchObject({
+      label: 'Jack',
+      description: 'Light and even',
+      featured: true,
+      gender: 'male',
+      region: 'AU',
+    });
+  });
+
+  it('a numbered one: region, not featured, no description or gender', () => {
+    const numbered = labelPhoneVoices(phone, names)[1];
+    expect(numbered).toMatchObject({ region: 'IN', featured: false });
+    expect(numbered.description).toBeUndefined();
+    expect(numbered.gender).toBeUndefined();
   });
 });
