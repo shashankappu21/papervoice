@@ -10,6 +10,8 @@ import { getSetting, SETTING_THREADS } from '../db/settings';
 import { parseThreads } from './threads';
 import { labelPhoneVoices, orderCatalog, type LabelledPhoneVoice } from './order';
 import { PHONE_VOICE_NAMES } from './phoneVoiceNames';
+import { Directory, File, Paths } from 'expo-file-system';
+import { ensureReady, voicesToPrefetch, type ReadinessDeps } from './phoneReadiness';
 
 /**
  * Speaking a sentence, whichever voice is doing it.
@@ -64,7 +66,9 @@ export async function listUsableSystemVoices(): Promise<SystemVoices> {
   // Which phone voices this is, for naming them: scripts/phoneVoices.mjs reads
   // this line off a connected phone and prints each label beside its id.
   console.log(
-    `[papervoice] phone voices: ${JSON.stringify(usable.map(({ id, locale }) => ({ id, locale })))}`,
+    `[papervoice] phone voices: ${JSON.stringify(
+      usable.map(({ id, locale, notInstalled, features }) => ({ id, locale, notInstalled, features })),
+    )}`,
   );
 
   return { usable, hiddenForNetwork: voices.length - usable.length };
@@ -201,10 +205,86 @@ async function neuralEngine(voice: VoiceMeta): Promise<SpeechEngine> {
   };
 }
 
+/** What a phone voice is doing, for the screens: its data downloading, or in. */
+export type PhoneVoiceStatus = 'downloading' | 'ready';
+
+const statusListeners = new Set<(voiceId: string, status: PhoneVoiceStatus) => void>();
+
+/** Hears when a phone voice starts downloading and when it is in. Returns the way to stop. */
+export function onPhoneVoiceStatus(listener: (voiceId: string, status: PhoneVoiceStatus) => void): () => void {
+  statusListeners.add(listener);
+  return () => statusListeners.delete(listener);
+}
+
+const announce = (voiceId: string, status: PhoneVoiceStatus) =>
+  statusListeners.forEach((listener) => listener(voiceId, status));
+
+/** Whether the phone has the voice's data. One it no longer lists at all is left to fail on its own. */
+async function isPhoneVoiceReady(voiceId: string): Promise<boolean> {
+  const voices = await SystemTts.listVoices();
+  return !voices.find((voice) => voice.id === voiceId)?.notInstalled;
+}
+
+/**
+ * Starts the download of a phone voice's data. Android has no call for that:
+ * using the voice is what starts it, so a single full stop is spoken into a
+ * file nobody plays -- in whatever stand-in voice the engine picks meanwhile.
+ */
+async function fetchPhoneVoice(voiceId: string): Promise<void> {
+  const folder = new Directory(Paths.cache, 'voicefetch');
+  if (!folder.exists) folder.create({ intermediates: true });
+  const file = new File(folder, 'fetch.wav');
+  await SystemTts.synthesize('.', voiceId, file.uri.replace(/^file:\/\//, ''));
+}
+
+const readiness: ReadinessDeps = {
+  isReady: isPhoneVoiceReady,
+  fetch: fetchPhoneVoice,
+  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  now: () => Date.now(),
+  onWaiting: (voiceId) => announce(voiceId, 'downloading'),
+  onReady: (voiceId) => announce(voiceId, 'ready'),
+};
+
+/** Phone voices seen to be installed this session, so not every sentence asks again. */
+const confirmedPhoneVoices = new Set<string>();
+
+/**
+ * Returns once the phone voice's data is on the phone, starting its download
+ * and waiting if it is not. Throws VoiceNotReadyError if it does not come.
+ */
+export async function ensurePhoneVoiceReady(voiceId: string): Promise<void> {
+  if (confirmedPhoneVoices.has(voiceId)) return;
+  await ensureReady(voiceId, readiness);
+  confirmedPhoneVoices.add(voiceId);
+}
+
+/**
+ * Fetches, ahead of time, the voice packs our named phone voices are in --
+ * only on an unmetered connection, so a first launch on mobile data spends
+ * nothing. Returns the voices used to start the downloads.
+ */
+export async function prefetchPhoneVoices(): Promise<string[]> {
+  const network = SystemTts.networkState();
+  if (!network.connected || network.metered) return [];
+  const ids = voicesToPrefetch(await SystemTts.listVoices(), PHONE_VOICE_NAMES);
+  for (const voiceId of ids) {
+    try {
+      await fetchPhoneVoice(voiceId);
+    } catch {
+      // One language failing to start is no reason not to try the next.
+    }
+  }
+  if (ids.length > 0) console.log(`[papervoice] fetching phone voice packs for: ${ids.join(', ')}`);
+  return ids;
+}
+
 function systemEngine(voiceId: string): SpeechEngine {
   return {
     label: voiceId,
     async speak(sentence, outPath) {
+      // Never in a stand-in voice: wait for the real one's data first.
+      await ensurePhoneVoiceReady(voiceId);
       const started = Date.now();
       // The system engine has no pause control, so the text is handed over
       // whole: it does its own phrasing, and cutting it would only fight that.

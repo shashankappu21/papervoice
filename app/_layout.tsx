@@ -7,6 +7,7 @@ import { PlaybackProvider } from '../src/player/PlaybackProvider';
 import { TourProvider } from '../src/tour/TourProvider';
 import { TourOverlay } from '../src/tour/TourOverlay';
 import { migrateAudioCache } from '../src/tts/cacheMigration';
+import { prefetchPhoneVoices } from '../src/voices/engine';
 
 export default function RootLayout() {
   useEffect(() => {
@@ -18,11 +19,22 @@ export default function RootLayout() {
       interruptionMode: 'doNotMix',
     });
 
-    // Clears audio the old per-speed cache layout left behind. Once per install;
-    // a failure is retried on the next launch, and none of it blocks reading.
+    // Clears audio the old cache layouts left behind. Once per install; a
+    // failure is retried on the next launch, and none of it blocks reading.
     migrateAudioCache().catch((cause: unknown) => {
       console.log('[papervoice] cache migration failed:', String(cause));
     });
+
+    // The voice packs our named phone voices are in, fetched in the background
+    // on Wi-Fi so they are there before anyone picks one. A little after
+    // launch, so it never competes with opening the app; every launch, since a
+    // phone that was offline or on mobile data last time may not be now.
+    const later = setTimeout(() => {
+      prefetchPhoneVoices().catch((cause: unknown) => {
+        console.log('[papervoice] voice pack prefetch failed:', String(cause));
+      });
+    }, 10_000);
+    return () => clearTimeout(later);
   }, []);
 
   return (

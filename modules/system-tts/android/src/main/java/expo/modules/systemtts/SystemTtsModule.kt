@@ -1,5 +1,7 @@
 package expo.modules.systemtts
 
+import android.content.Context
+import android.net.ConnectivityManager
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
@@ -26,6 +28,20 @@ class SystemTtsModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("SystemTts")
 
+    /*
+     * Whether there is a connection, and whether it costs the listener money.
+     * Voice packs are fetched ahead of time only on an unmetered one: 15 MB a
+     * language is not something to spend on someone's mobile data unasked.
+     */
+    Function("networkState") {
+      val connectivity = appContext.reactContext
+        ?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+      mapOf(
+        "connected" to (connectivity?.activeNetwork != null),
+        "metered" to (connectivity?.isActiveNetworkMetered ?: true),
+      )
+    }
+
     AsyncFunction("listVoices") {
       val tts = awaitEngine()
       val voices = tts.voices ?: emptySet<Voice>()
@@ -46,6 +62,14 @@ class SystemTtsModule : Module() {
              * the caller has to be able to see it and refuse.
              */
             "needsNetwork" to voice.isNetworkConnectionRequired,
+            /*
+             * Listed, but its data is not on the phone yet. Google lists every
+             * voice of a language and downloads a language's voices on first
+             * use, speaking with another voice meanwhile -- so a named voice
+             * can come out as someone else until this clears.
+             */
+            "notInstalled" to voice.features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED),
+            "features" to voice.features.sorted(),
           )
         }
     }

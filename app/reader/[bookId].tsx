@@ -141,9 +141,13 @@ function Reader({ book, sentences }: { book: Book; sentences: Sentence[] }) {
 
   const currentVoice = playback.voices.find((voice) => voice.id === playback.voiceId);
 
-  // Only failures are worth words. Waiting is said by the ring turning around
-  // the play button, which is where someone is already looking.
-  const message = playback.error;
+  // Only failures are worth words, and one kind of waiting: a phone voice
+  // downloading its data can take most of a minute, which the ring around the
+  // play button alone would leave unexplained. Every other wait is said by the
+  // ring, which is where someone is already looking.
+  const message =
+    playback.error ??
+    (playback.downloadingVoice ? 'Downloading this voice. The first time, it needs Wi-Fi.' : null);
 
   // Leaving no longer stops the voice. The bar above the tabs keeps the book
   // playing and reachable, which is why it exists.

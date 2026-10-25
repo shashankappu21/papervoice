@@ -5,7 +5,13 @@ import { audioPath } from '../tts/audioCache';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { SherpaTts } from '../../modules/sherpa-tts';
 import { createSynthQueue } from '../tts/synthQueue';
-import { openEngine, listAvailableVoices, type AvailableVoice, type SpeechEngine } from '../voices/engine';
+import {
+  listAvailableVoices,
+  onPhoneVoiceStatus,
+  openEngine,
+  type AvailableVoice,
+  type SpeechEngine,
+} from '../voices/engine';
 import { getSetting, setSetting, SETTING_RATE, SETTING_VOICE } from '../db/settings';
 import { markFinished } from '../db/books';
 import { switchesNow } from './voiceSwitch';
@@ -40,6 +46,11 @@ export interface Playback {
    * started as soon as a document is open, so pressing play rarely waits.
    */
   loadingVoice: boolean;
+  /**
+   * The phone voice chosen is downloading its data, and reading waits for it
+   * rather than speaking in the stand-in voice the phone would use meanwhile.
+   */
+  downloadingVoice: boolean;
   error: string | null;
   /** Playback speed, where 1 is the voice's own pace. */
   rate: number;
@@ -113,6 +124,7 @@ export function usePlayback(
   const [buffering, setBuffering] = useState(false);
   const [loadingVoice, setLoadingVoice] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingVoice, setDownloadingVoice] = useState(false);
   const [rate, setRateState] = useState(1);
   const rateRef = useRef(1);
   const [rtf, setRtf] = useState<number | null>(null);
@@ -124,6 +136,17 @@ export function usePlayback(
   const engine = useRef<SpeechEngine | null>(null);
   /** Which voice the loaded engine belongs to, so a change can be noticed. */
   const loadedVoiceId = useRef<string | null>(null);
+
+  // The loaded phone voice downloading its data, and then in: the reader says
+  // so while it waits, so the pause is explained rather than mysterious.
+  useEffect(
+    () =>
+      onPhoneVoiceStatus((id, status) => {
+        if (loadedVoiceId.current !== `system:${id}`) return;
+        setDownloadingVoice(status === 'downloading');
+      }),
+    [],
+  );
   /** Loads run one after another, so the last one asked for is the one that wins. */
   const voiceLoading = useRef<Promise<void>>(Promise.resolve());
   /** Loads asked for and not yet finished, queued ones included. */
@@ -273,6 +296,17 @@ export function usePlayback(
         },
         onFailed: (failed, cause) => {
           consecutiveFailures.current += 1;
+          // A voice that never finished downloading will not do better on the
+          // next sentence; say why at once, in words that say what to do.
+          if (cause.name === 'VoiceNotReadyError') {
+            awaiting.current = null;
+            setBuffering(false);
+            setPlaying(false);
+            setDownloadingVoice(false);
+            setError(cause.message);
+            queue.stop();
+            return;
+          }
           if (consecutiveFailures.current >= FAILURES_BEFORE_GIVING_UP) {
             awaiting.current = null;
             setBuffering(false);
@@ -660,6 +694,7 @@ export function usePlayback(
     playing,
     buffering,
     loadingVoice,
+    downloadingVoice,
     error,
     rate,
     rtf,

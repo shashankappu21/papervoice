@@ -31,5 +31,7 @@ const width = Math.max(...labelled.map(({ label }) => label.length));
 
 console.log(`${voices.length} phone voices, in the order the Voices tab lists them:\n`);
 for (const { voice, label } of labelled) {
-  console.log(`  ${label.padEnd(width)}  ${voice.id}`);
+  // Reported from 1.1.1 on; older builds log no installed state.
+  const state = voice.notInstalled === undefined ? '' : voice.notInstalled ? '  needs download' : '  ready';
+  console.log(`  ${label.padEnd(width)}  ${voice.id.padEnd(20)}${state}`);
 }

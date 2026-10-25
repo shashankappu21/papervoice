@@ -199,12 +199,16 @@ export function VoicePicker({ visible, chosenId, sentences, onClose, onChoose, o
             { borderColor: colors.border, borderRadius: radius.pill, opacity: pressed ? 0.6 : 1 },
           ]}
         >
-          <Ionicons
-            name={sample.playing === voice.id ? 'stop' : 'play'}
-            size={16}
-            color={colors.accent}
-            style={sample.playing === voice.id ? undefined : { marginLeft: 2 }}
-          />
+          {sample.downloading === voice.id ? (
+            <ActivityIndicator size="small" color={colors.accent} />
+          ) : (
+            <Ionicons
+              name={sample.playing === voice.id ? 'stop' : 'play'}
+              size={16}
+              color={colors.accent}
+              style={sample.playing === voice.id ? undefined : { marginLeft: 2 }}
+            />
+          )}
         </Pressable>
         {busy ? (
           <ActivityIndicator size="small" color={colors.accent} />

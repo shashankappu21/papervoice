@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert } from 'react-native';
 import { createAudioPlayer, type AudioPlayer, type AudioSource } from 'expo-audio';
 import { Directory, File, Paths } from 'expo-file-system';
 import { SystemTts } from '../../modules/system-tts';
-import { isSystemVoice, SYSTEM_PREFIX } from '../voices/engine';
+import { ensurePhoneVoiceReady, isSystemVoice, onPhoneVoiceStatus, SYSTEM_PREFIX } from '../voices/engine';
 import { SAMPLE_SENTENCE, sampleFor } from '../voices/samples';
 
 /**
@@ -10,6 +11,9 @@ import { SAMPLE_SENTENCE, sampleFor } from '../voices/samples';
  * is only known on the phone -- so the phone says the sentence there and then.
  */
 async function phoneSample(voiceId: string): Promise<{ path: string; durationSec: number }> {
+  // Its data first: until it is in, the phone answers in a stand-in voice,
+  // and a sample in the wrong voice is worse than a short wait.
+  await ensurePhoneVoiceReady(voiceId);
   const dir = new Directory(Paths.cache, 'samples');
   if (!dir.exists) dir.create({ intermediates: true });
   // One file per voice, so a sample still being written is never the one playing.
@@ -31,6 +35,18 @@ async function phoneSample(voiceId: string): Promise<{ path: string; durationSec
 export function useSample() {
   const player = useRef<AudioPlayer | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
+  /** The phone voice whose data is downloading before its sample can play. */
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const waitingFor = useRef<string | null>(null);
+
+  useEffect(
+    () =>
+      onPhoneVoiceStatus((id, status) => {
+        if (waitingFor.current !== `${SYSTEM_PREFIX}${id}`) return;
+        setDownloading(status === 'downloading' ? waitingFor.current : null);
+      }),
+    [],
+  );
   const done = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Bumped by every stop, so a phone sample still being spoken is not then played. */
   const attempt = useRef(0);
@@ -95,12 +111,21 @@ export function useSample() {
         const mine = attempt.current;
         // Shown as playing straight away: the phone takes a moment to speak it.
         setPlaying(voiceId);
+        waitingFor.current = voiceId;
         phoneSample(voiceId.slice(SYSTEM_PREFIX.length))
           .then(({ path, durationSec }) => {
             if (attempt.current === mine) start({ uri: `file://${path}` }, durationSec * 1000 + 500);
           })
-          .catch(() => {
-            if (attempt.current === mine) setPlaying(null);
+          .catch((cause: unknown) => {
+            if (attempt.current !== mine) return;
+            setPlaying(null);
+            if (cause instanceof Error && cause.name === 'VoiceNotReadyError') {
+              Alert.alert('Voice not downloaded yet', cause.message);
+            }
+          })
+          .finally(() => {
+            if (waitingFor.current === voiceId) waitingFor.current = null;
+            setDownloading((current) => (current === voiceId ? null : current));
           });
         return;
       }
@@ -112,5 +137,5 @@ export function useSample() {
     [playing, stop],
   );
 
-  return { play, stop, playing };
+  return { play, stop, playing, downloading };
 }

@@ -71,6 +71,25 @@ export function legacySpeedFolders(
   return found;
 }
 
+/**
+ * Every folder of audio made with one of the phone's voices, across all books.
+ *
+ * Before 1.1.1 a phone voice whose data was not yet downloaded was spoken with
+ * anyway, so Google answered in its default voice and that audio was kept under
+ * the asked-for voice's name. Phone voices synthesise fast, so the one-time
+ * cure is to drop all of it and let it be made again, rightly.
+ */
+export function phoneAudioFolders(root: string, subfolders: (path: string) => string[]): string[] {
+  const found: string[] = [];
+  for (const book of subfolders(root)) {
+    const bookPath = `${root}${book}/`;
+    for (const voice of subfolders(bookPath)) {
+      if (voice.startsWith(safe('system:'))) found.push(`${bookPath}${voice}`);
+    }
+  }
+  return found;
+}
+
 export interface CachedFile {
   path: string;
   bytes: number;

@@ -314,12 +314,16 @@ export default function Voices() {
                     },
                   ]}
                 >
-                  <Ionicons
-                    name={sample.playing === item.id ? 'stop' : 'play'}
-                    size={16}
-                    color={colors.accent}
-                    style={sample.playing === item.id ? undefined : { marginLeft: 2 }}
-                  />
+                  {sample.downloading === item.id ? (
+                    <ActivityIndicator size="small" color={colors.accent} />
+                  ) : (
+                    <Ionicons
+                      name={sample.playing === item.id ? 'stop' : 'play'}
+                      size={16}
+                      color={colors.accent}
+                      style={sample.playing === item.id ? undefined : { marginLeft: 2 }}
+                    />
+                  )}
                 </Pressable>
 
                 {busy ? (
@@ -424,12 +428,16 @@ export default function Voices() {
                           },
                         ]}
                       >
-                        <Ionicons
-                          name={sample.playing === id ? 'stop' : 'play'}
-                          size={16}
-                          color={colors.accent}
-                          style={sample.playing === id ? undefined : { marginLeft: 2 }}
-                        />
+                        {sample.downloading === id ? (
+                          <ActivityIndicator size="small" color={colors.accent} />
+                        ) : (
+                          <Ionicons
+                            name={sample.playing === id ? 'stop' : 'play'}
+                            size={16}
+                            color={colors.accent}
+                            style={sample.playing === id ? undefined : { marginLeft: 2 }}
+                          />
+                        )}
                       </Pressable>
                       {inUse && (
                         <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
