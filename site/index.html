@@ -357,44 +357,42 @@
   .feature h3 { margin: 0 0 5px; }
   .feature p { margin: 0; font-size: 0.93rem; color: var(--muted); }
 
-  /* ---------- early access ---------- */
-
-  .capture {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: 22px;
-    padding: clamp(26px, 4.4vw, 42px);
-    max-width: 560px;
-    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.05), 0 26px 48px -34px rgba(28, 25, 23, 0.4);
-  }
-  .capture h2 { font-size: clamp(1.6rem, 3.6vw, 2.1rem); }
-  .capture .why { margin: 14px 0 22px; color: var(--muted); font-size: 0.97rem; }
-  .field { display: grid; gap: 8px; }
-  .field label { font-size: 0.88rem; font-weight: 600; }
-  .field input {
-    font-family: var(--text);
-    font-size: 1rem;
-    padding: 15px 17px;
-    border-radius: 13px;
-    border: 1px solid #d8cfbc;
-    background: var(--paper);
-    color: var(--ink);
-    width: 100%;
-  }
-  .field input::placeholder { color: #a8a29e; }
-  .capture .btn { width: 100%; margin-top: 14px; }
-  .form-note { margin: 14px 0 0; font-size: 0.83rem; color: var(--muted); }
-  /* Out of sight and out of the tab order, for bots that fill in every input.
-     Not display:none, which the better ones know to skip. */
-  .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-  .beta-line { margin: 18px 0 0; font-size: 0.93rem; }
-
-  .status { margin: 16px 0 0; font-size: 0.95rem; }
-  .status[data-tone='error'] { color: #a4291f; }
-  .done { text-align: center; padding: 8px 0 4px; }
-  .done .big { font-family: var(--display); font-size: clamp(1.7rem, 4vw, 2.2rem); margin-bottom: 8px; }
-  .done p { color: var(--muted); margin: 0; }
   [hidden] { display: none !important; }
+
+  /* ---------- Google Play badge ----------
+     Google's artwork carries its own clear space (41 of 250 px). The negative
+     margin keeps that space but lines the visible badge up with the 52 px
+     buttons beside it. */
+  .play-badge { display: inline-flex; margin: -13px; border-radius: 12px; }
+  .play-badge img { display: block; height: 77px; width: auto; }
+  .play-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: -8px; }
+
+  /* ---------- the demo video ---------- */
+  .demo { padding: clamp(24px, 4vw, 48px) 0 clamp(44px, 6vw, 72px); }
+  .demo-frame {
+    margin-top: 22px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #111;
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.06), 0 26px 48px -34px rgba(28, 25, 23, 0.45);
+  }
+  .demo-frame { position: relative; }
+  .demo video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  .demo-play {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: clamp(64px, 9vw, 92px); height: clamp(64px, 9vw, 92px);
+    border-radius: 50%; border: 0; cursor: pointer;
+    background: var(--accent);
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
+    display: grid; place-items: center;
+  }
+  .demo-play:hover { transform: translate(-50%, -50%) scale(1.05); }
+  .demo-play:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  .demo-play span {
+    width: 0; height: 0; margin-left: 12%;
+    border-style: solid; border-color: transparent transparent transparent #fff;
+    border-width: 14px 0 14px 23px;
+  }
 
   /* ---------- the download's facts, under each pair of buttons ---------- */
 
@@ -653,17 +651,20 @@
           natural voices that work entirely on your phone.
         </p>
         <!--
-          The download goes to the stable name on the latest release, which
-          every release carries (scripts/releaseAssets.mjs). The size and the
-          Android version beside it are written in at deploy from that same
-          release, by scripts/siteRelease.mjs.
+          Google Play first: it installs and updates like any other app. The
+          APK is the same app for phones without Play; it goes to the stable
+          name on the latest release, which every release carries
+          (scripts/releaseAssets.mjs). The size and the Android version beside
+          it are written in at deploy from that same release, by
+          scripts/siteRelease.mjs. The badge is Google's own artwork, served
+          from this site so the page still loads nothing from third parties.
         -->
         <div class="cta-row">
-          <a class="btn btn-primary" href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="hero">Download for Android</a>
-          <a class="btn btn-quiet" href="#early-access" data-track="early_access_click" data-where="hero">Request a Play Store beta invite</a>
+          <a class="play-badge" href="https://play.google.com/store/apps/details?id=app.papervoice" data-track="play_click" data-where="hero" rel="noopener"><img src="/img/google-play-badge.png" width="200" height="77" alt="Get it on Google Play"></a>
+          <a class="btn btn-quiet" href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="hero">Download the APK</a>
         </div>
         <p class="facts">Free. Android <span data-release="android">7.0</span>+. No account.</p>
-        <p class="facts-sub">Direct APK download · <span data-release="size">45.0 MB</span></p>
+        <p class="facts-sub">Or install the APK directly · <span data-release="size">45.0 MB</span></p>
       </div>
 
       <div class="phone-stage">
@@ -694,9 +695,9 @@
       </div>
       <div>
         <ol class="steps">
-          <li><span class="n" aria-hidden="true">1</span><span>Download the Android app.</span></li>
-          <li><span class="n" aria-hidden="true">2</span><span>Open the downloaded file and follow Android’s installation prompts.</span></li>
-          <li><span class="n" aria-hidden="true">3</span><span>Open Papervoice and add a PDF.</span></li>
+          <li><span class="n" aria-hidden="true">1</span><span>Install Papervoice from <a href="https://play.google.com/store/apps/details?id=app.papervoice" data-track="play_click" data-where="install" rel="noopener">Google Play</a>.</span></li>
+          <li><span class="n" aria-hidden="true">2</span><span>Open it and pick a voice, or start with the one your phone already has.</span></li>
+          <li><span class="n" aria-hidden="true">3</span><span>Add a PDF and press play.</span></li>
         </ol>
         <p class="aside-note">
           Natural voices are downloaded separately, from inside the app, once
@@ -706,8 +707,12 @@
 
         <div class="faq">
           <details>
-            <summary>More help installing</summary>
+            <summary id="apk">Installing the APK instead</summary>
             <div class="answer">
+              <p>
+                The APK is the same app, for phones without Google Play.
+                <a href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="install">Download it here</a>.
+              </p>
               <p>
                 Apps from outside Google Play install only if you allow the app
                 you downloaded with — usually your browser or file manager — to
@@ -724,7 +729,7 @@
                 Android may also show a warning about installing an app from
                 outside Google Play. Read what it says before continuing. If you
                 would rather not install this way,
-                <a href="#early-access" data-track="early_access_click" data-where="install">request a Play Store beta invite</a>
+                <a href="https://play.google.com/store/apps/details?id=app.papervoice" data-track="play_click" data-where="install-help" rel="noopener">get it from Google Play</a>
                 instead.
               </p>
               <p>
@@ -752,6 +757,29 @@
             </div>
           </details>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!--
+    The demo. preload="none": a visitor who never presses play downloads only
+    the still (48 KB), and no sound plays before someone asks for it. 720p
+    H.264, about 5 MB, re-encoded from promo-remotion/out/ad-v4.
+  -->
+  <section class="demo" id="demo" aria-labelledby="demo-heading">
+    <div class="wrap">
+      <p class="eyebrow rise">See it</p>
+      <h2 class="rise" id="demo-heading">Papervoice in twenty-three seconds.</h2>
+      <div class="demo-frame rise">
+        <video id="demo-video" controls preload="none" playsinline width="1280" height="720"
+               poster="/video/papervoice-demo.webp">
+          <source src="/video/papervoice-demo.mp4" type="video/mp4">
+          <a href="/video/papervoice-demo.mp4">Watch the demo</a>
+        </video>
+        <!-- Big enough to see on the still; the video's own controls take over once it plays. -->
+        <button class="demo-play" id="demo-play" type="button" aria-label="Play the demo, with sound">
+          <span aria-hidden="true"></span>
+        </button>
       </div>
     </div>
   </section>
@@ -1009,55 +1037,6 @@
     </div>
   </section>
 
-  <!-- 8. The Google Play beta, for anyone who would rather not install an APK -->
-  <section id="early-access">
-    <div class="wrap split">
-      <div class="rise">
-        <h2 id="beta-heading">Prefer Google Play?</h2>
-        <!--
-          While the closed test is not confirmed live. Once it is, this becomes:
-          "The Google Play version is in testing. Enter the Google account you
-          use on your Android phone and I'll send you a beta invite."
-        -->
-        <p class="lede" style="margin-top:20px">
-          The Google Play version is coming. Enter the Google account you use on
-          your Android phone to request a beta invite.
-        </p>
-      </div>
-
-      <div class="capture rise">
-        <div id="capture-form">
-          <form id="early-access-form" novalidate aria-labelledby="beta-heading">
-            <div class="field">
-              <label for="email">Email address</label>
-              <input id="email" name="email" type="email" inputmode="email"
-                     autocomplete="email" placeholder="you@gmail.com" required
-                     aria-describedby="email-help">
-            </div>
-            <div class="trap" aria-hidden="true">
-              <label for="company">Company</label>
-              <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
-            </div>
-            <button class="btn btn-primary" type="submit" data-track="early_access_submit">Request an invite</button>
-            <p class="status" id="status" role="status" aria-live="polite"></p>
-            <p class="form-note" id="email-help">
-              Your address is used to send a beta invite, and nothing else. No
-              newsletter, no sharing. <a href="/privacy#early-access">How it's handled</a>
-            </p>
-          </form>
-          <p class="beta-line" id="beta-line" hidden>
-            Already have an invite? <a id="beta-link" href="#" data-track="beta_join_click" rel="noopener">Join the Android beta</a>
-          </p>
-        </div>
-
-        <div class="done" id="capture-done" hidden>
-          <p class="big">You're in.</p>
-          <p>I'll send you access when your beta invite is ready.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- 9. FAQ -->
   <section class="band" id="faq">
     <div class="wrap narrow">
@@ -1078,11 +1057,11 @@
         </details>
         <details>
           <summary>Is it on Google Play?</summary>
-          <div class="answer"><p>Not publicly yet, and the Google Play beta is still being prepared. You can <a href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="faq">download the Android app</a> from this page now, or <a href="#early-access" data-track="early_access_click" data-where="faq">request a beta invite</a> and get one when testing opens.</p></div>
+          <div class="answer"><p>Yes. <a href="https://play.google.com/store/apps/details?id=app.papervoice" data-track="play_click" data-where="faq" rel="noopener">Get it on Google Play</a>. The same app is also available as an <a href="#apk">APK</a>, for phones without Play.</p></div>
         </details>
         <details>
           <summary>How do I install it?</summary>
-          <div class="answer"><p>Download the app, open the file, and follow Android’s prompts. <a href="#install">Listening in three steps</a> has the details, including the permission Android may ask for and how to check the download.</p></div>
+          <div class="answer"><p>From <a href="https://play.google.com/store/apps/details?id=app.papervoice" data-track="play_click" data-where="faq-install" rel="noopener">Google Play</a>, like any other app. To install the APK instead, <a href="#install">Installing the APK instead</a> covers the permission Android asks for and how to check the download.</p></div>
         </details>
         <details>
           <summary>Which phones does it run on?</summary>
@@ -1097,11 +1076,11 @@
     <div class="wrap narrow rise">
       <h2 id="closing-heading">Your PDFs.<br>Now listenable.</h2>
       <div class="cta-row">
-        <a class="btn btn-primary" href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="closing">Download for Android</a>
-        <a class="btn btn-quiet" href="#early-access" data-track="early_access_click" data-where="closing">Request a Play Store beta invite</a>
+        <a class="play-badge" href="https://play.google.com/store/apps/details?id=app.papervoice" data-track="play_click" data-where="closing" rel="noopener"><img src="/img/google-play-badge.png" width="200" height="77" alt="Get it on Google Play"></a>
+        <a class="btn btn-quiet" href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="closing">Download the APK</a>
       </div>
       <p class="facts">Free. Android <span data-release="android">7.0</span>+. No account.</p>
-      <p class="facts-sub">Direct APK download · <span data-release="size">45.0 MB</span></p>
+      <p class="facts-sub">Or install the APK directly · <span data-release="size">45.0 MB</span></p>
     </div>
   </section>
 
@@ -1126,36 +1105,6 @@
  */
 (function () {
   'use strict';
-
-  /* ------------------------------------------------------------------
-   * INTEGRATION POINTS — the two things to fill in
-   * ------------------------------------------------------------------
-   *
-   * 1. EARLY_ACCESS_ENDPOINT
-   *    The deployed Google Apps Script web-app URL. It receives JSON:
-   *
-   *      { email, timestamp, utm_source, utm_medium, utm_campaign,
-   *        utm_content, referrer }
-   *
-   *    and answers { ok: true } or { ok: false, error: '...' }. The script
-   *    that does this is in early-access/Code.gs, with the deployment steps
-   *    beside it. Until the URL is set, the form falls back to opening a
-   *    pre-addressed email -- less smooth, but honest, because a success
-   *    message shown over a request that went nowhere is a lie to someone
-   *    who wanted in.
-   *
-   *    The body is sent as text/plain on purpose. Any other content type
-   *    makes the browser send a CORS preflight first, and an Apps Script web
-   *    app does not answer OPTIONS -- so the request fails before it is made.
-   *    Apps Script reads the body the same way either way.
-   *
-   * 2. BETA_OPT_IN_URL
-   *    The Play Console tester opt-in link. The "Join the Android beta"
-   *    line stays hidden until this is set.
-   */
-  var EARLY_ACCESS_ENDPOINT = '';
-  var BETA_OPT_IN_URL = '';
-  var FALLBACK_EMAIL = 'hello@papervoice.app';
 
   /* ------------------------------------------------------------------
    * Analytics: nothing is sent anywhere by default.
@@ -1211,106 +1160,24 @@
     if (el) track(el.getAttribute('data-track'), { where: el.getAttribute('data-where') || undefined });
   });
 
-  /* ---------- the beta line, only when there is somewhere to send people ---- */
-  if (BETA_OPT_IN_URL) {
-    var link = document.getElementById('beta-link');
-    link.href = BETA_OPT_IN_URL;
-    link.target = '_blank';
-    document.getElementById('beta-line').hidden = false;
-  }
-
-  /* ---------- early access ---------- */
-  var form = document.getElementById('early-access-form');
-  var status = document.getElementById('status');
-
-  function say(message, tone) {
-    status.textContent = message;
-    if (tone) status.setAttribute('data-tone', tone);
-    else status.removeAttribute('data-tone');
-  }
-
-  // One request at a time. Without this a second tap while the first is in
-  // flight puts the address in the sheet twice.
-  var sending = false;
-
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    if (sending) return;
-
-    var input = document.getElementById('email');
-    var email = input.value.trim();
-
-    // Deliberately loose. The address is confirmed by an invite arriving, and
-    // a clever pattern here only ever turns away real, unusual addresses.
-    if (!email || email.indexOf('@') < 1 || email.indexOf('.') < 0) {
-      say('That address looks incomplete — please check it.', 'error');
-      input.focus();
-      return;
-    }
-
-    var record = {
-      email: email,
-      timestamp: new Date().toISOString(),
-      utm_source: campaign.utm_source || '',
-      utm_medium: campaign.utm_medium || '',
-      utm_campaign: campaign.utm_campaign || '',
-      utm_content: campaign.utm_content || '',
-      referrer: document.referrer || '',
-      // A field no person sees and every naive bot fills in.
-      trap: (document.getElementById('company') || {}).value || ''
-    };
-
-    if (!EARLY_ACCESS_ENDPOINT) {
-      // No list to add to yet. Hand the person their own email client rather
-      // than pretending the address was stored.
-      say('Opening your email app — send the message and you’re on the list.');
-      track('early_access_submit', { mode: 'mailto' });
-      location.href = 'mailto:' + FALLBACK_EMAIL +
-        '?subject=' + encodeURIComponent('Early access to Papervoice') +
-        '&body=' + encodeURIComponent('Please add ' + email + ' to the Papervoice beta.');
-      return;
-    }
-
-    var button = form.querySelector('button[type=submit]');
-    sending = true;
-    button.disabled = true;
-    input.readOnly = true;
-    say('Adding you…');
-
-    function failed(message) {
-      sending = false;
-      button.disabled = false;
-      input.readOnly = false;
-      say(message || ('That didn’t go through. Try again, or email ' + FALLBACK_EMAIL + '.'), 'error');
-    }
-
-    fetch(EARLY_ACCESS_ENDPOINT, {
-      method: 'POST',
-      headers: { 'content-type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(record),
-      redirect: 'follow'
-    }).then(function (response) {
-      // Apps Script answers 200 with its own body even when it refused, so
-      // the status alone says nothing. The JSON decides.
-      return response.text().then(function (text) {
-        try { return JSON.parse(text); } catch (err) { return null; }
+  /* ---------- the demo video: counted when played, like the samples ---------- */
+  var demo = document.getElementById('demo-video');
+  var demoPlay = document.getElementById('demo-play');
+  if (demo) {
+    if (demoPlay) {
+      demoPlay.addEventListener('click', function () {
+        var started = demo.play();
+        if (started && started.catch) started.catch(function () { /* the controls are still there */ });
       });
-    }).then(function (result) {
-      if (!result || result.ok !== true) {
-        failed(result && result.error ? result.error : undefined);
-        return;
-      }
-      sending = false;
-      track('early_access_submit', { mode: 'endpoint' });
-      document.getElementById('capture-form').hidden = true;
-      var done = document.getElementById('capture-done');
-      done.hidden = false;
-      done.setAttribute('tabindex', '-1');
-      done.focus();
-    }).catch(function () {
-      failed();
+      demo.addEventListener('ended', function () { demoPlay.hidden = false; });
+    }
+    demo.addEventListener('play', function () {
+      if (demoPlay) demoPlay.hidden = true;
+      // The demo and a voice sample at once would be two voices talking.
+      if (player && !player.paused) player.pause();
+      track('video_play');
     });
-  });
+  }
 
   /* ---------- voice samples ----------
    *
@@ -1428,6 +1295,7 @@
   "applicationCategory": "BooksApplication",
   "operatingSystem": "Android 7.0+",
   "url": "https://papervoice.app/",
+  "installUrl": "https://play.google.com/store/apps/details?id=app.papervoice",
   "downloadUrl": "https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk",
   "softwareVersion": "1.0.1",
   "fileSize": "45.0 MB",

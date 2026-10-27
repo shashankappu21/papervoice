@@ -7,6 +7,7 @@ loaded from a third party — not a font, not a tracker.
     privacy.html   the privacy policy, which Play requires at a public URL
     img/           screenshots of the app, from design/raw/
     audio/         voice samples: real Papervoice output, fetched only on a press
+    video/         the demo (720p, about 5 MB) and its still, fetched only on play
     fonts/         Playfair Display and Jost, subset to this page, with the
                    OFL notices that have to ship beside them
     og.png         the social card
@@ -14,9 +15,26 @@ loaded from a third party — not a font, not a tracker.
 
 The page sells the outcome first — getting through the PDFs you keep meaning
 to read — and treats the voices, the offline mode and the rest as the proof of
-it. It offers two ways in, side by side: **Download for Android**, which is the
-APK straight from the latest GitHub release, and **Request a Play Store beta
-invite**, for anyone who would rather install from Google Play.
+it. It offers two ways in, side by side: **Get it on Google Play**, the main one
+since Papervoice went public there, and **Download the APK**, straight from
+the latest GitHub release, for phones without Play. The Play badge is
+Google's own artwork (`img/google-play-badge.png`), served from this site.
+
+## The demo video
+
+`video/papervoice-demo.mp4` is `promo-remotion/out/ad-v4/papervoice-ad-v4.mp4`
+re-encoded for the page: 1280x720, 30 fps, H.264 on the GPU, about 5 MB. The
+still is a frame from 1.2 s. To replace it:
+
+    ffmpeg -hwaccel cuda -i <render>.mp4 -vf "scale=1280:720,fps=30" -c:v h264_nvenc \
+      -preset p7 -tune hq -rc vbr -cq 27 -b:v 0 -maxrate 3M -bufsize 6M \
+      -profile:v high -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart \
+      site/video/papervoice-demo.mp4
+    ffmpeg -ss 1.2 -i <render>.mp4 -frames:v 1 -vf scale=1280:720 -c:v libwebp \
+      -quality 80 site/video/papervoice-demo.webp
+
+It has `preload="none"`: nothing but the still is downloaded until someone
+presses play, and no sound plays before they do.
 
 ## The download
 
@@ -72,35 +90,13 @@ Nothing is downloaded until a sample is pressed. There is no `<audio>` element
 and no preload: one player is created on the first press and given a file only
 then, Opus where the browser plays it and AAC where it does not.
 
-## The two things to fill in
+## The early-access list (closed)
 
-Both live at the top of the script at the bottom of `index.html`.
-
-**`EARLY_ACCESS_ENDPOINT`** — the deployed Google Apps Script web-app URL. It
-receives JSON:
-
-    { email, timestamp, utm_source, utm_medium, utm_campaign, utm_content,
-      referrer }
-
-and answers `{ ok: true }` or `{ ok: false, error: '...' }`. The script, and
-the steps to deploy it, are in [`early-access/`](../early-access/) — a Google
-Sheet and forty lines of Apps Script, with no vendor and nothing to pay for.
-
-The success panel appears only when the endpoint confirms `ok: true`. A
-refusal shows the server's own message inline; anything else shows a generic
-error and the fallback address. A submission already in flight ignores further
-clicks.
-
-The body goes as `text/plain`, not `application/json`. Any other content type
-makes the browser send a CORS preflight, and an Apps Script web app does not
-answer `OPTIONS`, so the request would fail before it was made.
-
-Until the URL is set, the form opens a pre-addressed email to
-`hello@papervoice.app` instead. That is deliberate: showing "You're in." after
-a request that went nowhere would be a lie to someone who wanted in.
-
-**`BETA_OPT_IN_URL`** — the Play Console tester opt-in link. The "Join the
-Android beta" line stays hidden until this is set.
+Before Papervoice was on Google Play, the page took email addresses for beta
+invites, through the Apps Script in [`early-access/`](../early-access/). The
+form is gone; the script stays, because the app's questionnaire and feedback
+post to it. The `EARLY_ACCESS_ENDPOINT` and `BETA_OPT_IN_URL` repository
+secrets are no longer used and can be deleted.
 
 ## Analytics
 
@@ -112,10 +108,10 @@ Every event is dispatched as a DOM event, so anything can listen:
 
     document.addEventListener('papervoice:track', e => console.log(e.detail));
 
-Events: `page_view`, `early_access_click`, `early_access_submit`,
-`github_click`, `beta_join_click`. Each carries any `utm_*` tags from the
-landing URL, which are kept in `sessionStorage` for the visit so a sign-up
-further down the page is still attributed to the campaign that brought them.
+Events: `page_view`, `play_click`, `download_click`, `video_play`,
+`sample_play`, `github_click`. Each carries any `utm_*` tags from the landing
+URL, which are kept in `sessionStorage` for the visit so a click further down
+the page is still attributed to the campaign that brought them.
 
 Set `ANALYTICS_ENDPOINT` to something you host and the same payloads are
 POSTed there. If you ever point it at a third party, say so in
@@ -162,9 +158,4 @@ file, because the fonts and images are referenced from the site root.
 
 ## Before it goes live
 
-- Deploy `early-access/Code.gs` and set `EARLY_ACCESS_ENDPOINT`, or the form
-  falls back to opening a mail client
-- Set `BETA_OPT_IN_URL` once internal testing has an opt-in link
-- When the Google Play closed test is live, swap the beta section's line for
-  the "in testing" wording kept in a comment beside it
 - Longer voice samples, if wanted: see "Voice samples" above
