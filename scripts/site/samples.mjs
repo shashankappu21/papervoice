@@ -6,15 +6,12 @@
  * missing button rather than a broken one.
  */
 
-/** The voices shown before "All voices": a spread of accents and genders. */
-export const FEATURED = [
-  'ljspeech-medium', // Lyra
-  'en_US-kristin-medium', // Kristin
-  'en_GB-cori-medium', // Cori
-  'manyvoice-4', // Mike
-  'manyvoice-7', // James
-  'manyvoice-10', // Steve
-];
+/**
+ * How many voices are shown before "All voices". The samples arrive in the
+ * app's own order (VOICE_ORDER in src/voices/order.ts), so these are the ones
+ * the app lists first too -- one order to edit, not two.
+ */
+export const SHOWN = 6;
 
 export const HERO_VOICE = 'ljspeech-medium';
 
@@ -53,9 +50,9 @@ export function renderHero(sample) {
  * keeps its size whether there are six recordings or sixteen.
  *
  * @param {Array<{ id: string, name: string, accent: string, gender: string, seconds: number }>} samples
- * @param {{ sentence?: string | null, featured?: string[] }} [options]
+ * @param {{ sentence?: string | null, shown?: number }} [options]
  */
-export function renderVoices(samples, { sentence, featured = FEATURED } = {}) {
+export function renderVoices(samples, { sentence, shown = SHOWN } = {}) {
   if (samples.length === 0) return '';
   const item = (sample) =>
     `<li>${button(
@@ -64,8 +61,8 @@ export function renderVoices(samples, { sentence, featured = FEATURED } = {}) {
       `  <span class="sample-text"><span class="sample-name">${escape(sample.name)}</span><span class="sample-meta">${accent(sample.accent)} · ${escape(sample.gender)}</span></span>`,
     )}</li>`;
 
-  const first = featured.map((id) => samples.find((s) => s.id === id)).filter(Boolean);
-  const rest = samples.filter((s) => !featured.includes(s.id));
+  const first = samples.slice(0, shown);
+  const rest = samples.slice(shown);
   const sameLine = sentence ? ` Each reads the same line: “${escape(sentence)}”` : '';
 
   const out = [

@@ -254,6 +254,8 @@
 
   section { padding: clamp(60px, 9vw, 108px) 0; }
   .band { background: var(--surface); }
+  /* Two bands in a row would read as one long section. */
+  .band + .band { border-top: 1px solid var(--line); }
   .band-soft { background: linear-gradient(var(--paper), var(--surface) 55%, var(--surface)); }
 
   .split {
@@ -345,7 +347,9 @@
 
   .features {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    /* Three across: nine cards fill it exactly, with no empty cell showing
+       the grid's line colour. One across on a phone. */
+    grid-template-columns: repeat(3, 1fr);
     gap: 1px;
     background: var(--line);
     border: 1px solid var(--line);
@@ -353,6 +357,7 @@
     overflow: hidden;
     margin-top: 40px;
   }
+  @media (max-width: 640px) { .features { grid-template-columns: 1fr; } }
   .feature { background: var(--paper); padding: 24px 22px; }
   .feature h3 { margin: 0 0 5px; }
   .feature p { margin: 0; font-size: 0.93rem; color: var(--muted); }
@@ -632,7 +637,7 @@
       Papervoice
     </a>
     <nav>
-      <a class="hide-s" href="#how">How it works</a>
+      <a class="hide-s" href="#install">How it works</a>
       <a class="hide-s" href="#faq">FAQ</a>
       <a href="https://github.com/shashankappu21/papervoice" data-track="github_click" rel="noopener">GitHub</a>
     </nav>
@@ -664,7 +669,7 @@
           <a class="btn btn-quiet" href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="hero">Download the APK</a>
         </div>
         <p class="facts">Free. Android <span data-release="android">7.0</span>+. No account.</p>
-        <p class="facts-sub">Or install the APK directly · <span data-release="size">45.0 MB</span></p>
+        <p class="facts-sub">APK for phones without Google Play · <span data-release="size">45.3 MB</span></p>
       </div>
 
       <div class="phone-stage">
@@ -733,9 +738,9 @@
                 instead.
               </p>
               <p>
-                Version <span data-release="version">1.0.1</span>,
-                <span data-release="size">45.0 MB</span>. Its SHA-256 checksum is
-                <code class="sha" data-release="sha256">6fb092cd91ca52530114900f1d6ec74c904375484876b36376347fadcc4ac696</code>
+                Version <span data-release="version">1.1.0</span>,
+                <span data-release="size">45.3 MB</span>. Its SHA-256 checksum is
+                <code class="sha" data-release="sha256">a5252e0d5549717eace12e07da01010c09eead63edbb1afa207279e4db6b0914</code>
               </p>
               <p>
                 To check that the file you downloaded matches the published one,
@@ -881,33 +886,33 @@
   <span class="sample-text"><span class="sample-name">Cori</span><span class="sample-meta">UK · female</span></span>
   <span class="sample-state">4 s</span>
 </button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-6" data-name="Michael"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Michael</span><span class="sample-meta">US · male</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-13" data-name="Jenny"
+        data-idle="4 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Jenny</span><span class="sample-meta">US · female</span></span>
+  <span class="sample-state">4 s</span>
+</button></li>
 <li><button class="sample" type="button" data-sample="manyvoice-4" data-name="Mike"
         data-idle="4 s" data-state="idle" aria-pressed="false">
   <span class="sample-icon" aria-hidden="true"></span>
   <span class="sample-text"><span class="sample-name">Mike</span><span class="sample-meta">US · male</span></span>
   <span class="sample-state">4 s</span>
 </button></li>
+</ul>
+<details class="more-samples">
+  <summary>All 15 voices</summary>
+  <ul class="sample-list">
 <li><button class="sample" type="button" data-sample="manyvoice-7" data-name="James"
         data-idle="4 s" data-state="idle" aria-pressed="false">
   <span class="sample-icon" aria-hidden="true"></span>
   <span class="sample-text"><span class="sample-name">James</span><span class="sample-meta">US · male</span></span>
   <span class="sample-state">4 s</span>
-</button></li>
-<li><button class="sample" type="button" data-sample="manyvoice-10" data-name="Steve"
-        data-idle="5 s" data-state="idle" aria-pressed="false">
-  <span class="sample-icon" aria-hidden="true"></span>
-  <span class="sample-text"><span class="sample-name">Steve</span><span class="sample-meta">UK · male</span></span>
-  <span class="sample-state">5 s</span>
-</button></li>
-</ul>
-<details class="more-samples">
-  <summary>All 15 voices</summary>
-  <ul class="sample-list">
-<li><button class="sample" type="button" data-sample="manyvoice-1" data-name="Kara"
-        data-idle="3 s" data-state="idle" aria-pressed="false">
-  <span class="sample-icon" aria-hidden="true"></span>
-  <span class="sample-text"><span class="sample-name">Kara</span><span class="sample-meta">US · female</span></span>
-  <span class="sample-state">3 s</span>
 </button></li>
 <li><button class="sample" type="button" data-sample="manyvoice-3" data-name="Maria"
         data-idle="4 s" data-state="idle" aria-pressed="false">
@@ -921,16 +926,10 @@
   <span class="sample-text"><span class="sample-name">Mark</span><span class="sample-meta">US · male</span></span>
   <span class="sample-state">3 s</span>
 </button></li>
-<li><button class="sample" type="button" data-sample="manyvoice-6" data-name="Michael"
-        data-idle="4 s" data-state="idle" aria-pressed="false">
-  <span class="sample-icon" aria-hidden="true"></span>
-  <span class="sample-text"><span class="sample-name">Michael</span><span class="sample-meta">US · male</span></span>
-  <span class="sample-state">4 s</span>
-</button></li>
-<li><button class="sample" type="button" data-sample="manyvoice-9" data-name="Wendell"
+<li><button class="sample" type="button" data-sample="manyvoice-1" data-name="Kara"
         data-idle="3 s" data-state="idle" aria-pressed="false">
   <span class="sample-icon" aria-hidden="true"></span>
-  <span class="sample-text"><span class="sample-name">Wendell</span><span class="sample-meta">US · male</span></span>
+  <span class="sample-text"><span class="sample-name">Kara</span><span class="sample-meta">US · female</span></span>
   <span class="sample-state">3 s</span>
 </button></li>
 <li><button class="sample" type="button" data-sample="manyvoice-12" data-name="Paul"
@@ -939,17 +938,23 @@
   <span class="sample-text"><span class="sample-name">Paul</span><span class="sample-meta">US · male</span></span>
   <span class="sample-state">4 s</span>
 </button></li>
-<li><button class="sample" type="button" data-sample="manyvoice-13" data-name="Jenny"
-        data-idle="4 s" data-state="idle" aria-pressed="false">
-  <span class="sample-icon" aria-hidden="true"></span>
-  <span class="sample-text"><span class="sample-name">Jenny</span><span class="sample-meta">US · female</span></span>
-  <span class="sample-state">4 s</span>
-</button></li>
 <li><button class="sample" type="button" data-sample="manyvoice-14" data-name="Emily"
         data-idle="3 s" data-state="idle" aria-pressed="false">
   <span class="sample-icon" aria-hidden="true"></span>
   <span class="sample-text"><span class="sample-name">Emily</span><span class="sample-meta">US · female</span></span>
   <span class="sample-state">3 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-9" data-name="Wendell"
+        data-idle="3 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Wendell</span><span class="sample-meta">US · male</span></span>
+  <span class="sample-state">3 s</span>
+</button></li>
+<li><button class="sample" type="button" data-sample="manyvoice-10" data-name="Steve"
+        data-idle="5 s" data-state="idle" aria-pressed="false">
+  <span class="sample-icon" aria-hidden="true"></span>
+  <span class="sample-text"><span class="sample-name">Steve</span><span class="sample-meta">UK · male</span></span>
+  <span class="sample-state">5 s</span>
 </button></li>
 <li><button class="sample" type="button" data-sample="manyvoice-15" data-name="Martin"
         data-idle="3 s" data-state="idle" aria-pressed="false">
@@ -1013,6 +1018,8 @@
         <div class="feature"><h3>Speed</h3><p>From 0.5&times; to 3&times;, with presets.</p></div>
         <div class="feature"><h3>Themes</h3><p>Paper, light and dark.</p></div>
         <div class="feature"><h3>Groups</h3><p>Shelves, for keeping a library in order.</p></div>
+        <div class="feature"><h3>Sleep timer</h3><p>Stop after a set time, or at the end of the chapter.</p></div>
+        <div class="feature"><h3>A voice for the book</h3><p>Suggests voices that suit what you are reading.</p></div>
       </div>
     </div>
   </section>
@@ -1053,7 +1060,7 @@
         </details>
         <details>
           <summary>Are my PDFs uploaded anywhere?</summary>
-          <div class="answer"><p>No. Reading happens on-device. The app fetches a voice when you choose to download one, and makes no other network requests.</p></div>
+          <div class="answer"><p>No. Reading happens on-device, and your documents never leave it. The app goes online only to download a voice you choose, and to send a questionnaire or feedback when you press Send &mdash; never with anything from your documents. <a href="/privacy">The privacy policy</a> lists exactly what each one sends.</p></div>
         </details>
         <details>
           <summary>Is it on Google Play?</summary>
@@ -1080,7 +1087,7 @@
         <a class="btn btn-quiet" href="https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk" data-track="download_click" data-where="closing">Download the APK</a>
       </div>
       <p class="facts">Free. Android <span data-release="android">7.0</span>+. No account.</p>
-      <p class="facts-sub">Or install the APK directly · <span data-release="size">45.0 MB</span></p>
+      <p class="facts-sub">APK for phones without Google Play · <span data-release="size">45.3 MB</span></p>
     </div>
   </section>
 
@@ -1169,10 +1176,14 @@
         var started = demo.play();
         if (started && started.catch) started.catch(function () { /* the controls are still there */ });
       });
-      demo.addEventListener('ended', function () { demoPlay.hidden = false; });
+      // The still shows only the big button; the video's own controls arrive
+      // with playback. Without JavaScript they are there from the start.
+      demo.controls = false;
+      demo.addEventListener('ended', function () { demoPlay.hidden = false; demo.controls = false; });
     }
     demo.addEventListener('play', function () {
       if (demoPlay) demoPlay.hidden = true;
+      demo.controls = true;
       // The demo and a voice sample at once would be two voices talking.
       if (player && !player.paused) player.pause();
       track('video_play');
@@ -1297,8 +1308,8 @@
   "url": "https://papervoice.app/",
   "installUrl": "https://play.google.com/store/apps/details?id=app.papervoice",
   "downloadUrl": "https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk",
-  "softwareVersion": "1.0.1",
-  "fileSize": "45.0 MB",
+  "softwareVersion": "1.1.0",
+  "fileSize": "45.3 MB",
   "description": "Turn the PDFs you already own into something you can listen to, with natural voices that work entirely on your phone.",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },

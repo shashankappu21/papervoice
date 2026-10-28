@@ -27,6 +27,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync,
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OFFERED_VOICES } from '../src/voices/catalog';
+import { orderCatalog } from '../src/voices/order';
 // @ts-ignore -- plain .mjs
 import { HERO_VOICE, renderHero, renderVoices, replaceBlock } from './site/samples.mjs';
 
@@ -71,7 +72,8 @@ mkdirSync(OUT, { recursive: true });
 const samples: Array<{ id: string; name: string; accent: string; gender: string; seconds: number; supplied: boolean }> = [];
 const missing: string[] = [];
 
-for (const voice of OFFERED_VOICES) {
+// In the order the app lists them, so the page shows the same voices first.
+for (const voice of orderCatalog([...OFFERED_VOICES])) {
   const found = source(voice.id);
   if (!found) {
     missing.push(`${voice.name} (${voice.id})`);

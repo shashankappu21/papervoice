@@ -21,8 +21,8 @@ describe('the Hear Lyra button', () => {
 });
 
 describe('the voice samples list', () => {
-  it('shows the featured voices and folds the rest away', () => {
-    const html = renderVoices([lyra, cori, kara], { sentence: 'She paused.' });
+  it('shows the first voices, in the order given, and folds the rest away', () => {
+    const html = renderVoices([lyra, cori, kara], { sentence: 'She paused.', shown: 2 });
     const [shown, folded] = html.split('<details');
     expect(shown).toContain('data-sample="ljspeech-medium"');
     expect(shown).toContain('data-sample="en_GB-cori-medium"');
