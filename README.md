@@ -9,20 +9,24 @@ the aeroplane mode on.
 
 **Android, [GPLv3](LICENSE).** Free, and free of ads, trackers and accounts.
 
-[papervoice.app](https://papervoice.app) · [Get early access to the Android beta](https://papervoice.app/#early-access)
+[Get it on Google Play](https://play.google.com/store/apps/details?id=app.papervoice) · [papervoice.app](https://papervoice.app)
 
 ---
 
 ## Install
 
-The beta goes out through Google Play; ask for an invite at
-[papervoice.app](https://papervoice.app/#early-access). To install it directly
-instead, download the APK from [Releases](../../releases) and open it. Android will warn
-you about installing from outside the Play Store — that is expected, and the
-release notes carry a `sha256` you can check the file against first:
+From [Google Play](https://play.google.com/store/apps/details?id=app.papervoice),
+like any other app.
+
+For a phone without Play, every release also carries the APK under one stable
+name, so this link always gets the latest:
+[papervoice.apk](https://github.com/shashankappu21/papervoice/releases/latest/download/papervoice.apk).
+Android will warn you about installing from outside Google Play — that is
+expected. Each release has a `papervoice.apk.sha256` beside it to check the
+file against first:
 
 ```sh
-sha256sum papervoice-1.0.0.apk
+sha256sum -c papervoice.apk.sha256
 ```
 
 For updates without re-downloading by hand, point
@@ -34,13 +38,23 @@ For updates without re-downloading by hand, point
   read aloud by a neural voice.
 - **Follow along.** The spoken sentence is highlighted and the page scrolls with
   it. Tap any sentence to jump there.
-- **Fifteen voices**, eight male and seven female, three British. Every one is
-  public domain — see [docs/voice-credits.md](docs/voice-credits.md), which is
-  generated from an audit rather than written by hand.
-- **Your phone's own voice** works too, with nothing to download.
-- **It remembers where you were**, per book, exactly.
+- **Fifteen natural voices**, eight male and seven female, three British. Every
+  one is public domain — see [docs/voice-credits.md](docs/voice-credits.md),
+  which is generated from an audit rather than written by hand.
+- **Your phone's own voices** work too, with nothing to download, listed by
+  name alongside the natural ones — American, British, Australian and Indian.
+- **A voice for the book.** It suggests voices from the book's own text: a
+  story or a textbook, British or American spelling.
+- **It remembers where you were**, per book, to the sentence.
+- **Sleep timer**: stop after a set time, or at the end of the chapter.
 - **Groups**, so a shelf of textbooks is not one long list.
-- Light, dark and paper themes; adjustable text size; speed from 0.5× to 3×.
+- Paper, light and dark themes; adjustable text size; speed from 0.5× to 3×.
+
+It sends nothing on its own. The only things that ever leave the phone are a
+voice you choose to download, and an optional questionnaire or feedback when
+you press Send — never anything from your documents. The
+[privacy policy](https://papervoice.app/privacy) lists exactly what each one
+contains.
 
 ## What it does not do
 
@@ -59,8 +73,19 @@ Requires Node 20+, a JDK, and the Android SDK.
 npm install
 npm run android          # debug build on a connected device or emulator
 npm run apk              # release APK, both ABIs
-npm test                 # 268 tests, no device needed
+npm run apk -- --fast    # arm64 only, for testing a release build quickly
+npm test                 # no device needed
 ```
+
+Build settings that should not be committed go in `.env` and `.env.local`
+(both git-ignored), which every build script loads itself:
+`EXPO_PUBLIC_FEEDBACK_ENDPOINT` for where feedback is sent, and
+`GRADLE_USER_HOME` if Gradle should keep its cache somewhere other than the
+default.
+
+`npm run release -- --publish` builds, signs and publishes a GitHub release,
+as a draft first, with the stable-named APK and checksums beside the
+versioned one.
 
 `android/` is **generated** by `expo prebuild` and is not committed. Anything
 that needs to change in it lives in `plugins/` as a config plugin, because a
@@ -78,6 +103,15 @@ npm run apk -- --emu     # x86_64 build, the only kind an emulator installs
 Layout, navigation, insets and empty states are faithful on an emulator.
 **Voice speed, audio routing and battery are not** — those need a real phone,
 because the emulator runs on your computer's cores with no thermal limit.
+
+---
+
+### The website
+
+[papervoice.app](https://papervoice.app) is the static page in [`site/`](site/),
+published by GitHub Actions. [site/README.md](site/README.md) covers the voice
+samples, the screenshots, the demo video and the release details written in at
+deploy.
 
 ---
 
